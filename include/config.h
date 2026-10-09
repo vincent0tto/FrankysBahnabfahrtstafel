@@ -90,6 +90,7 @@
 // (src/depart_anim.cpp). Only if no other shown row leaves in the same minute.
 // 0 = never, 1 = always.
 #define DEPART_ANIM_CHANCE 5
+#define DEPART_ANIM_CHANCE_BUS 1   // same for buses (line 628 etc.)
 
 // Texts shown now and then instead of the 4th row, one picked at random.
 // Prefix "[ig]" puts the Instagram logo in front. "line|destination|time"
@@ -99,7 +100,7 @@
 #define PROMO_TEXTS { "[ig]@frankys_by_coffeetoego", \
                       "[fw]|Flat White|sofort", \
                       "[ku]|Kuchen|sofort", \
-                      "@12[gc]|Grilled Cheese|5 min"
+                      "@12[gc]|Grilled Cheese|5 min", \
                     }
 #define PROMO_INTERVAL_S   45   // average pause between showings (+-50 %), 0 = off
 #define PROMO_SHOW_S         15   // how long one text stays

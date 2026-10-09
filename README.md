@@ -102,7 +102,7 @@ These tests need a host compiler. If you haven't accepted the Xcode license yet,
 | `!` next to the clock | no WiFi, or the data is more than 5 minutes old |
 | `Zurzeit keine Abfahrtsinformationen` | no departures, or the data is more than 60 minutes old |
 | Instagram logo + `@frankys_by_coffeetoego` in the 4th row | now and then for 8 s, only while that departure is ≥ 10 min away (`PROMO_*` in `config.h`) |
-| tram/bus driving out of a row | 1 in 5 departures, only if no other one leaves in the same minute: the two-car tram (or the bus) pulls away and drives out (`DEPART_ANIM_CHANCE`) |
+| tram/bus driving out of a row | 1 in 5 tram departures and every bus departure, only if no other one leaves in the same minute: the two-car tram (or the bus) pulls away and drives out (`DEPART_ANIM_CHANCE`, `DEPART_ANIM_CHANCE_BUS`) |
 
 ## 24/7 operation
 

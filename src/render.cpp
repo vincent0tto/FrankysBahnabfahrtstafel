@@ -93,7 +93,9 @@ static void checkDeparted(const Departure* const* rows, int n, time_t now, uint3
       left++;
       row = j;
     }
-    if (left == 1 && animChance > 0 && rand() % animChance == 0) {
+    // Buses are rare here, so they get their own (higher) chance
+    int chance = left == 1 && animChance > 0 && prevRows[row].cls > 4 ? DEPART_ANIM_CHANCE_BUS : animChance;
+    if (left == 1 && chance > 0 && rand() % chance == 0) {
       anim.active = true;
       anim.dep = prevRows[row];
       anim.row = row;
@@ -224,6 +226,7 @@ static struct {
   uint32_t next = 0;   // ms of the next showing, 0 = not scheduled yet
   uint32_t start = 0;
   int idx = -1;        // -1 = not showing
+  const char* text = nullptr;  // PROMOS[idx] without its "@HH" prefix
 } promo;
 
 static int forcedPromo = -1;
@@ -235,22 +238,19 @@ static uint32_t promoPause() {  // PROMO_INTERVAL_S +-50 %
 }
 
 // Returns the promo text to show in the 4th row this frame, or nullptr.
-// `eligible`: the 4th row is free for it (its departure is far enough away).
+// `canStart`: a new promo may take the 4th row (its departure is far enough
+// away). A running one stays its full PROMO_SHOW_S even if that departure
+// gets close, unless `blocked` (the row is needed for the ticker or the
+// departure animation).
 // `hour`: local hour for "@HH" windows, -1 if the time isn't known.
-static const char* promoText(bool eligible, int hour, uint32_t ms) {
+static const char* promoText(bool canStart, bool blocked, int hour, uint32_t ms) {
   if (N_PROMOS == 0 || PROMO_INTERVAL_S <= 0) return nullptr;
-  if (promo.idx >= 0 && ms - promo.start >= PROMO_SHOW_S * 1000UL) {
+  if (promo.idx >= 0 && (blocked || ms - promo.start >= PROMO_SHOW_S * 1000UL)) {
     promo.idx = -1;
     promo.next = ms + promoPause();
   }
-  if (!eligible) {
-    if (promo.idx >= 0) {  // a departure got close, give the row back
-      promo.idx = -1;
-      promo.next = ms + promoPause();
-    }
-    return nullptr;
-  }
   if (promo.idx < 0) {
+    if (!canStart || blocked) return nullptr;
     if (promo.next == 0) promo.next = ms + promoPause();
     if ((int32_t)(ms - promo.next) < 0) return nullptr;
     int open[N_PROMOS > 0 ? N_PROMOS : 1], nOpen = 0;
@@ -263,13 +263,9 @@ static const char* promoText(bool eligible, int hour, uint32_t ms) {
     promo.idx = forcedPromo >= 0 && promoWindow(PROMOS[forcedPromo], hour) ? forcedPromo
                                                                             : open[rand() % nOpen];
     promo.start = ms;
+    promo.text = promoWindow(PROMOS[promo.idx], hour);
   }
-  const char* text = promoWindow(PROMOS[promo.idx], hour);
-  if (!text) {  // its window closed while showing
-    promo.idx = -1;
-    promo.next = ms + promoPause();
-  }
-  return text;
+  return promo.text;  // stays even if its time window closes meanwhile
 }
 
 static void drawPromo(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, int base,
@@ -376,18 +372,17 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
   }
 
   // Now and then a promo text replaces the 4th row while that departure is
-  // still a while away
+  // still a while away; once started it stays PROMO_SHOW_S
   int hour = -1;
   if (st.timeValid) {
     struct tm lt;
     localtime_r(&now, &lt);
     hour = lt.tm_hour;
   }
-  const char* promoMsg = promoText(n == MAX_ROWS + 1 && animRow != MAX_ROWS &&
-                                       minutesUntil(rows[MAX_ROWS]->when, now) >= PROMO_MIN_MINUTES,
-                                   hour, ms);
+  const char* promoMsg = promoText(n == MAX_ROWS + 1 && minutesUntil(rows[MAX_ROWS]->when, now) >= PROMO_MIN_MINUTES,
+                                   tickerMsg || animRow == MAX_ROWS, hour, ms);
   const int nLineW = n;  // the hidden 4th row still reserves its line width
-  if (promoMsg) n = MAX_ROWS;
+  if (promoMsg && n > MAX_ROWS) n = MAX_ROWS;
   PromoDep promoDep;
   bool promoIsDep = promoMsg && splitPromoDep(promoMsg, promoDep);
 
