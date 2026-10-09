@@ -125,6 +125,17 @@ int main(int argc, char** argv) {
 
   // promo text in the 4th row (the timer is due long after the frames above)
   frames.push_back(render(normal, ok, now, 1000000));
+  // each promo once; 18:35 local so the "@16" ones are open too
+  static const char* const promos[] = PROMO_TEXTS;
+  Board evening = normal;
+  for (int i = 0; i < evening.n; i++) evening.deps[i].when += 6 * 3600;
+  evening.fetchedAt += 6 * 3600;
+  for (int i = 0; i < (int)(sizeof(promos) / sizeof(promos[0])); i++) {
+    setPromoIndex(i);
+    render(evening, ok, now + 6 * 3600, 2000000 + i * 1000000);  // ends the previous one
+    frames.push_back(render(evening, ok, now + 6 * 3600, 2000000 + i * 1000000 + 500000));
+  }
+  setPromoIndex(-1);
 
   // long destination scrolling past the right edge: tall letters must be cut
   Board tall = normal;

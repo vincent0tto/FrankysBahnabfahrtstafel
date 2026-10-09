@@ -1,5 +1,6 @@
 #include "render.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -123,10 +124,14 @@ static const char* const IG_LOGO[] = {
 };
 static const int IG_W = 11, IG_H = 11, IG_GAP = 4;
 
-// Promo shown like a departure: "line|destination|time". Line "[gc]" draws a
-// grilled cheese sandwich instead of a line number.
-static const char* const PROMO_GC = "[gc]";
-static const char* const GC_ICON[] = {
+// Promo shown like a departure: "line|destination|time". A line from ICONS
+// ("[gc]", ...) draws that icon instead of a line number.
+struct Icon {
+  const char* tag;
+  const char* const* rows;
+  int w, h;
+};
+static const char* const GC_ICON[] = {  // grilled cheese
     ".##########.",
     "#..#..#..#.#",
     "#.#..#..#..#",
@@ -137,7 +142,51 @@ static const char* const GC_ICON[] = {
     "#..........#",
     ".##########.",
 };
-static const int GC_W = 12, GC_H = 9;
+static const char* const FW_ICON[] = {  // flat white
+    "..#..#......",
+    ".#..#.......",
+    "########....",
+    "#......####.",
+    "#......#..#.",
+    "#......####.",
+    ".#....#.....",
+    "..####......",
+    "###########.",
+};
+static const char* const KU_ICON[] = {  // slice of cake
+    "........##..",
+    "........##..",
+    "....########",
+    "..##.......#",
+    "############",
+    "#..........#",
+    "############",
+    "#..........#",
+    "############",
+};
+static const char* const BI_ICON[] = {  // beer mug
+    ".##.##.##...",
+    "#########...",
+    "#.#.#.#.####",
+    "#.#.#.#.#..#",
+    "#.#.#.#.#..#",
+    "#.#.#.#.#..#",
+    "#.#.#.#.####",
+    "#.#.#.#.#...",
+    "#########...",
+};
+static const Icon ICONS[] = {
+    {"[gc]", GC_ICON, 12, 9},
+    {"[fw]", FW_ICON, 12, 9},
+    {"[ku]", KU_ICON, 12, 9},
+    {"[bi]", BI_ICON, 12, 9},
+};
+
+static const Icon* findIcon(const char* tag) {
+  for (const Icon& ic : ICONS)
+    if (strcmp(tag, ic.tag) == 0) return &ic;
+  return nullptr;
+}
 
 struct PromoDep {
   char line[16], dest[64], time[16];
@@ -155,7 +204,20 @@ static bool splitPromoDep(const char* text, PromoDep& p) {
 }
 
 static int promoLineWidth(U8G2_FOR_ADAFRUIT_GFX& u8, const PromoDep& p) {
-  return strcmp(p.line, PROMO_GC) == 0 ? GC_W : width(u8, p.line);
+  const Icon* ic = findIcon(p.line);
+  return ic ? ic->w : width(u8, p.line);
+}
+
+// Optional "@HH" or "@HH-HH" prefix: only from (until) that local hour.
+// Returns the text after the prefix, nullptr if it isn't its time.
+static const char* promoWindow(const char* text, int hour) {
+  if (text[0] != '@' || !isdigit((unsigned char)text[1])) return text;
+  char* end;
+  long from = strtol(text + 1, &end, 10), to = 24;
+  if (*end == '-') to = strtol(end + 1, &end, 10);
+  if (hour < 0) return nullptr;  // no valid time yet
+  bool open = from <= to ? hour >= from && hour < to : hour >= from || hour < to;
+  return open ? end : nullptr;
 }
 
 static struct {
@@ -164,6 +226,9 @@ static struct {
   int idx = -1;        // -1 = not showing
 } promo;
 
+static int forcedPromo = -1;
+void setPromoIndex(int idx) { forcedPromo = idx; }
+
 static uint32_t promoPause() {  // PROMO_INTERVAL_S +-50 %
   uint32_t base = PROMO_INTERVAL_S * 1000UL;
   return base / 2 + (uint32_t)rand() % (base + 1);
@@ -171,7 +236,8 @@ static uint32_t promoPause() {  // PROMO_INTERVAL_S +-50 %
 
 // Returns the promo text to show in the 4th row this frame, or nullptr.
 // `eligible`: the 4th row is free for it (its departure is far enough away).
-static const char* promoText(bool eligible, uint32_t ms) {
+// `hour`: local hour for "@HH" windows, -1 if the time isn't known.
+static const char* promoText(bool eligible, int hour, uint32_t ms) {
   if (N_PROMOS == 0 || PROMO_INTERVAL_S <= 0) return nullptr;
   if (promo.idx >= 0 && ms - promo.start >= PROMO_SHOW_S * 1000UL) {
     promo.idx = -1;
@@ -187,10 +253,23 @@ static const char* promoText(bool eligible, uint32_t ms) {
   if (promo.idx < 0) {
     if (promo.next == 0) promo.next = ms + promoPause();
     if ((int32_t)(ms - promo.next) < 0) return nullptr;
-    promo.idx = rand() % N_PROMOS;
+    int open[N_PROMOS > 0 ? N_PROMOS : 1], nOpen = 0;
+    for (int i = 0; i < N_PROMOS; i++)
+      if (promoWindow(PROMOS[i], hour)) open[nOpen++] = i;
+    if (nOpen == 0) {
+      promo.next = ms + promoPause();
+      return nullptr;
+    }
+    promo.idx = forcedPromo >= 0 && promoWindow(PROMOS[forcedPromo], hour) ? forcedPromo
+                                                                            : open[rand() % nOpen];
     promo.start = ms;
   }
-  return PROMOS[promo.idx];
+  const char* text = promoWindow(PROMOS[promo.idx], hour);
+  if (!text) {  // its window closed while showing
+    promo.idx = -1;
+    promo.next = ms + promoPause();
+  }
+  return text;
 }
 
 static void drawPromo(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, int base,
@@ -220,11 +299,11 @@ static void drawPromoDep(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t co
   u8.drawUTF8(destX - off, base, p.dest);
   clipRow(g, base, destX, rightX - COL_GAP);
   int lineX = MARGIN_X + lineW - promoLineWidth(u8, p);  // right-aligned like line numbers
-  if (strcmp(p.line, PROMO_GC) == 0) {
-    int top = base - GC_H;  // stands on the baseline like the digits
-    for (int r = 0; r < GC_H; r++)
-      for (int c = 0; c < GC_W; c++)
-        if (GC_ICON[r][c] == '#') g.drawPixel(lineX + c, top + r, color);
+  if (const Icon* ic = findIcon(p.line)) {
+    int top = base - ic->h;  // stands on the baseline like the digits
+    for (int r = 0; r < ic->h; r++)
+      for (int c = 0; c < ic->w; c++)
+        if (ic->rows[r][c] == '#') g.drawPixel(lineX + c, top + r, color);
   } else {
     u8.drawUTF8(lineX, base, p.line);
   }
@@ -298,9 +377,15 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
 
   // Now and then a promo text replaces the 4th row while that departure is
   // still a while away
+  int hour = -1;
+  if (st.timeValid) {
+    struct tm lt;
+    localtime_r(&now, &lt);
+    hour = lt.tm_hour;
+  }
   const char* promoMsg = promoText(n == MAX_ROWS + 1 && animRow != MAX_ROWS &&
                                        minutesUntil(rows[MAX_ROWS]->when, now) >= PROMO_MIN_MINUTES,
-                                   ms);
+                                   hour, ms);
   const int nLineW = n;  // the hidden 4th row still reserves its line width
   if (promoMsg) n = MAX_ROWS;
   PromoDep promoDep;

@@ -93,9 +93,14 @@
 
 // Texts shown now and then instead of the 4th row, one picked at random.
 // Prefix "[ig]" puts the Instagram logo in front. "line|destination|time"
-// shows it like a departure; line "[gc]" draws a grilled cheese icon. Add more as
-//   { "[ig]@frankys_by_coffeetoego", "Second text", "Third text" }
-#define PROMO_TEXTS { "[ig]@frankys_by_coffeetoego", "[gc]|Grilled Cheese|5 min" }
+// shows it like a departure; as line, "[gc]" draws a grilled cheese, "[fw]" a
+// flat white, "[ku]" a slice of cake and "[bi]" a beer mug. A leading "@12"
+// shows the text only from 12:00 until midnight, "@12-18" from 12:00 to 18:00.
+#define PROMO_TEXTS { "[ig]@frankys_by_coffeetoego", \
+                      "[fw]|Flat White|sofort", \
+                      "[ku]|Kuchen|sofort", \
+                      "@12[gc]|Grilled Cheese|5 min"
+                    }
 #define PROMO_INTERVAL_S   45   // average pause between showings (+-50 %), 0 = off
 #define PROMO_SHOW_S         15   // how long one text stays
 #define PROMO_MIN_MINUTES   3   // only if the 4th row's departure is this far away

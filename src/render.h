@@ -17,6 +17,10 @@ struct DisplayStatus {
 // Randomness comes from rand(), seed it once at start-up.
 void setDepartAnimChance(int oneIn);
 
+// Forces the promo with this index in PROMO_TEXTS (if its time window is
+// open), -1 = random. Only the preview uses it.
+void setPromoIndex(int idx);
+
 // `g` must be cleared beforehand. `ms` drives the scrolling texts and the
 // departure animation, so call it continuously with a monotonic clock.
 void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const Board& b,
