@@ -23,18 +23,19 @@ static const char* const TRAM[VEH_H] = {
     "...#...#..............#...#.........#...#..............#...#...",
 };
 
+// Boxy European city bus: flat roof with AC unit, two doors, flat front.
 static const char* const BUS[VEH_H] = {
-    "........#######.................",
-    ".##############################.",
-    "################################",
-    "#...#...#...#..#...#...#..#....#",
-    "#...#...#...#..#...#...#..#....#",
-    "############..##########..######",
-    "############..##########..######",
-    "################################",
-    "####.....###############.....###",
-    ".....#.#.................#.#....",
-    "......#...................#.....",
+    "...####################.............",
+    "####################################",
+    "#....#....#..#....#....#..#...#....#",
+    "#....#....#..#....#....#..#...#....#",
+    "#....#....#..#....#....#..#...#....#",
+    "###########..###########..#####....#",
+    "###########..###########..##########",
+    "###########..###########..##########",
+    "####.....##..###########..#.....####",
+    ".....#.#....................#.#.....",
+    "......#......................#......",
 };
 
 static void drawSprite(Adafruit_GFX& g, uint16_t color, const char* const* rows, int h, int x,
@@ -48,25 +49,25 @@ static void drawSprite(Adafruit_GFX& g, uint16_t color, const char* const* rows,
 }
 
 // ---- Timeline (ms) ---------------------------------------------------------
-// Vehicle: stands at the left edge for a moment (doors closing), then pulls
-// away smoothly and accelerates out of the display.
-static const int VEH_X0 = 2;
-static const uint32_t VEH_HOLD = 600;
-static const int VEH_ACCEL = 26;  // px/s^2
+// Vehicle: rolls in slowly from beyond the left edge and keeps accelerating
+// until it has left the display (the tram, 63 px, just makes it in
+// DEPART_ANIM_MS: 63 + 192 px).
+static const int VEH_V0 = 12;     // px/s when its front appears
+static const int VEH_ACCEL = 20;  // px/s^2
 
-static int vehicleX(uint32_t t) {
-  if (t < VEH_HOLD) return VEH_X0;
-  int64_t dt = t - VEH_HOLD;
-  return VEH_X0 + (int)((int64_t)VEH_ACCEL * dt * dt / 2000000);
+// Left edge of a `vehW` px wide vehicle at `t` ms.
+static int vehicleX(uint32_t t, int vehW) {
+  int64_t dt = t;
+  return -vehW + (int)((VEH_V0 * dt * 1000 + (int64_t)VEH_ACCEL * dt * dt / 2) / 1000000);
 }
 
 void drawDepartAnim(Adafruit_GFX& g, uint16_t color, bool tram, uint32_t t, int top, int bottom,
                     int width) {
   const char* const* veh = tram ? TRAM : BUS;
   int vehW = (int)strlen(veh[0]);
-  int vx = vehicleX(t);
+  int vx = vehicleX(t, vehW);
 
   int clearTo = vx + vehW + 1 < width ? vx + vehW + 1 : width;  // 1px gap to the text
-  g.fillRect(0, top, clearTo, bottom - top + 1, 0);
-  if (vx < width) drawSprite(g, color, veh, VEH_H, vx, bottom, top);
+  if (clearTo > 0) g.fillRect(0, top, clearTo, bottom - top + 1, 0);
+  if (vx < width) drawSprite(g, color, veh, VEH_H, vx, bottom - 1, top);  // 1px above the baseline
 }

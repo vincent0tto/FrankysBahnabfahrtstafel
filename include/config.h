@@ -28,7 +28,7 @@
 // PLATFORM_SHOW_S seconds, with PLATFORM_HEADER in place of the clock.
 // 0 = never. The VRN only sends short codes ("A", "B", "TrRiN"), rename them
 // with "platform|label" pairs; codes without a pair are shown as they are.
-#define PLATFORM_EVERY_S   60
+#define PLATFORM_EVERY_S   40
 #define PLATFORM_SHOW_S    10
 #define PLATFORM_HEADER    "Gleis"
 #define PLATFORM_LABELS    "TrRiS|1;End|2;TrRiN|3"

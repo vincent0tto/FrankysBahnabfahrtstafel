@@ -109,6 +109,7 @@ int main(int argc, char** argv) {
   Board mixed = normal;  // labels of different glyph widths must line up
   const char* labels[] = {"A", "1", "B", "2"};
   for (int i = 0; i < 4; i++) strcpy(mixed.deps[i].platformLabel, labels[i]);
+  mixed.deps[1].cancelled = true;  // still shows its platform
   frames.push_back(render(mixed, ok, now, PLATFORM_EVERY_S * 1000 - 1));
 
   // long destination: start, mid-scroll, end

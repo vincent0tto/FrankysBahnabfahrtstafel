@@ -466,14 +466,14 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
   PromoDep promoDep;
   bool promoIsDep = promoMsg && !showDisruption && splitPromoDep(promoMsg, promoDep);
 
-  // Now and then the time column shows the platforms instead (not for
-  // cancelled trips or without a platform)
+  // Now and then the time column shows the platforms instead (also for
+  // cancelled trips, not without a platform)
   const uint32_t platformEveryMs = PLATFORM_EVERY_S * 1000UL;
   bool platformPhase = platformEveryMs > 0 &&
                        ms % (platformEveryMs ? platformEveryMs : 1) >= platformEveryMs - PLATFORM_SHOW_S * 1000UL;
   bool showPlatforms = false;
   for (int i = 0; i < n && platformPhase; i++)
-    showPlatforms |= !rows[i]->cancelled && rows[i]->platformLabel[0];
+    showPlatforms |= rows[i]->platformLabel[0] != 0;
 
   if (n == 0) {
     int mid = (RULE_Y + (tickerMsg || showDisruption ? rowBase(MAX_ROWS) - ROW_ASCENT : H)) / 2;
@@ -504,7 +504,7 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
       rightX[i] = W - MARGIN_X - width(u8, right[i]);
       // the destination keeps the width it has next to the countdown
       destEnd[i] = rightX[i] - COL_GAP;
-      if (showPlatforms && !rows[i]->cancelled && rows[i]->platformLabel[0]) {
+      if (showPlatforms && rows[i]->platformLabel[0]) {
         snprintf(right[i], sizeof(right[i]), "%s", rows[i]->platformLabel);
         int x = (platformCenter2 - inkCenter2(g, u8, right[i])) / 2;
         int maxX = W - MARGIN_X - width(u8, right[i]);  // a long label stays on the board
