@@ -106,6 +106,10 @@ int main(int argc, char** argv) {
   Board normal = fixtureBoard(now);
   frames.push_back(render(normal, ok, now, 0));
   frames.push_back(render(normal, ok, now, PLATFORM_EVERY_S * 1000 - 1));  // platforms instead of times
+  Board mixed = normal;  // labels of different glyph widths must line up
+  const char* labels[] = {"A", "1", "B", "2"};
+  for (int i = 0; i < 4; i++) strcpy(mixed.deps[i].platformLabel, labels[i]);
+  frames.push_back(render(mixed, ok, now, PLATFORM_EVERY_S * 1000 - 1));
 
   // long destination: start, mid-scroll, end
   Board longDest = normal;

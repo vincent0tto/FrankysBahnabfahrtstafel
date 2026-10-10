@@ -32,6 +32,27 @@ static int ROW_ASCENT, ROW_DESCENT;  // set per frame from the font
 
 static int width(U8G2_FOR_ADAFRUIT_GFX& u8, const char* s) { return u8.getUTF8Width(s); }
 
+// Draws nothing, only records which columns a text really covers: glyphs sit
+// differently in their advance width ("1" vs "A"), so centring by width alone
+// doesn't line them up.
+struct InkBounds : Adafruit_GFX {
+  int minX = 32767, maxX = -32768;
+  InkBounds() : Adafruit_GFX(32767, 32767) {}
+  void drawPixel(int16_t x, int16_t, uint16_t) override {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+  }
+};
+
+// Twice the x of the ink centre of `s` drawn at x = 0 (doubled: no rounding).
+static int inkCenter2(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const char* s) {
+  InkBounds ink;
+  u8.begin(ink);
+  u8.drawUTF8(0, 100, s);
+  u8.begin(g);
+  return ink.maxX >= ink.minX ? ink.minX + ink.maxX : width(u8, s) - 1;
+}
+
 static void centered(U8G2_FOR_ADAFRUIT_GFX& u8, int base, const char* s) {
   u8.drawUTF8((W - width(u8, s)) / 2, base, s);
 }
@@ -470,20 +491,31 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
     }
     if (promoIsDep && promoLineWidth(u8, promoDep) > lineW) lineW = promoLineWidth(u8, promoDep);
     const int destX = MARGIN_X + lineW + COL_GAP;
+    // Platforms are centred (by their ink) under the header's PLATFORM_HEADER
+    u8.setFont(FONT_HEADER);
+    int headerX = W - MARGIN_X - width(u8, PLATFORM_HEADER);  // as in drawHeader
+    int platformCenter2 = 2 * headerX + inkCenter2(g, u8, PLATFORM_HEADER);
+    u8.setFont(FONT_ROW);
     char right[MAX_ROWS + 1][16];
-    int rightX[MAX_ROWS + 1];
+    int rightX[MAX_ROWS + 1], destEnd[MAX_ROWS + 1];
     // 1) destinations (possibly scrolled), 2) clip all rows, 3) line + time
     for (int i = 0; i < n; i++) {
-      if (showPlatforms && !rows[i]->cancelled && rows[i]->platformLabel[0])
-        snprintf(right[i], sizeof(right[i]), "%s", rows[i]->platformLabel);
-      else
-        formatCountdown(*rows[i], now, right[i], sizeof(right[i]));
+      formatCountdown(*rows[i], now, right[i], sizeof(right[i]));
       rightX[i] = W - MARGIN_X - width(u8, right[i]);
-      int overflow = width(u8, rows[i]->dest) - (rightX[i] - COL_GAP - destX);
+      // the destination keeps the width it has next to the countdown
+      destEnd[i] = rightX[i] - COL_GAP;
+      if (showPlatforms && !rows[i]->cancelled && rows[i]->platformLabel[0]) {
+        snprintf(right[i], sizeof(right[i]), "%s", rows[i]->platformLabel);
+        int x = (platformCenter2 - inkCenter2(g, u8, right[i])) / 2;
+        int maxX = W - MARGIN_X - width(u8, right[i]);  // a long label stays on the board
+        rightX[i] = x < maxX ? x : maxX;
+        if (rightX[i] - COL_GAP < destEnd[i]) destEnd[i] = rightX[i] - COL_GAP;
+      }
+      int overflow = width(u8, rows[i]->dest) - (destEnd[i] - destX);
       int off = overflow > 0 ? pingPongOffset(overflow, ms) : 0;
       u8.drawUTF8(destX - off, rowBase(i), rows[i]->dest);
     }
-    for (int i = 0; i < n; i++) clipRow(g, rowBase(i), destX, rightX[i] - COL_GAP);
+    for (int i = 0; i < n; i++) clipRow(g, rowBase(i), destX, destEnd[i]);
     for (int i = 0; i < n; i++) {
       int base = rowBase(i);
       u8.drawUTF8(MARGIN_X + lineW - width(u8, rows[i]->line), base, rows[i]->line);  // right-aligned

@@ -108,7 +108,7 @@
 // shows the text only from 12:00 until midnight, "@12-18" from 12:00 to 18:00.
 #define PROMO_TEXTS { "[ig]@frankys_by_coffeetoego", \
                       "[fw]|Flat White|sofort", \
-                      "[ku]|Kuchen|sofort", \
+                      "[ku]|Selbstgemachter Kuchen|sofort", \
                       "@12[gc]|Grilled Cheese|5 min", \
                     }
 #define PROMO_INTERVAL_S   75   // average pause between showings (+-50 %), 0 = off
