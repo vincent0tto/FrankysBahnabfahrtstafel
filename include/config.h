@@ -24,6 +24,15 @@
 // direction of their platform instead: "platform|destination" pairs.
 #define PLATFORM_DIRECTIONS "TrRiN|Weinheim;TrRiS|Heidelberg"
 
+// Every PLATFORM_EVERY_S seconds the time column shows the platform for
+// PLATFORM_SHOW_S seconds, with PLATFORM_HEADER in place of the clock.
+// 0 = never. The VRN only sends short codes ("A", "B", "TrRiN"), rename them
+// with "platform|label" pairs; codes without a pair are shown as they are.
+#define PLATFORM_EVERY_S   60
+#define PLATFORM_SHOW_S    10
+#define PLATFORM_HEADER    "Gleis"
+#define PLATFORM_LABELS    "TrRiS|1;End|2;TrRiN|3"
+
 // ---- API ------------------------------------------------------------------
 // VRN EFA Open Service (Mentz RapidJSON). Two hosts, the second is used as
 // fallback when the first one fails. Data: Verkehrsverbund Rhein-Neckar (VRN),
@@ -102,9 +111,12 @@
                       "[ku]|Kuchen|sofort", \
                       "@12[gc]|Grilled Cheese|5 min", \
                     }
-#define PROMO_INTERVAL_S   45   // average pause between showings (+-50 %), 0 = off
-#define PROMO_SHOW_S         15   // how long one text stays
-#define PROMO_MIN_MINUTES   3   // only if the 4th row's departure is this far away
+#define PROMO_INTERVAL_S   75   // average pause between showings (+-50 %), 0 = off
+#define PROMO_SHOW_S         25   // how long one text stays
+#define PROMO_MIN_MINUTES   7   // only if the 4th row's departure is this far away
+// VRN disruption texts take turns with the promos in the 4th row
+#define DISRUPTION_MIN_MINUTES  5   // only if the 4th row's departure is this far away
+#define DISRUPTION_PASSES       2   // scroll through all messages this often
 
 // HUB75 pin map (ESP32-S3-DevKitC-1 N8R8; avoids PSRAM 35-37, straps 0/3/45/46,
 // USB 19/20, UART 43/44)

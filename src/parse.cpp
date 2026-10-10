@@ -172,6 +172,7 @@ void buildFilter(JsonDocument& filter) {
   filter.clear();
   JsonObject ev = filter["stopEvents"][0].to<JsonObject>();
   ev["realtimeStatus"] = true;
+  ev["isCancelled"] = true;
   ev["departureTimePlanned"] = true;
   ev["departureTimeEstimated"] = true;
   ev["location"]["properties"]["platform"] = true;
@@ -207,7 +208,7 @@ static void appendTicker(Board& out, const char* utf8) {
   sanitizeUtf8(utf8, conv, sizeof(conv));
   if (!conv[0]) return;
   size_t len = strlen(out.ticker);
-  const char* sep = len ? "   +++   " : "";
+  const char* sep = len ? " +++ " : "";
   if (len + strlen(sep) + strlen(conv) + 1 > sizeof(out.ticker)) return;
   strcat(out.ticker, sep);
   strcat(out.ticker, conv);
@@ -219,6 +220,7 @@ bool parseDepartures(JsonVariantConst root, time_t now, const ParseOptions& opt,
 
   static const int kMaxCandidates = 40;
   static Departure cand[kMaxCandidates];  // static: keep it off the task stack
+  bool stopCancelled[kMaxCandidates], extraTrip[kMaxCandidates];
   int nc = 0;
   out.ticker[0] = '\0';
   const char* seenInfo[16];
@@ -259,6 +261,9 @@ bool parseDepartures(JsonVariantConst root, time_t now, const ParseOptions& opt,
     memset(&d, 0, sizeof(d));
     sanitizeUtf8(line, d.line, sizeof(d.line));
     copyStr(d.platform, sizeof(d.platform), platform);
+    std::string label;
+    sanitizeUtf8(lookupPair(opt.platformLabels, platform, label) ? label.c_str() : platform, d.platformLabel,
+                 sizeof(d.platformLabel));
     const char* dest = tr["destination"]["name"] | "";
     const char* town = ev["location"]["parent"]["parent"]["name"] | "";
     std::string byPlatform;
@@ -276,11 +281,28 @@ bool parseDepartures(JsonVariantConst root, time_t now, const ParseOptions& opt,
     // on re-planned trips (status EXTRA_STOPS) that the official apps still
     // show as running.
     d.cancelled = false;
+    stopCancelled[nc - 1] = ev["isCancelled"] | false;
+    extraTrip[nc - 1] = false;
     for (JsonVariantConst rs : ev["realtimeStatus"].as<JsonArrayConst>()) {
       const char* s = rs | "";
       if (strstr(s, "CANCEL")) d.cancelled = true;
+      if (strcmp(s, "EXTRA_TRIP") == 0) extraTrip[nc - 1] = true;
     }
   }
+
+  // The rnv dispatch sometimes replaces a trip by an EXTRA_TRIP (same line,
+  // platform and planned time, other destination) and only marks the original
+  // "isCancelled". Both would show up, so drop the original.
+  bool replaced[kMaxCandidates] = {};
+  for (int i = 0; i < nc; i++)
+    for (int j = 0; j < nc && stopCancelled[i] && !cand[i].cancelled; j++)
+      if (j != i && extraTrip[j] && cand[j].planned == cand[i].planned &&
+          strcmp(cand[j].line, cand[i].line) == 0 && strcmp(cand[j].platform, cand[i].platform) == 0)
+        replaced[i] = true;
+  int kept = 0;
+  for (int i = 0; i < nc; i++)
+    if (!replaced[i]) cand[kept++] = cand[i];
+  nc = kept;
 
   std::stable_sort(cand, cand + nc, [](const Departure& a, const Departure& b) {
     return a.when != b.when ? a.when < b.when : a.planned < b.planned;

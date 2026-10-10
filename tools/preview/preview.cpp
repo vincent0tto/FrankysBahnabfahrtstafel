@@ -30,6 +30,7 @@ static Board fixtureBoard(time_t now) {
   deserializeJson(doc, ss.str(), DeserializationOption::Filter(filter));
   ParseOptions opt;
   opt.abbreviations = DEST_ABBREVIATIONS;
+  opt.platformLabels = PLATFORM_LABELS;
   Board b;
   parseDepartures(doc.as<JsonVariantConst>(), now, opt, b);
   b.fetchedAt = now;
@@ -104,6 +105,7 @@ int main(int argc, char** argv) {
   std::vector<Frame> frames;
   Board normal = fixtureBoard(now);
   frames.push_back(render(normal, ok, now, 0));
+  frames.push_back(render(normal, ok, now, PLATFORM_EVERY_S * 1000 - 1));  // platforms instead of times
 
   // long destination: start, mid-scroll, end
   Board longDest = normal;

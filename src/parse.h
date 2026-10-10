@@ -13,6 +13,8 @@ struct ParseOptions {
   // "platform|destination;...": used when a trip's destination is just the
   // board's own town (rnv sends e.g. "Schriesheim" for trips that go on).
   const char* platformDirections = "";
+  // "platform|label;...": display name of a platform, others are shown as is.
+  const char* platformLabels = "";
 };
 
 // Filter for deserializeJson so only the fields we need are kept in memory.

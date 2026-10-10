@@ -34,7 +34,7 @@ const char* fetchResultName(FetchResult r) {
 
 static FetchResult fetchFrom(const char* baseUrl, Board& out) {
   String url = String(baseUrl) +
-               "?outputFormat=rapidJSON&type_dm=any&mode=direct&useRealtime=1"
+               "?outputFormat=rapidJSON&type_dm=any&mode=direct&useRealtime=1&depType=stopEvents"
                "&name_dm=" STOP_ID "&limit=" + String(API_LIMIT);
 
   WiFiClientSecure client;
@@ -81,6 +81,7 @@ static FetchResult fetchFrom(const char* baseUrl, Board& out) {
   opt.filterPlatforms = FILTER_PLATFORMS;
   opt.abbreviations = DEST_ABBREVIATIONS;
   opt.platformDirections = PLATFORM_DIRECTIONS;
+  opt.platformLabels = PLATFORM_LABELS;
   static Board tmp;  // only used from the network task
   time_t now = time(nullptr);
   if (!parseDepartures(doc.as<JsonVariantConst>(), now, opt, tmp)) {

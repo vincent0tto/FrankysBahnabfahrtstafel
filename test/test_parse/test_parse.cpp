@@ -175,7 +175,7 @@ void test_cancel_and_ticker() {
   TEST_ASSERT_TRUE(b.deps[0].cancelled);
   TEST_ASSERT_FALSE(b.deps[1].cancelled);  // stop-level isCancelled only
   TEST_ASSERT_EQUAL_STRING("Mückenloch", b.deps[0].dest);
-  TEST_ASSERT_EQUAL_STRING("Störung Linie 5   +++   Umleitung", b.ticker);
+  TEST_ASSERT_EQUAL_STRING("Störung Linie 5 +++ Umleitung", b.ticker);
 }
 
 // Real event from 2026-10-08 19:00 (Schriesheim -> Heidelberg): trip running,
@@ -192,6 +192,28 @@ void test_stop_level_cancel_ignored() {
   TEST_ASSERT_TRUE(parseDepartures(doc.as<JsonVariantConst>(), iso("2026-10-08T16:52:00Z"), ParseOptions(), b));
   TEST_ASSERT_EQUAL_INT(1, b.n);
   TEST_ASSERT_FALSE(b.deps[0].cancelled);
+}
+
+// rnv replaces a trip by an EXTRA_TRIP and only flags the original isCancelled
+void test_replaced_by_extra_trip() {
+  Board b;
+  JsonDocument filter, doc;
+  buildFilter(filter);
+  deserializeJson(doc, R"({"stopEvents":[
+    {"isCancelled":true,"realtimeStatus":["MONITORED"],"location":{"properties":{"platform":"TrRiN"}},
+     "departureTimePlanned":"2026-10-09T16:40:00Z",
+     "transportation":{"disassembledName":"5","product":{"class":4},"destination":{"name":"Weinheim"}}},
+    {"isCancelled":true,"realtimeStatus":["EXTRA_STOPS","MONITORED"],"location":{"properties":{"platform":"TrRiS"}},
+     "departureTimePlanned":"2026-10-09T16:40:00Z",
+     "transportation":{"disassembledName":"5","product":{"class":4},"destination":{"name":"Heidelberg"}}},
+    {"realtimeStatus":["EXTRA_TRIP","MONITORED"],"location":{"properties":{"platform":"TrRiN"}},
+     "departureTimePlanned":"2026-10-09T16:40:00Z","departureTimeEstimated":"2026-10-09T16:40:00Z",
+     "transportation":{"disassembledName":"5","product":{"class":4},"destination":{"name":"Mannheim - Heidelberg"}}}]})",
+    DeserializationOption::Filter(filter));
+  TEST_ASSERT_TRUE(parseDepartures(doc.as<JsonVariantConst>(), iso("2026-10-09T16:30:00Z"), ParseOptions(), b));
+  TEST_ASSERT_EQUAL_INT(2, b.n);  // other platform stays
+  TEST_ASSERT_EQUAL_STRING("Heidelberg", b.deps[0].dest);
+  TEST_ASSERT_EQUAL_STRING("Mannheim - Heidelberg", b.deps[1].dest);
 }
 
 // rnv names the board's own town as destination of trips that go on
@@ -212,8 +234,12 @@ void test_own_town_destination() {
     DeserializationOption::Filter(filter));
   ParseOptions opt;
   opt.platformDirections = "TrRiN|Weinheim;TrRiS|Heidelberg";
+  opt.platformLabels = "TrRiN|1;TrRiS|2";
   TEST_ASSERT_TRUE(parseDepartures(doc.as<JsonVariantConst>(), iso("2026-10-08T16:52:00Z"), opt, b));
   TEST_ASSERT_EQUAL_INT(3, b.n);
+  TEST_ASSERT_EQUAL_STRING("1", b.deps[0].platformLabel);
+  TEST_ASSERT_EQUAL_STRING("B", b.deps[1].platformLabel);  // no label -> code as is
+  TEST_ASSERT_EQUAL_STRING("2", b.deps[2].platformLabel);
   TEST_ASSERT_EQUAL_STRING("Weinheim", b.deps[0].dest);
   TEST_ASSERT_EQUAL_STRING("Schriesheim", b.deps[1].dest);  // no rule for the platform
   TEST_ASSERT_EQUAL_STRING("Heidelberg Hauptbahnhof", b.deps[2].dest);
@@ -233,6 +259,7 @@ int main() {
   RUN_TEST(test_error_and_empty);
   RUN_TEST(test_cancel_and_ticker);
   RUN_TEST(test_stop_level_cancel_ignored);
+  RUN_TEST(test_replaced_by_extra_trip);
   RUN_TEST(test_own_town_destination);
   return UNITY_END();
 }

@@ -9,7 +9,8 @@
 struct Departure {
   char    line[8];       // "5", "628"
   char    dest[64];      // shortened destination
-  char    platform[12];  // "TrRiS", "B" (only used for filtering/logging)
+  char    platform[12];  // "TrRiS", "B" as sent by the API
+  char    platformLabel[12];  // shown in the "Steig" column (PLATFORM_LABELS)
   time_t  when;          // effective departure (estimated if known), UTC
   time_t  planned;       // timetable departure, UTC
   bool    realtime;      // departureTimeEstimated was present
