@@ -40,6 +40,10 @@ static FetchResult fetchFrom(const char* baseUrl, Board& out) {
   WiFiClientSecure client;
   client.setCACert(VRN_ROOT_CA);
   client.setHandshakeTimeout(HTTP_TIMEOUT_MS / 1000);
+  // WiFiClientSecure::setTimeout() (also called by HTTPClient) only sets the
+  // socket timeout; Stream's read timeout used by the JSON parser stays at
+  // 1 s, so a short server pause ended in "IncompleteInput".
+  static_cast<Stream&>(client).setTimeout(HTTP_TIMEOUT_MS);
 
   HTTPClient http;
   http.useHTTP10(true);  // no chunked encoding -> stream straight into the parser
