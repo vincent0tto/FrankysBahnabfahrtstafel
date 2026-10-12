@@ -299,6 +299,16 @@ bool parseDepartures(JsonVariantConst root, time_t now, const ParseOptions& opt,
       if (j != i && extraTrip[j] && cand[j].planned == cand[i].planned &&
           strcmp(cand[j].line, cand[i].line) == 0 && strcmp(cand[j].platform, cand[i].platform) == 0)
         replaced[i] = true;
+  // The VRN timetable sometimes holds one departure twice (other trip code,
+  // same line, platform, planned time and destination). Keep one, preferably
+  // the one with real-time data.
+  for (int i = 0; i < nc; i++)
+    for (int j = 0; j < i && !replaced[i]; j++)
+      if (!replaced[j] && cand[j].planned == cand[i].planned && strcmp(cand[j].line, cand[i].line) == 0 &&
+          strcmp(cand[j].platform, cand[i].platform) == 0 && strcmp(cand[j].dest, cand[i].dest) == 0) {
+        if (cand[i].realtime && !cand[j].realtime) replaced[j] = true;
+        else replaced[i] = true;
+      }
   int kept = 0;
   for (int i = 0; i < nc; i++)
     if (!replaced[i]) cand[kept++] = cand[i];

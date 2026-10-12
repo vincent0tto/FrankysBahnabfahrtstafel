@@ -216,6 +216,29 @@ void test_replaced_by_extra_trip() {
   TEST_ASSERT_EQUAL_STRING("Mannheim - Heidelberg", b.deps[1].dest);
 }
 
+// VRN sends one 628 departure twice with different trip codes (2026-10-12)
+void test_duplicate_trip_dropped() {
+  Board b;
+  JsonDocument filter, doc;
+  buildFilter(filter);
+  deserializeJson(doc, R"({"stopEvents":[
+    {"location":{"properties":{"platform":"B"}},"departureTimePlanned":"2026-10-12T11:10:00Z",
+     "transportation":{"disassembledName":"628","product":{"class":6},"destination":{"name":"Wilhelmsfeld, Autohalle"}}},
+    {"realtimeStatus":["MONITORED"],"location":{"properties":{"platform":"B"}},
+     "departureTimePlanned":"2026-10-12T11:10:00Z","departureTimeEstimated":"2026-10-12T11:12:00Z",
+     "transportation":{"disassembledName":"628","product":{"class":6},"destination":{"name":"Wilhelmsfeld, Autohalle"}}},
+    {"location":{"properties":{"platform":"B"}},"departureTimePlanned":"2026-10-12T11:10:00Z",
+     "transportation":{"disassembledName":"628","product":{"class":6},"destination":{"name":"Wilhelmsfeld, Autohalle"}}},
+    {"location":{"properties":{"platform":"B"}},"departureTimePlanned":"2026-10-12T11:10:00Z",
+     "transportation":{"disassembledName":"628","product":{"class":6},"destination":{"name":"Altenbach, Röschbach"}}}]})",
+    DeserializationOption::Filter(filter));
+  TEST_ASSERT_TRUE(parseDepartures(doc.as<JsonVariantConst>(), iso("2026-10-12T11:05:00Z"), ParseOptions(), b));
+  TEST_ASSERT_EQUAL_INT(2, b.n);  // other destination stays
+  TEST_ASSERT_EQUAL_STRING("Altenbach Röschbach", b.deps[0].dest);
+  TEST_ASSERT_EQUAL_STRING("Wilhelmsfeld Autohalle", b.deps[1].dest);
+  TEST_ASSERT_TRUE(b.deps[1].realtime);
+}
+
 // rnv names the board's own town as destination of trips that go on
 void test_own_town_destination() {
   Board b;
@@ -260,6 +283,7 @@ int main() {
   RUN_TEST(test_cancel_and_ticker);
   RUN_TEST(test_stop_level_cancel_ignored);
   RUN_TEST(test_replaced_by_extra_trip);
+  RUN_TEST(test_duplicate_trip_dropped);
   RUN_TEST(test_own_town_destination);
   return UNITY_END();
 }
