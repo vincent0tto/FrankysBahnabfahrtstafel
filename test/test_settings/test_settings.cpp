@@ -42,7 +42,7 @@ void test_defaults() {
   TEST_ASSERT_EQUAL(BRIGHTNESS_DAY, brightnessAt(s, 12 * 60));
   static const char* const presets[] = PROMO_TEXTS;
   TEST_ASSERT_EQUAL(sizeof(presets) / sizeof(presets[0]), s.nPromos);
-  for (int i = 0; i < s.nPromos; i++) TEST_ASSERT_EQUAL_PTR(presets[i], s.promos[i].preset);
+  for (int i = 0; i < s.nPromos; i++) TEST_ASSERT_EQUAL_STRING(presets[i], s.promos[i].preset);
 }
 
 void test_promo_from_config() {
