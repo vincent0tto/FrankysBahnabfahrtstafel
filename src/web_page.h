@@ -1,6 +1,6 @@
 #pragma once
 // The settings page served by src/web.cpp at "/". Talks to /api/settings
-// and /api/status (JSON, format: settingsToJson in src/settings.cpp).
+// /api/status and /api/restart (JSON, format: settingsToJson in src/settings.cpp).
 #include <pgmspace.h>
 
 static const char WEB_PAGE[] PROGMEM = R"rawliteral(<!doctype html>
@@ -86,6 +86,12 @@ footer button{background:var(--accent);border-color:var(--accent);color:#fff;pad
 <button id="editClear">Leeren</button><button id="editDone">Fertig</button></div>
 </div>
 <button class="add" id="addIcon">+ Eigenes Icon</button>
+</section>
+
+<section>
+<h2>System</h2>
+<div class="hint">Startet die Tafel neu, die Seite lädt danach von selbst neu.</div>
+<button id="restart">Neu starten</button> <span id="restartMsg" class="hint"></span>
 </section>
 </main>
 <footer><button id="save">Speichern</button><span id="msg"></span></footer>
@@ -249,6 +255,19 @@ async function status(){
     $('status').textContent=`Firmware ${s.build} · läuft seit ${up} · ${age} · ${s.off?'Ruhezeit':'Panel an'} · WLAN ${s.rssi} dBm`;
   }catch(e){$('status').textContent='Tafel nicht erreichbar'}
 }
+$('restart').onclick=async()=>{
+  if(!confirm('Tafel jetzt neu starten? Nicht gespeicherte Änderungen gehen verloren.'))return;
+  $('restart').disabled=true;$('restartMsg').textContent='Starte neu ...';
+  try{const r=await fetch('/api/restart',{method:'POST'});if(!r.ok)throw new Error(await r.text())}
+  catch(e){$('restartMsg').textContent='Fehler: '+e.message;$('restart').disabled=false;return}
+  const t0=Date.now();
+  await new Promise(r=>setTimeout(r,5000));
+  for(;;){
+    try{const s=await (await fetch('/api/status',{cache:'no-store'})).json();if(s.uptimeS<120){location.reload();return}}catch(e){}
+    if(Date.now()-t0>90000){$('restartMsg').textContent='Tafel meldet sich nicht, bitte Seite neu laden.';return}
+    await new Promise(r=>setTimeout(r,2000));
+  }
+};
 load().catch(e=>$('msg').textContent='Laden fehlgeschlagen: '+e.message);
 status();setInterval(status,15000);
 </script>

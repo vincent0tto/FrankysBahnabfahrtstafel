@@ -17,6 +17,7 @@ static const size_t MAX_BODY = 16384;  // a full settings JSON is ~5 KB
 static WebServer server(80);
 static bool started = false;
 static time_t lastFetch = 0;
+static uint32_t restartAtMs = 0;  // 0: no restart requested
 
 void webNoteFetch(time_t fetchedAt) { lastFetch = fetchedAt; }
 
@@ -72,12 +73,22 @@ static void handleStatus() {
   sendJson(doc);
 }
 
+// Restarts from webLoop() a moment later, so the reply still gets out. Saving
+// settings, OTA and the update check all run in the network task like this
+// handler, so none of them can be cut off half-way.
+static void handleRestart() {
+  server.send(200, "text/plain", "ok");
+  restartAtMs = millis() + 500;
+  if (!restartAtMs) restartAtMs = 1;
+}
+
 void webBegin() {
   if (started) return;
   server.on("/", HTTP_GET, [] { server.send_P(200, "text/html; charset=utf-8", WEB_PAGE); });
   server.on("/api/settings", HTTP_GET, sendSettings);
   server.on("/api/settings", HTTP_POST, handleSave);
   server.on("/api/status", HTTP_GET, handleStatus);
+  server.on("/api/restart", HTTP_POST, handleRestart);
   server.onNotFound([] { server.send(404, "text/plain", "not found"); });
   server.begin();
   MDNS.addService("http", "tcp", 80);  // mDNS itself is started by ArduinoOTA
@@ -87,4 +98,9 @@ void webBegin() {
 
 void webLoop() {
   if (started) server.handleClient();
+  if (restartAtMs && (int32_t)(millis() - restartAtMs) >= 0) {
+    Serial.println("[web] restart requested, rebooting");
+    delay(100);
+    ESP.restart();
+  }
 }
