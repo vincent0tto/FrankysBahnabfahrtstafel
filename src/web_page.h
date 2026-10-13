@@ -228,13 +228,16 @@ function collect(){
 async function load(){
   const r=await fetch('/api/settings');S=await r.json();render();
 }
+let msgTimer=0;
 $('save').onclick=async()=>{
+  clearTimeout(msgTimer);
   $('msg').textContent='Speichere ...';
   try{
     const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(collect())});
     if(!r.ok)throw new Error(await r.text());
     S=await r.json();render();
     $('msg').textContent='Gespeichert ✓';
+    msgTimer=setTimeout(()=>$('msg').textContent='',3000);
   }catch(e){$('msg').textContent='Fehler: '+e.message}
 };
 
