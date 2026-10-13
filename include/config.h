@@ -104,7 +104,7 @@
 // 70 % of its hardware brightness (0..255): 100 % = 178, 85 % = 151.
 #define BRIGHTNESS_MAX    178
 #define BRIGHTNESS_DAY     85       // %
-#define BRIGHTNESS_NIGHT   10       // %
+#define BRIGHTNESS_NIGHT   20       // %
 #define NIGHT_START_HOUR   23       // -1 = no night dimming
 #define NIGHT_END_HOUR      5
 
@@ -122,7 +122,8 @@
 #define DEPART_ANIM_CHANCE_BUS 1   // same for buses (line 628 etc.)
 
 // Texts shown now and then instead of the 4th row, one picked at random.
-// They show up on the web page as built-in texts that can be switched off.
+// They show up on the web page as built-in texts that can be edited and
+// switched off.
 // Prefix "[ig]" puts the Instagram logo in front. "line|destination|time"
 // shows it like a departure; as line, "[gc]" draws a grilled cheese, "[fw]" a
 // flat white, "[ku]" a slice of cake and "[bi]" a beer mug. A leading "@12"

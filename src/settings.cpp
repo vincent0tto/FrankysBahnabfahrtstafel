@@ -119,9 +119,9 @@ static int parseTime(const char* s) {
 static void windowToJson(const TimeWindow& w, JsonObject o) {
   char t[8];
   formatTime(t, sizeof(t), w.from);
-  o["from"] = t;
+  o["from"] = (const char*)t;
   formatTime(t, sizeof(t), w.to);
-  o["to"] = t;
+  o["to"] = (const char*)t;
 }
 
 static bool windowFromJson(JsonVariantConst o, TimeWindow& w) {
@@ -136,6 +136,30 @@ static uint32_t clampU(JsonVariantConst v, uint32_t lo, uint32_t hi, uint32_t de
   if (!v.is<long>()) return def;
   long x = v.as<long>();
   return x < (long)lo ? lo : x > (long)hi ? hi : (uint32_t)x;
+}
+
+// (const char*): ArduinoJson keeps char arrays by pointer like literals
+static void promoFieldsToJson(const Promo& p, JsonObject o) {
+  o["icon"] = (const char*)p.icon;
+  o["text"] = (const char*)p.text;
+  o["right"] = (const char*)p.right;
+  if (p.hasWin) windowToJson(p.win, o["win"].to<JsonObject>());
+}
+
+// Takes icon, text, right and window of `o`, keeps `on` and `preset` of `p`.
+static void promoFieldsFromJson(JsonVariantConst o, Promo& p) {
+  copyText(p.text, sizeof(p.text), o["text"] | "");
+  copyText(p.right, sizeof(p.right), o["right"] | "");
+  const char* icon = o["icon"] | "";
+  p.icon[0] = 0;
+  if (findPresetIcon(icon) || customIconIndex(icon) >= 0) snprintf(p.icon, sizeof(p.icon), "%s", icon);
+  p.hasWin = o["win"].is<JsonObjectConst>() && windowFromJson(o["win"], p.win);
+  if (!p.hasWin) p.win = TimeWindow();
+}
+
+static bool sameContent(const Promo& a, const Promo& b) {
+  return strcmp(a.icon, b.icon) == 0 && strcmp(a.text, b.text) == 0 && strcmp(a.right, b.right) == 0 &&
+         a.hasWin == b.hasWin && (!a.hasWin || (a.win.from == b.win.from && a.win.to == b.win.to));
 }
 
 void settingsToJson(const Settings& s, JsonObject out, bool forWeb) {
@@ -159,12 +183,13 @@ void settingsToJson(const Settings& s, JsonObject out, bool forWeb) {
     o["on"] = p.on;
     if (p.preset) {
       o["preset"] = p.preset;  // its PROMO_TEXTS entry identifies it
-      if (!forWeb) continue;
+      Promo def;
+      promoFromConfig(p.preset, def);
+      // stored only if edited, so an unchanged one follows new firmware
+      if (forWeb) promoFieldsToJson(def, o["def"].to<JsonObject>());
+      else if (sameContent(p, def)) continue;
     }
-    o["icon"] = p.icon;
-    o["text"] = p.text;
-    o["right"] = p.right;
-    if (p.hasWin) windowToJson(p.win, o["win"].to<JsonObject>());
+    promoFieldsToJson(p, o);
   }
 
   JsonArray icons = out["icons"].to<JsonArray>();
@@ -173,7 +198,7 @@ void settingsToJson(const Settings& s, JsonObject out, bool forWeb) {
     if (!ic.used) continue;
     JsonObject o = icons.add<JsonObject>();
     o["id"] = i;
-    o["name"] = ic.name;
+    o["name"] = (const char*)ic.name;
     JsonArray rows = o["rows"].to<JsonArray>();
     for (int r = 0; r < ICON_H; r++) rows.add(ic.rows[r]);
   }
@@ -216,23 +241,31 @@ bool settingsFromJson(JsonVariantConst in, Settings& s) {
   s.promoIntervalS = (uint16_t)clampU(in["promoIntervalS"], 0, 3600, s.promoIntervalS);
 
   if (in["promos"].is<JsonArrayConst>()) {
-    // built-in ones keep their place and text, only "on" is taken
+    // built-in ones keep their place; without texts (not edited) they keep
+    // the firmware's. An edited one whose firmware text is gone stays as own one.
     int nPreset = s.nPromos;
     for (JsonVariantConst o : in["promos"].as<JsonArrayConst>()) {
       const char* preset = o["preset"];
+      bool edited = o["text"].is<const char*>();
       if (preset) {
-        for (int i = 0; i < nPreset; i++)
-          if (strcmp(s.promos[i].preset, preset) == 0) s.promos[i].on = o["on"] | true;
-        continue;
+        int i = 0;
+        while (i < nPreset && strcmp(s.promos[i].preset, preset) != 0) i++;
+        if (i < nPreset) {
+          Promo& p = s.promos[i];
+          p.on = o["on"] | true;
+          if (edited) {
+            Promo e = p;
+            promoFieldsFromJson(o, e);
+            if (e.text[0] || e.icon[0]) p = e;  // emptied: back to the firmware's
+          }
+          continue;
+        }
+        if (!edited) continue;
       }
       if (s.nPromos >= MAX_PROMOS) continue;
       Promo p;
       p.on = o["on"] | true;
-      copyText(p.text, sizeof(p.text), o["text"] | "");
-      copyText(p.right, sizeof(p.right), o["right"] | "");
-      const char* icon = o["icon"] | "";
-      if (findPresetIcon(icon) || customIconIndex(icon) >= 0) snprintf(p.icon, sizeof(p.icon), "%s", icon);
-      if (o["win"].is<JsonObjectConst>()) p.hasWin = windowFromJson(o["win"], p.win);
+      promoFieldsFromJson(o, p);
       if (!p.text[0] && !p.icon[0]) continue;
       s.promos[s.nPromos++] = p;
     }

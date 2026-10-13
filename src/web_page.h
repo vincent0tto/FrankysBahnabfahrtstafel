@@ -34,7 +34,6 @@ button{background:var(--bg);border:1px solid var(--line);border-radius:6px;paddi
 button.add{margin-top:8px}
 button.del{color:#c0392b}
 .val{width:48px;white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
-.tag{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 5px}
 canvas.icon{background:var(--panel);border-radius:4px;image-rendering:pixelated;vertical-align:middle}
 .icons{display:flex;flex-wrap:wrap;gap:12px}
 .icons figure{margin:0;text-align:center;font-size:12px;color:var(--muted)}
@@ -62,7 +61,7 @@ footer button{background:var(--accent);border-color:var(--accent);color:#fff;pad
 <section>
 <h2>Helligkeit</h2>
 <div class="row"><button id="brightReset" title="auf den Standardwert setzen">Standard</button><input type="range" min="1" max="100" id="bright"><span class="val" id="brightVal"></span></div>
-<div class="hint">100 % entspricht 70 % der möglichen Panel-Helligkeit. Zeitfenster mit eigener Helligkeit (das erste passende gilt):</div>
+<div class="hint">Zeitfenster mit eigener Helligkeit (das erste passende gilt):</div>
 <div id="dim"></div>
 <button class="add" id="addDim">+ Zeitfenster</button>
 </section>
@@ -137,7 +136,7 @@ function renderDim(){
 function renderPromos(){
   const box=$('promos');box.replaceChildren();
   S.promos.forEach((p,i)=>{
-    const pre=!!p.preset,dis={disabled:pre};
+    const pre=!!p.preset,dis={};
     const prev=el('span');const upd=()=>prev.replaceChildren(p.icon?iconCanvas(p.icon,2):'');upd();
     const sel=iconOptions(p.icon||'');Object.assign(sel,dis,{onchange:e=>{p.icon=e.target.value;upd()}});
     const win=p.win||{from:'',to:''};
@@ -147,7 +146,7 @@ function renderPromos(){
       el('input',{type:'checkbox',checked:p.on,title:'anzeigen',onchange:e=>p.on=e.target.checked}),
       prev,
       el('input',{type:'text',value:p.text,maxLength:60,placeholder:'Text',...dis,oninput:e=>p.text=e.target.value}),
-      pre?el('span',{className:'tag',textContent:'Vorgabe'}):el('button',{className:'del',textContent:'✕',onclick:()=>{S.promos.splice(i,1);renderPromos()}}),
+      pre?el('button',{textContent:'↺',title:'Vorgabe wiederherstellen',onclick:()=>{Object.assign(p,{icon:'',text:'',right:'',win:null},JSON.parse(JSON.stringify(p.def)));renderPromos()}}):el('button',{className:'del',textContent:'✕',onclick:()=>{S.promos.splice(i,1);renderPromos()}}),
       el('div',{className:'sub'},'Icon',sel,'Rechts',
         el('input',{type:'text',value:p.right,maxLength:15,placeholder:'leer',style:'flex:0 1 90px;min-width:60px',...dis,oninput:e=>p.right=e.target.value}),
         'nur von',from,'bis',to)));
@@ -216,8 +215,8 @@ function render(){
 
 function collect(){
   const promos=S.promos.map(p=>{
-    if(p.preset)return {preset:p.preset,on:p.on};
     const o={on:p.on,icon:p.icon||'',text:p.text,right:p.right};
+    if(p.preset)o.preset=p.preset;
     if(p.win&&p.win.from&&p.win.to&&p.win.from!==p.win.to)o.win={from:p.win.from,to:p.win.to};
     return o;
   }).filter(p=>p.preset||p.text||p.icon);

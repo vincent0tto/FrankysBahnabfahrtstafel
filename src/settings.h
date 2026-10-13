@@ -70,12 +70,14 @@ uint8_t brightnessToPanel(uint8_t percent);
 // Custom icon index for "[c3]", -1 if `tag` isn't one.
 int customIconIndex(const char* tag);
 
-// JSON as used by the web page and for storing. `forWeb` adds the details of
-// the built-in promos and the built-in icons; the stored version only keeps
-// which built-in promos are switched off, so new firmware can change them.
+// JSON as used by the web page and for storing. `forWeb` adds the firmware's
+// version of each built-in promo ("def") and the built-in icons; the stored
+// version keeps texts of built-in promos only if they were edited, so new
+// firmware can change the unedited ones.
 void settingsToJson(const Settings& s, JsonObject out, bool forWeb);
 
 // Starts from the defaults, takes what `in` has, clamps numbers and cuts
-// texts. Unknown built-in promos are dropped, missing ones stay on.
+// texts. Missing built-in promos stay on; unknown ones are dropped, or kept
+// as own ones if they were edited.
 // false only if `in` isn't an object.
 bool settingsFromJson(JsonVariantConst in, Settings& s);

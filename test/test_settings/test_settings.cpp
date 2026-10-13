@@ -93,7 +93,7 @@ void test_json_roundtrip() {
 
   JsonDocument doc;
   settingsToJson(s, doc.to<JsonObject>(), false);
-  TEST_ASSERT_FALSE(doc["promos"][0]["text"].is<const char*>());  // stored without preset details
+  TEST_ASSERT_FALSE(doc["promos"][0]["text"].is<const char*>());  // unedited preset: no texts stored
   TEST_ASSERT_TRUE(settingsFromJson(doc.as<JsonVariantConst>(), t));
 
   TEST_ASSERT_FALSE(t.offEnabled);
@@ -144,6 +144,44 @@ void test_json_clamps_and_rejects() {
   TEST_ASSERT_FALSE(settingsFromJson(JsonVariantConst(), t));
 }
 
+// edited presets keep their texts, also when the firmware drops the preset
+void test_edited_preset() {
+  settingsDefaults(s);
+  strcpy(s.promos[1].text, "Cappuccino");
+  s.promos[1].hasWin = true;
+  s.promos[1].win = win(8 * 60, 11 * 60);
+  JsonDocument doc;
+  settingsToJson(s, doc.to<JsonObject>(), false);
+  TEST_ASSERT_TRUE(doc["promos"][1]["text"].is<const char*>());
+  TEST_ASSERT_FALSE(doc["promos"][2]["text"].is<const char*>());
+  TEST_ASSERT_TRUE(settingsFromJson(doc.as<JsonVariantConst>(), t));
+  TEST_ASSERT_EQUAL(s.nPromos, t.nPromos);
+  TEST_ASSERT_EQUAL_STRING(s.promos[1].preset, t.promos[1].preset);
+  TEST_ASSERT_EQUAL_STRING("Cappuccino", t.promos[1].text);
+  TEST_ASSERT_EQUAL_STRING("[fw]", t.promos[1].icon);
+  TEST_ASSERT_EQUAL(11 * 60, t.promos[1].win.to);
+
+  // the web page gets the firmware's version for "restore"
+  JsonDocument web;
+  settingsToJson(t, web.to<JsonObject>(), true);
+  TEST_ASSERT_EQUAL_STRING("Flat White", web["promos"][1]["def"]["text"]);
+  TEST_ASSERT_EQUAL_STRING("Cappuccino", web["promos"][1]["text"]);
+
+  // emptied: back to the firmware's text
+  doc["promos"][1]["text"] = "";
+  doc["promos"][1]["icon"] = "";
+  TEST_ASSERT_TRUE(settingsFromJson(doc.as<JsonVariantConst>(), t));
+  TEST_ASSERT_EQUAL_STRING("Flat White", t.promos[1].text);
+
+  // newer firmware without that preset: the edited one stays as own text
+  doc["promos"][1]["text"] = "Cappuccino";
+  doc["promos"][1]["preset"] = "alte Vorgabe";
+  TEST_ASSERT_TRUE(settingsFromJson(doc.as<JsonVariantConst>(), t));
+  TEST_ASSERT_EQUAL(s.nPromos + 1, t.nPromos);
+  TEST_ASSERT_NULL(t.promos[t.nPromos - 1].preset);
+  TEST_ASSERT_EQUAL_STRING("Cappuccino", t.promos[t.nPromos - 1].text);
+}
+
 // build 10 stored 0..255 under other keys: back to the defaults
 void test_old_brightness_dropped() {
   JsonDocument doc;
@@ -168,6 +206,7 @@ int main() {
   RUN_TEST(test_promo_from_config);
   RUN_TEST(test_json_roundtrip);
   RUN_TEST(test_json_clamps_and_rejects);
+  RUN_TEST(test_edited_preset);
   RUN_TEST(test_old_brightness_dropped);
   RUN_TEST(test_custom_icon_tag);
   return UNITY_END();

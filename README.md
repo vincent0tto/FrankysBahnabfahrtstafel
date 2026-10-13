@@ -116,13 +116,17 @@ WiFi. There is no login. On the page you can set:
   it) plus up to 4 time windows with their own brightness. 100 % is capped at 70 % of the
   panel's hardware brightness (`BRIGHTNESS_MAX`).
 - **Promo-Texte**: show time, pause, and which texts appear. The built-in texts
-  (`PROMO_TEXTS`) can be switched on and off. You can add up to 20 texts of your own, each
+  (`PROMO_TEXTS`) can be switched on and off and edited; ↺ restores the firmware's version.
+  You can add up to 20 texts of your own, each
   with an icon, an optional right column and an optional time window.
 - **Icons**: the built-in icons (Instagram, Grilled Cheese, Flat White, Kuchen, Bier) plus up
   to 8 icons of your own, drawn in a 12×9 pixel editor.
 
-The board stores the settings in flash (NVS), so they survive restarts and updates. The values
-in `config.h` are only the defaults.
+The board stores the settings in flash (NVS), a partition that firmware updates (from GitHub,
+OTA or a normal USB upload) don't touch, so they survive restarts and updates. Only erasing the
+whole flash (`pio run -t erase`) resets them. The values in `config.h` are only the defaults:
+a built-in text that wasn't edited follows new firmware; an edited one keeps your version,
+even if the firmware drops or changes that text.
 
 ### Tests (parser, run on the Mac)
 
