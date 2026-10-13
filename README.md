@@ -112,7 +112,9 @@ WiFi. There is no login. On the page you can set:
 
 - **Ruhezeit** (default 02:00–06:00): the panel is completely dark and the board makes no API
   calls. It fetches again 2 minutes before the panel comes back on (`WAKE_FETCH_LEAD_S`).
-- **Helligkeit**: a default brightness plus up to 4 time windows with their own brightness.
+- **Helligkeit** in percent: a default (85 %; the **Standard** button resets the slider to
+  it) plus up to 4 time windows with their own brightness. 100 % is capped at 70 % of the
+  panel's hardware brightness (`BRIGHTNESS_MAX`).
 - **Promo-Texte**: show time, pause, and which texts appear. The built-in texts
   (`PROMO_TEXTS`) can be switched on and off. You can add up to 20 texts of your own, each
   with an icon, an optional right column and an optional time window.

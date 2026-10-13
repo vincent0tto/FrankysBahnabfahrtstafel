@@ -33,7 +33,7 @@ input:disabled,select:disabled{opacity:.6}
 button{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer}
 button.add{margin-top:8px}
 button.del{color:#c0392b}
-.val{width:34px;text-align:right;font-variant-numeric:tabular-nums}
+.val{width:48px;white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
 .tag{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 5px}
 canvas.icon{background:var(--panel);border-radius:4px;image-rendering:pixelated;vertical-align:middle}
 .icons{display:flex;flex-wrap:wrap;gap:12px}
@@ -61,8 +61,8 @@ footer button{background:var(--accent);border-color:var(--accent);color:#fff;pad
 
 <section>
 <h2>Helligkeit</h2>
-<div class="row"><span>Standard</span><input type="range" min="1" max="255" id="bright"><span class="val" id="brightVal"></span></div>
-<div class="hint">Zeitfenster mit eigener Helligkeit (das erste passende gilt):</div>
+<div class="row"><button id="brightReset" title="auf den Standardwert setzen">Standard</button><input type="range" min="1" max="100" id="bright"><span class="val" id="brightVal"></span></div>
+<div class="hint">100 % entspricht 70 % der möglichen Panel-Helligkeit. Zeitfenster mit eigener Helligkeit (das erste passende gilt):</div>
 <div id="dim"></div>
 <button class="add" id="addDim">+ Zeitfenster</button>
 </section>
@@ -124,8 +124,8 @@ function iconOptions(sel){
 function renderDim(){
   const box=$('dim');box.replaceChildren();
   S.dim.forEach((d,i)=>{
-    const val=el('span',{className:'val',textContent:d.value});
-    const r=el('input',{type:'range',min:1,max:255,value:d.value,oninput:e=>{d.value=+e.target.value;val.textContent=d.value}});
+    const val=el('span',{className:'val',textContent:d.pct+' %'});
+    const r=el('input',{type:'range',min:1,max:100,value:d.pct,oninput:e=>{d.pct=+e.target.value;val.textContent=d.pct+' %'}});
     box.append(el('div',{className:'row'},
       el('input',{type:'time',value:time(d.from),onchange:e=>d.from=e.target.value}),'bis',
       el('input',{type:'time',value:time(d.to),onchange:e=>d.to=e.target.value}),r,val,
@@ -202,12 +202,14 @@ $('addIcon').onclick=()=>{
 };
 $('addPromo').onclick=()=>{S.promos.push({on:true,icon:'',text:'',right:''});renderPromos();
   const ins=$('promos').querySelectorAll('input[type=text]');ins[ins.length-2].focus()};
-$('addDim').onclick=()=>{S.dim.push({from:'22:00',to:'06:00',value:30});renderDim()};
-$('bright').oninput=e=>{S.brightness=+e.target.value;$('brightVal').textContent=S.brightness};
+$('addDim').onclick=()=>{S.dim.push({from:'22:00',to:'06:00',pct:20});renderDim()};
+function setBright(v){S.brightnessPct=v;$('bright').value=v;$('brightVal').textContent=v+' %'}
+$('bright').oninput=e=>setBright(+e.target.value);
+$('brightReset').onclick=()=>setBright(S.brightnessDefaultPct);
 
 function render(){
   $('offOn').checked=S.off.on;$('offFrom').value=time(S.off.from);$('offTo').value=time(S.off.to);
-  $('bright').value=S.brightness;$('brightVal').textContent=S.brightness;
+  setBright(S.brightnessPct);
   $('show').value=S.promoShowS;$('interval').value=S.promoIntervalS;
   renderDim();renderPromos();renderIcons();
 }
@@ -220,7 +222,7 @@ function collect(){
     return o;
   }).filter(p=>p.preset||p.text||p.icon);
   return {off:{on:$('offOn').checked,from:$('offFrom').value||'02:00',to:$('offTo').value||'06:00'},
-    brightness:S.brightness,dim:S.dim.filter(d=>d.from&&d.to),
+    brightnessPct:S.brightnessPct,dim:S.dim.filter(d=>d.from&&d.to),
     promoShowS:+$('show').value,promoIntervalS:+$('interval').value,promos,icons:S.icons};
 }
 

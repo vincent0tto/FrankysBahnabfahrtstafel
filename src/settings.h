@@ -36,13 +36,13 @@ struct CustomIcon {
 
 struct DimWindow {
   TimeWindow win;
-  uint8_t value = 0;
+  uint8_t value = 0;  // percent
 };
 
 struct Settings {
   bool offEnabled = false;  // panel dark and no API calls within `off`
   TimeWindow off;
-  uint8_t brightness = 0;  // 0..255 outside the dim windows
+  uint8_t brightness = 0;  // percent (1..100) of BRIGHTNESS_MAX outside the dim windows
   DimWindow dim[MAX_DIM_WINDOWS];
   uint8_t nDim = 0;
   uint16_t promoShowS = 0;      // how long one promo stays
@@ -62,7 +62,10 @@ bool inWindow(const TimeWindow& w, int minuteOfDay);
 int minuteOfDay(time_t now);  // local time
 
 bool isOffTime(const Settings& s, int minuteOfDay);
-uint8_t brightnessAt(const Settings& s, int minuteOfDay);
+uint8_t brightnessAt(const Settings& s, int minuteOfDay);  // percent
+
+// Percent -> panel brightness 0..BRIGHTNESS_MAX
+uint8_t brightnessToPanel(uint8_t percent);
 
 // Custom icon index for "[c3]", -1 if `tag` isn't one.
 int customIconIndex(const char* tag);

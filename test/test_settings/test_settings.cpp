@@ -40,6 +40,10 @@ void test_defaults() {
   TEST_ASSERT_FALSE(isOffTime(s, 6 * 60));
   TEST_ASSERT_EQUAL(BRIGHTNESS_NIGHT, brightnessAt(s, 23 * 60));
   TEST_ASSERT_EQUAL(BRIGHTNESS_DAY, brightnessAt(s, 12 * 60));
+  TEST_ASSERT_EQUAL(BRIGHTNESS_MAX, brightnessToPanel(100));
+  TEST_ASSERT_EQUAL(151, brightnessToPanel(85));
+  TEST_ASSERT_EQUAL(BRIGHTNESS_MAX, brightnessToPanel(200));
+  TEST_ASSERT_EQUAL(0, brightnessToPanel(0));
   static const char* const presets[] = PROMO_TEXTS;
   TEST_ASSERT_EQUAL(sizeof(presets) / sizeof(presets[0]), s.nPromos);
   for (int i = 0; i < s.nPromos; i++) TEST_ASSERT_EQUAL_STRING(presets[i], s.promos[i].preset);
@@ -118,14 +122,14 @@ void test_json_roundtrip() {
 void test_json_clamps_and_rejects() {
   JsonDocument doc;
   deserializeJson(doc,
-                  "{\"brightness\":999,\"promoShowS\":0,\"off\":{\"on\":true,\"from\":\"25:00\",\"to\":\"x\"},"
-                  "\"dim\":[{\"from\":\"1:00\",\"to\":\"2:00\",\"value\":0},{\"from\":\"bad\"}],"
+                  "{\"brightnessPct\":999,\"promoShowS\":0,\"off\":{\"on\":true,\"from\":\"25:00\",\"to\":\"x\"},"
+                  "\"dim\":[{\"from\":\"1:00\",\"to\":\"2:00\",\"pct\":0},{\"from\":\"bad\"}],"
                   "\"promos\":[{\"preset\":\"gibt es nicht\",\"on\":false},{\"text\":\"\"},"
                   "{\"icon\":\"<script>\",\"text\":\"Ein sehr sehr sehr sehr sehr sehr sehr sehr sehr sehr langer Text\"}],"
                   "\"icons\":[{\"id\":9,\"rows\":[1]},{\"id\":1,\"rows\":[65535]}]}");
   TEST_ASSERT_TRUE(settingsFromJson(doc.as<JsonVariantConst>(), t));
   settingsDefaults(s);
-  TEST_ASSERT_EQUAL(255, t.brightness);
+  TEST_ASSERT_EQUAL(100, t.brightness);
   TEST_ASSERT_EQUAL(3, t.promoShowS);
   TEST_ASSERT_EQUAL(s.off.from, t.off.from);  // malformed times keep the default
   TEST_ASSERT_EQUAL(1, t.nDim);
@@ -138,6 +142,15 @@ void test_json_clamps_and_rejects() {
   TEST_ASSERT_EQUAL_HEX16(0xFFF, t.icons[1].rows[0]);
 
   TEST_ASSERT_FALSE(settingsFromJson(JsonVariantConst(), t));
+}
+
+// build 10 stored 0..255 under other keys: back to the defaults
+void test_old_brightness_dropped() {
+  JsonDocument doc;
+  deserializeJson(doc, "{\"brightness\":200,\"dim\":[{\"from\":\"23:00\",\"to\":\"05:00\",\"value\":20}]}");
+  TEST_ASSERT_TRUE(settingsFromJson(doc.as<JsonVariantConst>(), t));
+  TEST_ASSERT_EQUAL(BRIGHTNESS_DAY, t.brightness);
+  TEST_ASSERT_EQUAL(BRIGHTNESS_DAY, t.dim[0].value);
 }
 
 void test_custom_icon_tag() {
@@ -155,6 +168,7 @@ int main() {
   RUN_TEST(test_promo_from_config);
   RUN_TEST(test_json_roundtrip);
   RUN_TEST(test_json_clamps_and_rejects);
+  RUN_TEST(test_old_brightness_dropped);
   RUN_TEST(test_custom_icon_tag);
   return UNITY_END();
 }

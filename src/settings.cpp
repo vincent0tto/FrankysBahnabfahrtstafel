@@ -93,6 +93,10 @@ uint8_t brightnessAt(const Settings& s, int m) {
   return s.brightness;
 }
 
+uint8_t brightnessToPanel(uint8_t percent) {
+  return (uint8_t)((percent > 100 ? 100 : percent) * BRIGHTNESS_MAX / 100);
+}
+
 int customIconIndex(const char* tag) {
   if (tag[0] != '[' || tag[1] != 'c' || !isdigit((unsigned char)tag[2]) || tag[3] != ']' || tag[4]) return -1;
   int i = tag[2] - '0';
@@ -138,12 +142,12 @@ void settingsToJson(const Settings& s, JsonObject out, bool forWeb) {
   JsonObject off = out["off"].to<JsonObject>();
   off["on"] = s.offEnabled;
   windowToJson(s.off, off);
-  out["brightness"] = s.brightness;
+  out["brightnessPct"] = s.brightness;
   JsonArray dim = out["dim"].to<JsonArray>();
   for (int i = 0; i < s.nDim; i++) {
     JsonObject d = dim.add<JsonObject>();
     windowToJson(s.dim[i].win, d);
-    d["value"] = s.dim[i].value;
+    d["pct"] = s.dim[i].value;
   }
   out["promoShowS"] = s.promoShowS;
   out["promoIntervalS"] = s.promoIntervalS;
@@ -175,6 +179,7 @@ void settingsToJson(const Settings& s, JsonObject out, bool forWeb) {
   }
 
   if (!forWeb) return;
+  out["brightnessDefaultPct"] = BRIGHTNESS_DAY;
   JsonArray preset = out["presetIcons"].to<JsonArray>();
   for (int i = 0; i < N_PRESET_ICONS; i++) {
     const PresetIcon& ic = PRESET_ICONS[i];
@@ -195,14 +200,15 @@ bool settingsFromJson(JsonVariantConst in, Settings& s) {
     s.offEnabled = off["on"] | s.offEnabled;
     windowFromJson(off, s.off);
   }
-  s.brightness = (uint8_t)clampU(in["brightness"], 1, 255, s.brightness);
+  // percent; build 10 stored 0..255 under "brightness"/"value", those are dropped
+  s.brightness = (uint8_t)clampU(in["brightnessPct"], 1, 100, s.brightness);
   if (in["dim"].is<JsonArrayConst>()) {
     s.nDim = 0;
     for (JsonVariantConst d : in["dim"].as<JsonArrayConst>()) {
       if (s.nDim >= MAX_DIM_WINDOWS) break;
       DimWindow& w = s.dim[s.nDim];
       if (!windowFromJson(d, w.win)) continue;
-      w.value = (uint8_t)clampU(d["value"], 1, 255, s.brightness);
+      w.value = (uint8_t)clampU(d["pct"], 1, 100, s.brightness);
       s.nDim++;
     }
   }

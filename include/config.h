@@ -100,8 +100,11 @@
 // Brightness, dimming, off time and promos below are only the defaults:
 // they can be changed on the web page (http://abfahrtstafel.local), which
 // stores them on the board.
-#define BRIGHTNESS_DAY     150       // 0..255
-#define BRIGHTNESS_NIGHT   20
+// Brightness in percent (1..100) of BRIGHTNESS_MAX, which caps the panel at
+// 70 % of its hardware brightness (0..255): 100 % = 178, 85 % = 151.
+#define BRIGHTNESS_MAX    178
+#define BRIGHTNESS_DAY     85       // %
+#define BRIGHTNESS_NIGHT   10       // %
 #define NIGHT_START_HOUR   23       // -1 = no night dimming
 #define NIGHT_END_HOUR      5
 

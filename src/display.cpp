@@ -31,7 +31,7 @@ bool displayBegin() {
   amber = matrix->color565(COLOR_R, COLOR_G, COLOR_B);
   u8.begin(*matrix);
   srand(esp_random());  // dice for the departure animation
-  currentBrightness = BRIGHTNESS_DAY;  // the settings take over with the first frame
+  currentBrightness = brightnessToPanel(BRIGHTNESS_DAY);  // the settings take over with the first frame
   matrix->setBrightness8(currentBrightness);
   return true;
 }
@@ -41,7 +41,7 @@ static bool asleep = false;
 // Brightness from the settings' dim windows; the default one while the time
 // isn't known.
 static void updateBrightness(const Settings& s, const DisplayStatus& st, time_t now) {
-  uint8_t want = st.timeValid ? brightnessAt(s, minuteOfDay(now)) : s.brightness;
+  uint8_t want = brightnessToPanel(st.timeValid ? brightnessAt(s, minuteOfDay(now)) : s.brightness);
   if (want != currentBrightness) {
     currentBrightness = want;
     matrix->setBrightness8(want);
