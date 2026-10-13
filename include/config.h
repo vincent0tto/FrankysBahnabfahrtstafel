@@ -118,8 +118,8 @@
 // When a departure leaves, 1 in N times its tram/bus drives out of the row
 // (src/depart_anim.cpp). Only if no other shown row leaves in the same minute.
 // 0 = never, 1 = always.
-#define DEPART_ANIM_CHANCE 5
-#define DEPART_ANIM_CHANCE_BUS 1   // same for buses (line 628 etc.)
+#define DEPART_ANIM_CHANCE 10
+#define DEPART_ANIM_CHANCE_BUS 3   // same for buses (line 628 etc.)
 
 // Texts shown now and then instead of the 4th row, one picked at random.
 // They show up on the web page as built-in texts that can be edited and
