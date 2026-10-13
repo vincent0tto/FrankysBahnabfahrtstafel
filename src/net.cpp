@@ -8,6 +8,7 @@
 
 #include "config.h"
 #include "secrets.h"
+#include "web.h"
 
 static uint32_t lastConnectedMs = 0;
 static uint32_t lastKickMs = 0;
@@ -44,9 +45,11 @@ bool netMaintain() {
       Serial.printf("[wifi] connected, ip %s, rssi %d\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
       wasConnected = true;
       if (!otaStarted) startOta();
+      webBegin();
     }
     lastConnectedMs = now;
     ArduinoOTA.handle();
+    webLoop();
     return true;
   }
 

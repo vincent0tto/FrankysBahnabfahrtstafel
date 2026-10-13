@@ -39,13 +39,15 @@ static Board fixtureBoard(time_t now) {
 
 struct Frame { std::vector<uint16_t> px; };
 
+static Settings settings;  // config.h defaults
+
 static Frame render(const Board& b, DisplayStatus st, time_t now, uint32_t ms) {
   GFXcanvas16 canvas(W, H);
   canvas.fillScreen(0);
   U8G2_FOR_ADAFRUIT_GFX u8;
   u8.begin(canvas);
   uint16_t amber = ((COLOR_R & 0xF8) << 8) | ((COLOR_G & 0xFC) << 3) | (COLOR_B >> 3);
-  renderFrame(canvas, u8, amber, b, st, now, ms);
+  renderFrame(canvas, u8, amber, b, settings, st, now, ms);
   Frame f;
   f.px.assign(canvas.getBuffer(), canvas.getBuffer() + W * H);
   return f;
@@ -101,6 +103,7 @@ int main(int argc, char** argv) {
   DisplayStatus ok;
   ok.wifi = ok.timeValid = true;
   setDepartAnimChance(0);
+  settingsDefaults(settings);
 
   std::vector<Frame> frames;
   Board normal = fixtureBoard(now);
@@ -133,16 +136,36 @@ int main(int argc, char** argv) {
   // promo text in the 4th row (the timer is due long after the frames above)
   frames.push_back(render(normal, ok, now, 1000000));
   // each promo once; 18:35 local so the "@16" ones are open too
-  static const char* const promos[] = PROMO_TEXTS;
   Board evening = normal;
   for (int i = 0; i < evening.n; i++) evening.deps[i].when += 6 * 3600;
   evening.fetchedAt += 6 * 3600;
-  for (int i = 0; i < (int)(sizeof(promos) / sizeof(promos[0])); i++) {
+  // plus own ones from the web page: plain text with an own icon, and
+  // departure-style with an own icon
+  CustomIcon& heart = settings.icons[0];
+  heart.used = true;
+  const char* heartRows[ICON_H] = {"..##...##...", ".####.####..", "##########..", "##########..",
+                                   ".########...", "..######....", "...####.....", "....##......", "............"};
+  for (int r = 0; r < ICON_H; r++)
+    for (int c = 0; c < ICON_W; c++)
+      if (heartRows[r][c] == '#') heart.rows[r] |= 1 << (ICON_W - 1 - c);
+  Promo own;
+  strcpy(own.icon, "[c0]");
+  strcpy(own.text, "Danke fürs Vorbeikommen");
+  settings.promos[settings.nPromos++] = own;
+  strcpy(own.text, "Waffeln");
+  strcpy(own.right, "gleich");
+  settings.promos[settings.nPromos++] = own;
+  for (int i = 0; i < settings.nPromos; i++) {
     setPromoIndex(i);
     render(evening, ok, now + 6 * 3600, 2000000 + i * 1000000);  // ends the previous one
     frames.push_back(render(evening, ok, now + 6 * 3600, 2000000 + i * 1000000 + 500000));
   }
   setPromoIndex(-1);
+  settingsDefaults(settings);
+
+  DisplayStatus updating = ok;
+  updating.updating = true;
+  frames.push_back(render(normal, updating, now, 0));
 
   // long destination scrolling past the right edge: tall letters must be cut
   Board tall = normal;

@@ -7,6 +7,7 @@
 
 #include "config.h"
 #include "depart_anim.h"
+#include "icons.h"
 #include "parse.h"
 
 // ---- Layout (192 x 64) ------------------------------------------------------
@@ -132,120 +133,48 @@ static void checkDeparted(const Departure* const* rows, int n, time_t now, uint3
 }
 
 // ---- Promo texts in the 4th row ---------------------------------------------
-static const char* const PROMOS[] = PROMO_TEXTS;
-static const int N_PROMOS = sizeof(PROMOS) / sizeof(PROMOS[0]);
-static const char* const PROMO_IG = "[ig]";  // prefix -> Instagram logo
+static const int ICON_GAP = 4;  // between an icon and a plain text
 
-static const char* const IG_LOGO[] = {
-    ".#########.",
-    "#.........#",
-    "#.......#.#",
-    "#...###...#",
-    "#..#...#..#",
-    "#..#...#..#",
-    "#..#...#..#",
-    "#...###...#",
-    "#.........#",
-    "#.........#",
-    ".#########.",
-};
-static const int IG_W = 11, IG_H = 11, IG_GAP = 4;
-
-// Promo shown like a departure: "line|destination|time". A line from ICONS
-// ("[gc]", ...) draws that icon instead of a line number.
-struct Icon {
-  const char* tag;
-  const char* const* rows;
-  int w, h;
-};
-static const char* const GC_ICON[] = {  // grilled cheese
-    ".##########.",
-    "#..#..#..#.#",
-    "#.#..#..#..#",
-    ".##########.",
-    "############",
-    "..#....#....",
-    ".##########.",
-    "#..........#",
-    ".##########.",
-};
-static const char* const FW_ICON[] = {  // flat white
-    "..#..#......",
-    ".#..#.......",
-    "########....",
-    "#......####.",
-    "#......#..#.",
-    "#......####.",
-    ".#....#.....",
-    "..####......",
-    "###########.",
-};
-static const char* const KU_ICON[] = {  // slice of cake
-    "........##..",
-    "........##..",
-    "....########",
-    "..##.......#",
-    "############",
-    "#..........#",
-    "############",
-    "#..........#",
-    "############",
-};
-static const char* const BI_ICON[] = {  // beer mug
-    ".##.##.##...",
-    "#########...",
-    "#.#.#.#.####",
-    "#.#.#.#.#..#",
-    "#.#.#.#.#..#",
-    "#.#.#.#.#..#",
-    "#.#.#.#.####",
-    "#.#.#.#.#...",
-    "#########...",
-};
-static const Icon ICONS[] = {
-    {"[gc]", GC_ICON, 12, 9},
-    {"[fw]", FW_ICON, 12, 9},
-    {"[ku]", KU_ICON, 12, 9},
-    {"[bi]", BI_ICON, 12, 9},
+// An icon to draw: built-in (src/icons.cpp) or made on the web page.
+struct IconRef {
+  const PresetIcon* preset = nullptr;
+  const CustomIcon* custom = nullptr;
+  int w = 0, h = 0, drop = 0;
+  explicit operator bool() const { return preset || custom; }
+  bool on(int r, int c) const {
+    return preset ? preset->rows[r][c] == '#' : (custom->rows[r] >> (ICON_W - 1 - c)) & 1;
+  }
 };
 
-static const Icon* findIcon(const char* tag) {
-  for (const Icon& ic : ICONS)
-    if (strcmp(tag, ic.tag) == 0) return &ic;
-  return nullptr;
+static IconRef findIcon(const Settings& s, const char* tag) {
+  IconRef ic;
+  int ci = customIconIndex(tag);
+  if ((ic.preset = findPresetIcon(tag))) {
+    ic.w = ic.preset->w;
+    ic.h = ic.preset->h;
+    ic.drop = ic.preset->drop;
+  } else if (ci >= 0 && s.icons[ci].used) {
+    ic.custom = &s.icons[ci];
+    ic.w = ICON_W;
+    ic.h = ICON_H;
+  }
+  return ic;
 }
 
-struct PromoDep {
-  char line[16], dest[64], time[16];
-};
-
-// Splits a "line|destination|time" promo, false for a plain text.
-static bool splitPromoDep(const char* text, PromoDep& p) {
-  const char* a = strchr(text, '|');
-  const char* b = a ? strchr(a + 1, '|') : nullptr;
-  if (!b) return false;
-  snprintf(p.line, sizeof(p.line), "%.*s", (int)(a - text), text);
-  snprintf(p.dest, sizeof(p.dest), "%.*s", (int)(b - a - 1), a + 1);
-  snprintf(p.time, sizeof(p.time), "%s", b + 1);
-  return true;
+static void drawIcon(Adafruit_GFX& g, uint16_t color, const IconRef& ic, int x, int base) {
+  int top = base - ic.h + ic.drop;
+  for (int r = 0; r < ic.h; r++)
+    for (int c = 0; c < ic.w; c++)
+      if (ic.on(r, c)) g.drawPixel(x + c, top + r, color);
 }
 
-static int promoLineWidth(U8G2_FOR_ADAFRUIT_GFX& u8, const PromoDep& p) {
-  const Icon* ic = findIcon(p.line);
-  return ic ? ic->w : width(u8, p.line);
+// Width of a departure-style promo's line column: its icon or text.
+static int promoLineWidth(U8G2_FOR_ADAFRUIT_GFX& u8, const Settings& s, const Promo& p) {
+  IconRef ic = findIcon(s, p.icon);
+  return ic ? ic.w : width(u8, p.icon);
 }
 
-// Optional "@HH" or "@HH-HH" prefix: only from (until) that local hour.
-// Returns the text after the prefix, nullptr if it isn't its time.
-static const char* promoWindow(const char* text, int hour) {
-  if (text[0] != '@' || !isdigit((unsigned char)text[1])) return text;
-  char* end;
-  long from = strtol(text + 1, &end, 10), to = 24;
-  if (*end == '-') to = strtol(end + 1, &end, 10);
-  if (hour < 0) return nullptr;  // no valid time yet
-  bool open = from <= to ? hour >= from && hour < to : hour >= from || hour < to;
-  return open ? end : nullptr;
-}
+static bool isPromoDep(const Promo& p) { return p.right[0] != 0; }
 
 // The 4th row now and then shows a promo or the VRN disruption text instead
 // of its departure; with a disruption the two take turns.
@@ -254,28 +183,35 @@ static struct {
   uint32_t start = 0;
   uint32_t durMs = 0;
   bool active = false;
-  bool disruption = false;     // showing (or last showed) the disruption text
-  const char* text = nullptr;  // promo without its "@HH" prefix, or disruptBuf
+  bool disruption = false;  // showing (or last showed) the disruption text
+  Promo item;               // copy, the settings may change meanwhile
 } promo;
 static char disruptBuf[TICKER_LEN + 16];  // copy, a fetch may change the board meanwhile
 
 static int forcedPromo = -1;
 void setPromoIndex(int idx) { forcedPromo = idx; }
 
-static uint32_t promoPause() {  // PROMO_INTERVAL_S +-50 %
-  uint32_t base = PROMO_INTERVAL_S * 1000UL;
+static uint32_t promoPause(const Settings& s) {  // promoIntervalS +-50 %
+  // without promos this still paces the disruption texts
+  uint32_t base = (s.promoIntervalS ? s.promoIntervalS : 60) * 1000UL;
   return base / 2 + (uint32_t)rand() % (base + 1);
 }
 
-// A promo open at `hour`, or nullptr.
-static const char* pickPromo(int hour) {
-  if (N_PROMOS == 0 || PROMO_INTERVAL_S <= 0) return nullptr;
-  int open[N_PROMOS > 0 ? N_PROMOS : 1], nOpen = 0;
-  for (int i = 0; i < N_PROMOS; i++)
-    if (promoWindow(PROMOS[i], hour)) open[nOpen++] = i;
+static bool promoOpen(const Promo& p, int minute) {
+  if (!p.on) return false;
+  if (!p.hasWin) return true;
+  return minute >= 0 && inWindow(p.win, minute);
+}
+
+// A promo switched on and open at `minute`, or nullptr.
+static const Promo* pickPromo(const Settings& s, int minute) {
+  if (s.promoIntervalS == 0) return nullptr;
+  int open[MAX_PROMOS], nOpen = 0;
+  for (int i = 0; i < s.nPromos; i++)
+    if (promoOpen(s.promos[i], minute)) open[nOpen++] = i;
   if (nOpen == 0) return nullptr;
-  int idx = forcedPromo >= 0 && promoWindow(PROMOS[forcedPromo], hour) ? forcedPromo : open[rand() % nOpen];
-  return promoWindow(PROMOS[idx], hour);
+  bool forced = forcedPromo >= 0 && forcedPromo < s.nPromos && promoOpen(s.promos[forcedPromo], minute);
+  return &s.promos[forced ? forcedPromo : open[rand() % nOpen]];
 }
 
 // How long a disruption text `tw` px wide stays: DISRUPTION_PASSES scroll
@@ -285,41 +221,43 @@ static uint32_t disruptionMs(int tw) {
 }
 
 // Returns the text to show in the 4th row this frame, or nullptr; the
-// disruption text if promo.disruption. A new promo may start if
-// `canStartPromo`, the disruption text (`disruption`, nullptr if none) if
-// `canStartDisruption`. A running one stays its full time even if the
-// departure gets close, unless `blocked` (the row is needed for a status
-// message; the departure animation only keeps a new one from starting).
-// `hour`: local hour for "@HH" windows, -1 if the time isn't known.
-static const char* promoText(bool canStartPromo, bool canStartDisruption, bool blocked, const char* disruption,
-                             int disruptW, int hour, uint32_t ms) {
+// disruption text if promo.disruption, else promo.item has the details. A
+// new promo may start if `canStartPromo`, the disruption text (`disruption`,
+// nullptr if none) if `canStartDisruption`. A running one stays its full
+// time even if the departure gets close, unless `blocked` (the row is needed
+// for a status message; the departure animation only keeps a new one from
+// starting). `minute`: local minute of the day for the promos' time windows,
+// -1 if the time isn't known.
+static const char* promoText(const Settings& s, bool canStartPromo, bool canStartDisruption, bool blocked,
+                             const char* disruption, int disruptW, int minute, uint32_t ms) {
   if (promo.active && (blocked || ms - promo.start >= promo.durMs)) {
     promo.active = false;
-    promo.next = ms + promoPause();
+    promo.next = ms + promoPause(s);
   }
   if (!promo.active) {
     if (!disruption) canStartDisruption = false;
     if (blocked || !(canStartPromo || canStartDisruption)) return nullptr;
-    if (promo.next == 0) promo.next = ms + promoPause();
+    if (promo.next == 0) promo.next = ms + promoPause(s);
     if ((int32_t)(ms - promo.next) < 0) return nullptr;
-    const char* text = nullptr;
-    if (canStartPromo && !(canStartDisruption && !promo.disruption)) text = pickPromo(hour);
-    if (text) {
+    const Promo* p = nullptr;
+    if (canStartPromo && !(canStartDisruption && !promo.disruption)) p = pickPromo(s, minute);
+    if (p) {
+      promo.item = *p;
       promo.disruption = false;
-      promo.durMs = PROMO_SHOW_S * 1000UL;
+      promo.durMs = s.promoShowS * 1000UL;
     } else if (canStartDisruption) {
-      text = strcpy(disruptBuf, disruption);
+      strcpy(disruptBuf, disruption);
       promo.disruption = true;
       promo.durMs = disruptionMs(disruptW);
     } else {
-      promo.next = ms + promoPause();
+      promo.next = ms + promoPause(s);
       return nullptr;
     }
     promo.active = true;
     promo.start = ms;
-    promo.text = text;
   }
-  return promo.text;  // a promo stays even if its time window closes meanwhile
+  // a promo stays even if its time window closes meanwhile
+  return promo.disruption ? disruptBuf : promo.item.text;
 }
 
 // Scrolls `text` through the 4th row from the right, `t` ms after it entered.
@@ -339,42 +277,32 @@ static void drawTicker(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const char* t
   clipRow(g, base, MARGIN_X, W - MARGIN_X);
 }
 
-static void drawPromo(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, int base,
-                      const char* text, uint32_t ms) {
-  bool ig = strncmp(text, PROMO_IG, strlen(PROMO_IG)) == 0;
-  if (ig) text += strlen(PROMO_IG);
-  int iconW = ig ? IG_W + IG_GAP : 0;
-  int tw = iconW + width(u8, text);
+// Draws a plain promo (optional icon in front), centred or ping-ponging.
+static void drawPromo(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const Settings& s, int base,
+                      const Promo& p, uint32_t ms) {
+  IconRef ic = findIcon(s, p.icon);
+  int iconW = ic ? ic.w + (p.text[0] ? ICON_GAP : 0) : 0;
+  int tw = iconW + width(u8, p.text);
   int box = W - 2 * MARGIN_X;
   int x = tw <= box ? (W - tw) / 2 : MARGIN_X - pingPongOffset(tw - box, ms);
-  if (ig) {
-    int top = base - IG_H + 1;  // 1px below the letters' bottom, looks centred
-    for (int r = 0; r < IG_H; r++)
-      for (int c = 0; c < IG_W; c++)
-        if (IG_LOGO[r][c] == '#') g.drawPixel(x + c, top + r, color);
-  }
-  u8.drawUTF8(x + iconW, base, text);
+  if (ic) drawIcon(g, color, ic, x, base);
+  u8.drawUTF8(x + iconW, base, p.text);
   if (tw > box) clipRow(g, base, MARGIN_X, W - MARGIN_X);
 }
 
-// Draws a "line|destination|time" promo in the departure columns.
-static void drawPromoDep(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, int base,
-                         const PromoDep& p, int lineW, int destX, uint32_t ms) {
-  int rightX = W - MARGIN_X - width(u8, p.time);
-  int overflow = width(u8, p.dest) - (rightX - COL_GAP - destX);
+// Draws a promo with `right` in the departure columns: icon (or text) as
+// line, text as destination, `right` as time.
+static void drawPromoDep(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const Settings& s, int base,
+                         const Promo& p, int lineW, int destX, uint32_t ms) {
+  int rightX = W - MARGIN_X - width(u8, p.right);
+  int overflow = width(u8, p.text) - (rightX - COL_GAP - destX);
   int off = overflow > 0 ? pingPongOffset(overflow, ms) : 0;
-  u8.drawUTF8(destX - off, base, p.dest);
+  u8.drawUTF8(destX - off, base, p.text);
   clipRow(g, base, destX, rightX - COL_GAP);
-  int lineX = MARGIN_X + lineW - promoLineWidth(u8, p);  // right-aligned like line numbers
-  if (const Icon* ic = findIcon(p.line)) {
-    int top = base - ic->h;  // stands on the baseline like the digits
-    for (int r = 0; r < ic->h; r++)
-      for (int c = 0; c < ic->w; c++)
-        if (ic->rows[r][c] == '#') g.drawPixel(lineX + c, top + r, color);
-  } else {
-    u8.drawUTF8(lineX, base, p.line);
-  }
-  u8.drawUTF8(rightX, base, p.time);
+  int lineX = MARGIN_X + lineW - promoLineWidth(u8, s, p);  // right-aligned like line numbers
+  if (IconRef ic = findIcon(s, p.icon)) drawIcon(g, color, ic, lineX, base);
+  else u8.drawUTF8(lineX, base, p.icon);
+  u8.drawUTF8(rightX, base, p.right);
 }
 
 // `platforms`: the time column shows platforms, so its heading replaces the clock.
@@ -401,9 +329,16 @@ static void drawHeader(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t colo
 }
 
 void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const Board& b,
-                 const DisplayStatus& st, time_t now, uint32_t ms) {
+                 const Settings& s, const DisplayStatus& st, time_t now, uint32_t ms) {
   u8.setFontMode(1);
   u8.setForegroundColor(color);
+
+  if (st.updating) {
+    u8.setFont(FONT_ROW);
+    centered(u8, (RULE_Y + H) / 2 + u8.getFontAscent() / 2, "Software-Update ...");
+    drawHeader(g, u8, color, st, now, false, false);
+    return;
+  }
 
   long age = (st.timeValid && b.fetchedAt) ? (long)(now - b.fetchedAt) : -1;
   bool haveData = age >= 0 && age < STALE_DROP_S;
@@ -444,27 +379,21 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
 
   // Now and then a promo or the disruption texts replace the 4th row while
   // that departure is still a while away (the disruptions also if the row is
-  // empty); once started a promo stays PROMO_SHOW_S, the disruptions scroll
+  // empty); once started a promo stays promoShowS, the disruptions scroll
   // through DISRUPTION_PASSES times
-  int hour = -1;
-  if (st.timeValid) {
-    struct tm lt;
-    localtime_r(&now, &lt);
-    hour = lt.tm_hour;
-  }
+  int minute = st.timeValid ? minuteOfDay(now) : -1;
   static char disruption[TICKER_LEN + 16];
   bool haveDisruption = haveData && b.ticker[0];
   if (haveDisruption) snprintf(disruption, sizeof(disruption), "+++ %s +++", b.ticker);
   long rowMins = n == MAX_ROWS + 1 ? minutesUntil(rows[MAX_ROWS]->when, now) : -1;
-  const char* promoMsg = promoText(rowMins >= PROMO_MIN_MINUTES, n <= MAX_ROWS || rowMins >= DISRUPTION_MIN_MINUTES,
+  const char* promoMsg = promoText(s, rowMins >= PROMO_MIN_MINUTES, n <= MAX_ROWS || rowMins >= DISRUPTION_MIN_MINUTES,
                                    tickerMsg || animRow == MAX_ROWS,
                                    haveDisruption ? disruption : nullptr,
-                                   haveDisruption ? width(u8, disruption) : 0, hour, ms);
+                                   haveDisruption ? width(u8, disruption) : 0, minute, ms);
   bool showDisruption = promoMsg && promo.disruption;
   const int nLineW = n;  // the hidden 4th row still reserves its line width
   if (promoMsg && n > MAX_ROWS) n = MAX_ROWS;
-  PromoDep promoDep;
-  bool promoIsDep = promoMsg && !showDisruption && splitPromoDep(promoMsg, promoDep);
+  bool promoIsDep = promoMsg && !showDisruption && isPromoDep(promo.item);
 
   // Now and then the time column shows the platforms instead (also for
   // cancelled trips, not without a platform)
@@ -489,7 +418,7 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
       int w = width(u8, rows[i]->line);
       if (w > lineW) lineW = w;
     }
-    if (promoIsDep && promoLineWidth(u8, promoDep) > lineW) lineW = promoLineWidth(u8, promoDep);
+    if (promoIsDep && promoLineWidth(u8, s, promo.item) > lineW) lineW = promoLineWidth(u8, s, promo.item);
     const int destX = MARGIN_X + lineW + COL_GAP;
     // Platforms are centred (by their ink) under the header's PLATFORM_HEADER
     u8.setFont(FONT_HEADER);
@@ -525,10 +454,10 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
       int base = rowBase(animRow);
       drawDepartAnim(g, color, anim.dep.cls <= 4, ms - anim.startMs, rowTop(base), rowBottom(base), W);
     }
-    if (promoIsDep) drawPromoDep(g, u8, color, rowBase(MAX_ROWS), promoDep, lineW, destX, ms);
+    if (promoIsDep) drawPromoDep(g, u8, color, s, rowBase(MAX_ROWS), promo.item, lineW, destX, ms);
   }
   if (showDisruption) drawTicker(g, u8, promoMsg, ms - promo.start, true);
-  else if (promoMsg && !promoIsDep) drawPromo(g, u8, color, rowBase(MAX_ROWS), promoMsg, ms);
+  else if (promoMsg && !promoIsDep) drawPromo(g, u8, color, s, rowBase(MAX_ROWS), promo.item, ms);
 
   if (tickerMsg) drawTicker(g, u8, tickerMsg, ms, false);
 

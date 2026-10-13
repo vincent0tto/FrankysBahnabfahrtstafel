@@ -1,0 +1,75 @@
+# Builds the firmware on every push to main and publishes it as release
+# "build-<number of commits>". The board installs it after its next start
+# (src/updater.cpp). Needs these repository secrets (Settings -> Secrets and
+# variables -> Actions): WIFI_SSID, WIFI_PASSWORD, OTA_PASSWORD, UPDATE_TOKEN.
+name: firmware
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: firmware
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # commit count = build number (tools/version.py)
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            .pio/libdeps
+          key: pio-${{ hashFiles('platformio.ini') }}
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Write secrets.h
+        env:
+          WIFI_SSID: ${{ secrets.WIFI_SSID }}
+          WIFI_PASSWORD: ${{ secrets.WIFI_PASSWORD }}
+          OTA_PASSWORD: ${{ secrets.OTA_PASSWORD }}
+          UPDATE_TOKEN: ${{ secrets.UPDATE_TOKEN }}
+        run: |
+          for v in WIFI_SSID WIFI_PASSWORD OTA_PASSWORD UPDATE_TOKEN; do
+            if [ -z "${!v}" ]; then echo "::error::repository secret $v is missing"; exit 1; fi
+          done
+          python3 - <<'PY'
+          import json, os
+          lines = ["#pragma once"]
+          for v in ["WIFI_SSID", "WIFI_PASSWORD", "OTA_PASSWORD", "UPDATE_TOKEN"]:
+              lines.append("#define %s %s" % (v, json.dumps(os.environ[v])))
+          open("include/secrets.h", "w").write("\n".join(lines) + "\n")
+          PY
+
+      - name: Tests
+        run: pio test -e native
+
+      - name: Build
+        run: pio run -e esp32s3
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          N=$(git rev-list --count HEAD)
+          if gh release view "build-$N" >/dev/null 2>&1; then echo "build-$N exists"; exit 0; fi
+          gh release create "build-$N" .pio/build/esp32s3/firmware.bin \
+            --target "$GITHUB_SHA" --title "build-$N" --notes "$(git log -1 --pretty=%s)"
+          # keep the newest 10 releases
+          gh release list --limit 100 --json tagName --jq '.[10:][].tagName' |
+            while read -r tag; do gh release delete "$tag" --yes --cleanup-tag; done

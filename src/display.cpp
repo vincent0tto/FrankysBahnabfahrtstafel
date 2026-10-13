@@ -31,33 +31,48 @@ bool displayBegin() {
   amber = matrix->color565(COLOR_R, COLOR_G, COLOR_B);
   u8.begin(*matrix);
   srand(esp_random());  // dice for the departure animation
-  currentBrightness = BRIGHTNESS_DAY;
+  currentBrightness = BRIGHTNESS_DAY;  // the settings take over with the first frame
   matrix->setBrightness8(currentBrightness);
   return true;
 }
 
-static void updateBrightness(const DisplayStatus& st, time_t now) {
-  uint8_t want = BRIGHTNESS_DAY;
-#if NIGHT_START_HOUR >= 0
-  if (st.timeValid) {
-    struct tm lt;
-    localtime_r(&now, &lt);
-    bool night = NIGHT_START_HOUR > NIGHT_END_HOUR
-                     ? (lt.tm_hour >= NIGHT_START_HOUR || lt.tm_hour < NIGHT_END_HOUR)
-                     : (lt.tm_hour >= NIGHT_START_HOUR && lt.tm_hour < NIGHT_END_HOUR);
-    if (night) want = BRIGHTNESS_NIGHT;
-  }
-#endif
+static bool asleep = false;
+
+// Brightness from the settings' dim windows; the default one while the time
+// isn't known.
+static void updateBrightness(const Settings& s, const DisplayStatus& st, time_t now) {
+  uint8_t want = st.timeValid ? brightnessAt(s, minuteOfDay(now)) : s.brightness;
   if (want != currentBrightness) {
     currentBrightness = want;
     matrix->setBrightness8(want);
   }
 }
 
-void displayRender(const Board& b, const DisplayStatus& st, time_t now, uint32_t ms) {
-  if (!matrix) return;
-  updateBrightness(st, now);
+bool displayRender(const Board& b, const Settings& s, const DisplayStatus& st, time_t now, uint32_t ms) {
+  if (!matrix) return false;
+  // Off time: blank both buffers once and switch the LEDs off (also while
+  // the nightly update installs). Never while the time is unknown.
+  bool off = st.timeValid && isOffTime(s, minuteOfDay(now));
+  if (off) {
+    if (!asleep) {
+      Serial.println("[display] off time, panel dark");
+      for (int i = 0; i < 2; i++) {
+        matrix->clearScreen();
+        matrix->flipDMABuffer();
+      }
+      matrix->setBrightness8(0);
+      currentBrightness = 0;
+      asleep = true;
+    }
+    return true;
+  }
+  if (asleep) {
+    Serial.println("[display] off time over");
+    asleep = false;
+  }
+  updateBrightness(s, st, now);
   matrix->clearScreen();
-  renderFrame(*matrix, u8, amber, b, st, now, ms);
+  renderFrame(*matrix, u8, amber, b, s, st, now, ms);
   matrix->flipDMABuffer();
+  return false;
 }

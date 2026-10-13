@@ -4,23 +4,12 @@
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
-#include <esp_heap_caps.h>
 #include <esp_task_wdt.h>
 
 #include "certs.h"
 #include "config.h"
 #include "parse.h"
-
-// Keep the (filtered) JSON document in PSRAM to spare internal RAM for
-// WiFi/TLS and the LED DMA buffers.
-struct SpiRamAllocator : ArduinoJson::Allocator {
-  void* allocate(size_t n) override { return heap_caps_malloc(n, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT); }
-  void deallocate(void* p) override { heap_caps_free(p); }
-  void* reallocate(void* p, size_t n) override {
-    return heap_caps_realloc(p, n, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-  }
-};
-static SpiRamAllocator spiRam;
+#include "psram_alloc.h"
 
 const char* fetchResultName(FetchResult r) {
   switch (r) {

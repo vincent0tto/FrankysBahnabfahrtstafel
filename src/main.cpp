@@ -2,7 +2,8 @@
 // rnv-style departure board for an ESP32-S3 + 3x 64x64 HUB75 panels.
 // Data: Verkehrsverbund Rhein-Neckar (VRN), Datenlizenz Deutschland – Namensnennung.
 //
-// Core 0: netTask   – WiFi, NTP, OTA, API polling with backoff
+// Core 0: netTask   – WiFi, NTP, OTA, settings web page, firmware update
+//                     check after start, API polling with backoff
 // Core 1: loop()    – renders ~30 fps from the last good data
 
 #include <Arduino.h>
@@ -14,7 +15,10 @@
 #include "config.h"
 #include "display.h"
 #include "net.h"
+#include "settings_store.h"
+#include "updater.h"
 #include "vrn_client.h"
+#include "web.h"
 
 static Board sharedBoard;            // guarded by boardMutex
 static volatile uint32_t boardVersion = 0;
@@ -49,18 +53,34 @@ static void netTask(void*) {
   uint32_t nextFetchMs = 0;
   uint32_t backoffS = POLL_INTERVAL_S;
   uint32_t failures = 0;
+  bool updateChecked = false;
 
   for (;;) {
     esp_task_wdt_reset();
     bool online = netMaintain();
 
-    if (online && timeValid() && (int32_t)(millis() - nextFetchMs) >= 0) {
+    // once per start, before the first fetch (the daily reboot falls into
+    // the off time, so the update usually happens while the panel is dark)
+    if (online && timeValid() && !updateChecked) {
+      updateChecked = true;
+      updateCheckAndInstall();  // restarts if it installed one
+    }
+
+    // Off time: no API calls; WAKE_FETCH_LEAD_S before its end they start
+    // again so the panel comes on with fresh data
+    time_t now = time(nullptr);
+    const Settings& s = settingsNet();
+    bool sleeping = timeValid() && isOffTime(s, minuteOfDay(now)) &&
+                    isOffTime(s, minuteOfDay(now + WAKE_FETCH_LEAD_S));
+
+    if (online && timeValid() && !sleeping && (int32_t)(millis() - nextFetchMs) >= 0) {
       FetchResult r = fetchBoard(fresh);
       if (r == FetchResult::Ok) {
         xSemaphoreTake(boardMutex, portMAX_DELAY);
         sharedBoard = fresh;
         boardVersion++;
         xSemaphoreGive(boardMutex);
+        webNoteFetch(fresh.fetchedAt);
         failures = 0;
         backoffS = POLL_INTERVAL_S;
         Serial.printf("[vrn] %d departures, heap %u, psram %u\n", fresh.n,
@@ -86,6 +106,7 @@ void setup() {
   Serial.printf("\n[sys] Frankys Bahnabfahrtstafel, reset reason %d\n", (int)esp_reset_reason());
 
   boardMutex = xSemaphoreCreateMutex();
+  settingsBegin();
   esp_task_wdt_init(WDT_TIMEOUT_S, true);  // panic -> reboot on hang
   esp_task_wdt_add(nullptr);               // loop task
 
@@ -102,6 +123,8 @@ void setup() {
 void loop() {
   static Board local;
   static uint32_t localVersion = UINT32_MAX;
+  static Settings settings;
+  static uint32_t settingsVersion = 0;
 
   esp_task_wdt_reset();
   if (boardVersion != localVersion && xSemaphoreTake(boardMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
@@ -109,10 +132,12 @@ void loop() {
     localVersion = boardVersion;
     xSemaphoreGive(boardMutex);
   }
+  settingsFetch(settings, settingsVersion);
 
   DisplayStatus st;
   st.wifi = WiFi.status() == WL_CONNECTED;
   st.timeValid = timeValid();
-  displayRender(local, st, time(nullptr), millis());
-  delay(33);
+  st.updating = updateRunning();
+  bool dark = displayRender(local, settings, st, time(nullptr), millis());
+  delay(dark ? 500 : 33);  // off time: nothing to draw
 }

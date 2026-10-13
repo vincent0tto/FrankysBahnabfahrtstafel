@@ -68,7 +68,7 @@ without one, but registering is the polite thing to do.
 
 ```bash
 brew install platformio              # once
-cp include/secrets.h.example include/secrets.h   # then fill in WLAN SSID/password
+cp include/secrets.h.example include/secrets.h   # then fill in WLAN SSID/password, UPDATE_TOKEN
 pio run -e esp32s3 -t upload -t monitor
 ```
 
@@ -80,6 +80,47 @@ Later updates can go over WiFi:
 export ABFAHRT_OTA_PASSWORD=<OTA_PASSWORD from secrets.h>
 pio run -e esp32s3-ota -t upload
 ```
+
+### Automatic updates from GitHub
+
+Every push to `main` makes GitHub Actions (`.github/workflows/firmware.yml`) run the tests,
+build the firmware and publish it as release `build-<N>`, where N is the number of commits.
+After every start, including the daily reboot at 04:00 during the off time, the board asks
+GitHub for the newest release. If it is newer than the running firmware, the board installs it
+and restarts. A firmware built locally from the same commit counts as up to date.
+
+Set this up once:
+
+1. Create a fine-grained token at <https://github.com/settings/personal-access-tokens>. Give it
+   access to **only this repository** and the permission **Contents: read-only**. Choose an
+   expiry date you will notice; when the token expires, updates stop and nothing else breaks.
+2. Put the token into `include/secrets.h` as `UPDATE_TOKEN` and flash once over USB or OTA.
+3. In the repo, go to *Settings → Secrets and variables → Actions* and add `WIFI_SSID`,
+   `WIFI_PASSWORD`, `OTA_PASSWORD` and `UPDATE_TOKEN`. The CI builds `secrets.h` from these
+   secrets. The repo is private, so the firmware in the releases is private too.
+
+The serial log shows `[update] build 12 is up to date` or `[update] build-13 > 12, installing`.
+While an update installs, the panel shows "Software-Update ...". `AUTO_UPDATE 0` in
+`config.h` turns updates off. The bootloader has no automatic rollback: a firmware that
+crashes before the update check has to be flashed over USB. That's why the CI only publishes
+builds that pass the tests.
+
+### Settings page
+
+Open `http://abfahrtstafel.local` (or the IP from the serial log) from any device in the same
+WiFi. There is no login. On the page you can set:
+
+- **Ruhezeit** (default 02:00–06:00): the panel is completely dark and the board makes no API
+  calls. It fetches again 2 minutes before the panel comes back on (`WAKE_FETCH_LEAD_S`).
+- **Helligkeit**: a default brightness plus up to 4 time windows with their own brightness.
+- **Promo-Texte**: show time, pause, and which texts appear. The built-in texts
+  (`PROMO_TEXTS`) can be switched on and off. You can add up to 20 texts of your own, each
+  with an icon, an optional right column and an optional time window.
+- **Icons**: the built-in icons (Instagram, Grilled Cheese, Flat White, Kuchen, Bier) plus up
+  to 8 icons of your own, drawn in a 12×9 pixel editor.
+
+The board stores the settings in flash (NVS), so they survive restarts and updates. The values
+in `config.h` are only the defaults.
 
 ### Tests (parser, run on the Mac)
 
@@ -101,7 +142,7 @@ These tests need a host compiler. If you haven't accepted the Xcode license yet,
 | bottom line, scrolling | VRN disruption messages for the lines shown |
 | `!` next to the clock | no WiFi, or the data is more than 5 minutes old |
 | `Zurzeit keine Abfahrtsinformationen` | no departures, or the data is more than 60 minutes old |
-| Instagram logo + `@frankys_by_coffeetoego` in the 4th row | now and then for 8 s, only while that departure is ≥ 10 min away (`PROMO_*` in `config.h`) |
+| Instagram logo + `@frankys_by_coffeetoego` in the 4th row | promo texts: now and then, only while that departure is ≥ `PROMO_MIN_MINUTES` away (texts, icons and timing on the settings page) |
 | tram/bus driving out of a row | 1 in 5 tram departures and every bus departure, only if no other one leaves in the same minute: the two-car tram (or the bus) pulls away and drives out (`DEPART_ANIM_CHANCE`, `DEPART_ANIM_CHANCE_BUS`) |
 
 ## 24/7 operation
@@ -111,8 +152,9 @@ These tests need a host compiler. If you haven't accepted the Xcode license yet,
 - **API errors:** it switches to the fallback host and backs off 30 s → 60 → 120 → 300 s.
   The last good data stays on the display.
 - **Watchdog** (90 s) on both tasks, a reboot if internal RAM runs low, and an optional daily
-  reboot at 04:00 (`DAILY_REBOOT_HOUR`).
-- **Night dimming** from 23:00 to 05:00 (`NIGHT_*`, `BRIGHTNESS_*`).
+  reboot at 04:00 (`DAILY_REBOOT_HOUR`), which also checks for a firmware update.
+- **Off time** from 02:00 to 06:00 and **dimming** from 23:00 to 05:00. Both are defaults that
+  you can change on the settings page.
 - **TLS:** the board checks the server certificate against ISRG Root X1/X2 (`include/certs.h`,
   valid until 2035/2040). If VRN ever switches to a different certificate authority, add its
   root certificate to that file.
@@ -125,7 +167,13 @@ These tests need a host compiler. If you haven't accepted the Xcode license yet,
 | `src/parse.cpp` | JSON → departures, umlauts (CP437), countdown text (tested on the host) |
 | `src/vrn_client.cpp` | HTTPS request, streaming JSON parse with filter, PSRAM |
 | `src/net.cpp` | WiFi watchdog, NTP, OTA |
+| `src/settings.cpp` | run-time settings: defaults, time windows, JSON (tested on the host) |
+| `src/settings_store.cpp` | settings in flash (NVS), handover to the render loop |
+| `src/web.cpp`, `src/web_page.h` | settings page and its JSON API |
+| `src/updater.cpp` | firmware update from the GitHub releases |
+| `src/icons.cpp` | built-in promo icons |
 | `src/render.cpp` | rnv layout, ticker, status screens |
 | `src/depart_anim.cpp` | departure animation (sprites + timeline) |
 | `src/display.cpp` | panel setup, dimming |
 | `src/main.cpp` | network task (core 0) and render loop (core 1, ~30 fps) |
+| `.github/workflows/firmware.yml` | CI: tests, build, release |

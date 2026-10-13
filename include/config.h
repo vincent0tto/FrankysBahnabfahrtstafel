@@ -52,7 +52,16 @@
 #define WIFI_REBOOT_S        (15 * 60)    // reboot if offline this long
 #define WDT_TIMEOUT_S             90   // > 3x HTTP_TIMEOUT_MS
 #define MIN_FREE_HEAP_BYTES    20000      // reboot below this (internal RAM)
-#define DAILY_REBOOT_HOUR          4      // -1 = disabled
+#define DAILY_REBOOT_HOUR          4      // -1 = disabled; also checks for a firmware update
+
+// ---- Firmware update from GitHub ------------------------------------------
+// After each start the board asks GitHub for the newest release (built by
+// .github/workflows/firmware.yml on every push to main) and installs it if
+// it is newer than the running firmware. The repo is private, so this needs
+// UPDATE_TOKEN in secrets.h.
+#define AUTO_UPDATE   1   // 0 = off
+#define GITHUB_REPO   "vincent0tto/FrankysBahnabfahrtstafel"
+#define UPDATE_ASSET  "firmware.bin"
 
 // ---- Time -----------------------------------------------------------------
 #define TZ_INFO     "CET-1CEST,M3.5.0,M10.5.0/3"
@@ -88,10 +97,18 @@
 #define COLOR_G 120
 #define COLOR_B   0
 
+// Brightness, dimming, off time and promos below are only the defaults:
+// they can be changed on the web page (http://abfahrtstafel.local), which
+// stores them on the board.
 #define BRIGHTNESS_DAY     150       // 0..255
 #define BRIGHTNESS_NIGHT   20
 #define NIGHT_START_HOUR   23       // -1 = no night dimming
 #define NIGHT_END_HOUR      5
+
+// Panel completely dark and no API calls between these hours. -1 = never.
+#define OFF_START_HOUR      2
+#define OFF_END_HOUR        6
+#define WAKE_FETCH_LEAD_S 120   // fetch this long before the panel comes on
 
 #define TICKER_SPEED_PX_S  30       // scrolling text speed
 
@@ -102,10 +119,12 @@
 #define DEPART_ANIM_CHANCE_BUS 1   // same for buses (line 628 etc.)
 
 // Texts shown now and then instead of the 4th row, one picked at random.
+// They show up on the web page as built-in texts that can be switched off.
 // Prefix "[ig]" puts the Instagram logo in front. "line|destination|time"
 // shows it like a departure; as line, "[gc]" draws a grilled cheese, "[fw]" a
 // flat white, "[ku]" a slice of cake and "[bi]" a beer mug. A leading "@12"
 // shows the text only from 12:00 until midnight, "@12-18" from 12:00 to 18:00.
+// Icons: src/icons.cpp.
 #define PROMO_TEXTS { "[ig]@frankys_by_coffeetoego", \
                       "[fw]|Flat White|sofort", \
                       "[ku]|Selbstgemachter Kuchen|sofort", \
