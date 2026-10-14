@@ -1,16 +1,17 @@
 # Franky's Bahnabfahrtstafel
 
-A small departure board for **[Franky's](https://frankys-schriesheim.de)**, the café right
-next to the station in Schriesheim. It shows when the next trams and buses leave
-**Schriesheim Bahnhof**, so you can finish your coffee and still catch your train.
+Eine kleine Abfahrtstafel für **[Franky's](https://frankys-schriesheim.de)**, das Café direkt
+am Bahnhof in Schriesheim. Sie zeigt, wann die nächsten Bahnen und Busse am
+**Schriesheim Bahnhof** abfahren – so kann man in Ruhe seinen Kaffee austrinken und erwischt
+trotzdem seine Bahn.
 
 - 🌐 Website: <https://frankys-schriesheim.de>
 - 📸 Instagram: [@frankys_by_coffeetoego](https://www.instagram.com/frankys_by_coffeetoego/)
 
-## What it does
+## Was die Tafel kann
 
-The board looks like the amber LED displays at the rnv stops and shows the next departures
-with live times, just like at the platform:
+Die Tafel sieht aus wie die orangefarbenen LED-Anzeigen an den rnv-Haltestellen und zeigt die
+nächsten Abfahrten mit Echtzeit, genau wie am Bahnsteig:
 
 ```
 Schriesheim Bahnhof                     10:42
@@ -21,196 +22,203 @@ Schriesheim Bahnhof                     10:42
  5  Weinheim Alter OEG-Bahnhof          12 min
 ```
 
-- **Live times:** delays are already included, cancelled trips show `fällt aus`, and
-  disruption notices scroll along the bottom line.
-- **A little extra from the café:** now and then a line shows a message from Franky's,
-  for example the Instagram handle or what's on offer, with a small pixel icon.
-- **Tiny trams:** every so often a little tram or bus drives out of its row when it departs.
-- **Night rest:** at night the board switches itself off and dims in the late evening.
-- **Easy to change:** messages, icons, brightness and times can be changed from any phone in
-  the café's WiFi, no cable or computer needed.
-- **Looks after itself:** it reconnects after WiFi problems and installs updates on its own.
+- **Echtzeit:** Verspätungen sind schon eingerechnet, ausfallende Fahrten zeigen `fällt aus`,
+  und Störungsmeldungen laufen in der untersten Zeile durch.
+- **Ein kleines Extra vom Café:** ab und zu zeigt eine Zeile eine Nachricht von Franky's,
+  zum Beispiel den Instagram-Namen oder ein Angebot, mit einem kleinen Pixel-Symbol.
+- **Kleine Bahnen:** hin und wieder fährt eine kleine Bahn oder ein Bus aus seiner Zeile,
+  wenn er abfährt.
+- **Nachtruhe:** nachts schaltet sich die Tafel ab, am späten Abend wird sie dunkler.
+- **Leicht zu ändern:** Nachrichten, Symbole, Helligkeit und Zeiten lassen sich von jedem
+  Handy im WLAN des Cafés ändern, ganz ohne Kabel oder Computer.
+- **Kümmert sich um sich selbst:** nach WLAN-Problemen verbindet sie sich neu, und Updates
+  installiert sie von allein.
 
-The departure data comes from the Verkehrsverbund Rhein‑Neckar (VRN).
+Die Abfahrtsdaten kommen vom Verkehrsverbund Rhein‑Neckar (VRN).
 
 ---
 
-# Technical details
+# Technische Details
 
-Everything below is for whoever builds, repairs or develops the board.
+Alles ab hier ist für alle, die die Tafel bauen, reparieren oder weiterentwickeln.
 
 ## Hardware
 
-An ESP32-S3-DEV-KIT-N8R8 drives three Waveshare 22100 panels (64×64, P3, HUB75E, 1/32 scan)
-mounted side by side, which gives 192×64 px.
+Ein ESP32-S3-DEV-KIT-N8R8 steuert drei Waveshare-22100-Panels (64×64, P3, HUB75E, 1/32 Scan),
+die nebeneinander montiert sind. Das ergibt 192×64 Pixel.
 
-Long destinations scroll (pause, slide to the end, pause, jump back).
-Fonts and layout are set at the top of `src/render.cpp`. To preview a layout without
-hardware, run `tools/preview/run.sh`; it writes `tools/preview/preview.png` and the
-departure animation frames to `tools/preview/preview_anim.png`.
+Lange Ziele laufen durch (Pause, bis zum Ende schieben, Pause, zurückspringen).
+Schriften und Layout stehen oben in `src/render.cpp`. Um ein Layout ohne Hardware anzusehen,
+`tools/preview/run.sh` ausführen; es schreibt `tools/preview/preview.png` und die Bilder der
+Abfahrtsanimation nach `tools/preview/preview_anim.png`.
 
-## Data source
+## Datenquelle
 
-The board reads the **VRN EFA Open Service** (Mentz RapidJSON). It needs no API key or login;
-this was checked on 2026‑10‑08 and real-time data is included.
+Die Tafel liest den **VRN EFA Open Service** (Mentz RapidJSON). Er braucht weder API-Key noch
+Login; das wurde am 08.10.2026 geprüft, und Echtzeitdaten sind enthalten.
 
 ```
 https://www.vrn.de/mngvrn/XML_DM_REQUEST?outputFormat=rapidJSON&type_dm=any&mode=direct&useRealtime=1&name_dm=de:08226:3479&limit=20
 ```
 
-`https://trias.vrn.de/vrn/XML_DM_REQUEST` is the automatic fallback host. The rnv's own
-GraphQL Data Hub would need an API key, which you request by e‑mail at opendata@rnv-online.de.
-This project doesn't need it.
+`https://trias.vrn.de/vrn/XML_DM_REQUEST` ist der automatische Ausweich-Host. Der eigene
+GraphQL-Data-Hub der rnv bräuchte einen API-Key, den man per E-Mail an opendata@rnv-online.de
+beantragt. Dieses Projekt braucht ihn nicht.
 
-License: *Datenlizenz Deutschland – Namensnennung*, source **Verkehrsverbund Rhein‑Neckar (VRN)**.
-VRN's terms ask for a free registration at <https://opendata.vrn.de>. The endpoint works
-without one, but registering is the polite thing to do.
+Lizenz: *Datenlizenz Deutschland – Namensnennung*, Quelle **Verkehrsverbund Rhein‑Neckar (VRN)**.
+Die Bedingungen des VRN sehen eine kostenlose Registrierung unter <https://opendata.vrn.de> vor.
+Der Endpunkt funktioniert auch ohne, aber registrieren gehört sich.
 
-### Another stop?
+### Eine andere Haltestelle?
 
-1. Look up the stop ID:
+1. Haltestellen-ID nachschlagen:
    `https://www.vrn.de/mngvrn/XML_STOPFINDER_REQUEST?outputFormat=rapidJSON&type_sf=any&name_sf=Heidelberg%20Bismarckplatz`
-   and take `locations[0].id`, e.g. `de:08221:1146`.
-2. Set `STOP_ID` and `STOP_DISPLAY_NAME` in `include/config.h`.
-3. Optional: use `FILTER_LINES` / `FILTER_PLATFORMS` to show only certain lines or platforms.
-   The platform codes for Schriesheim are `TrRiS`, `TrRiN`, `A`, `B`, …; the serial log shows them.
+   und `locations[0].id` nehmen, z. B. `de:08221:1146`.
+2. `STOP_ID` und `STOP_DISPLAY_NAME` in `include/config.h` setzen.
+3. Optional: mit `FILTER_LINES` / `FILTER_PLATFORMS` nur bestimmte Linien oder Steige anzeigen.
+   Die Steig-Codes für Schriesheim sind `TrRiS`, `TrRiN`, `A`, `B`, …; das serielle Log zeigt sie an.
 
-## Wiring
+## Verkabelung
 
-| HUB75 (panel 1 **IN**) | ESP32-S3 GPIO |
+| HUB75 (Panel 1 **IN**) | ESP32-S3 GPIO |
 |---|---|
 | R1 / G1 / B1 | 4 / 5 / 6 |
 | R2 / G2 / B2 | 7 / 15 / 16 |
 | A / B / C / D / **E** | 17 / 18 / 8 / 9 / 10 |
 | LAT / OE / CLK | 11 / 12 / 13 |
-| GND (all GND pins) | GND |
+| GND (alle GND-Pins) | GND |
 
-- Run the ribbon cables from panel 1 **OUT** to panel 2 **IN**, then panel 2 OUT to panel 3 IN.
-  Seen from the front, panel 1 is the **left** one. If the picture comes out in the wrong order,
-  swap the panels physically.
-- **Power:** use a 5 V supply of at least 10 A (e.g. MeanWell LRS‑75‑5) connected to each panel's
-  VH4 power connector. Connect the supply's GND to the ESP32's GND. Don't power the panels
-  through the ESP32. The ESP32 itself can run from USB or from the 5 V pin of the same supply.
-- The pin map avoids PSRAM (GPIO 35–37), the strapping pins, USB (19/20) and UART (43/44).
-- 3.3 V logic usually works with these panels. If you see flickering or wrong pixels, put a
-  74HCT245 between the ESP32 and panel 1, or use shorter cables.
+- Flachbandkabel von Panel 1 **OUT** zu Panel 2 **IN**, dann von Panel 2 OUT zu Panel 3 IN.
+  Von vorne gesehen ist Panel 1 das **linke**. Wenn das Bild in der falschen Reihenfolge
+  erscheint, die Panels umstecken.
+- **Strom:** ein 5-V-Netzteil mit mindestens 10 A (z. B. MeanWell LRS‑75‑5) an den
+  VH4-Stromanschluss jedes Panels. GND des Netzteils mit GND des ESP32 verbinden. Die Panels
+  nicht über den ESP32 versorgen. Der ESP32 selbst kann über USB oder den 5-V-Pin desselben
+  Netzteils laufen.
+- Die Pinbelegung meidet PSRAM (GPIO 35–37), die Strapping-Pins, USB (19/20) und UART (43/44).
+- 3,3-V-Logik funktioniert mit diesen Panels meistens. Bei Flackern oder falschen Pixeln einen
+  74HCT245 zwischen ESP32 und Panel 1 setzen oder kürzere Kabel nehmen.
 
-## Build and flash
+## Bauen und flashen
 
 ```bash
-brew install platformio              # once
-cp include/secrets.h.example include/secrets.h   # then fill in WLAN SSID/password, OTA password
+brew install platformio              # einmalig
+cp include/secrets.h.example include/secrets.h   # dann WLAN-SSID/-Passwort und OTA-Passwort eintragen
 pio run -e esp32s3 -t upload -t monitor
 ```
 
-Use the **UART** USB-C port (CH343) for flashing and for the serial log.
+Zum Flashen und für das serielle Log den **UART**-USB-C-Anschluss (CH343) nehmen.
 
-The firmware itself holds no passwords. On its first start the board copies the values from
-`secrets.h` into its flash (NVS, `src/credentials.cpp`) and uses them from there, also after
-updates from GitHub. It only takes them again when `secrets.h` changes. Later the WiFi can be
-changed on the settings page; if the board can't connect to a new WiFi, it falls back to the
-previous one. If the old WiFi is gone too, flash once over USB with an updated `secrets.h`.
+Die Firmware selbst enthält keine Passwörter. Beim ersten Start kopiert die Tafel die Werte aus
+`secrets.h` in ihren Flash (NVS, `src/credentials.cpp`) und nimmt sie ab dann von dort, auch
+nach Updates von GitHub. Neu übernommen werden sie nur, wenn sich `secrets.h` ändert. Später
+lässt sich das WLAN auf der Einstellungsseite ändern; kann sich die Tafel nicht mit einem neuen
+WLAN verbinden, nimmt sie wieder das vorherige. Ist auch das alte WLAN weg, einmal über USB mit
+einer aktualisierten `secrets.h` flashen.
 
-Later updates can go over WiFi:
+Spätere Updates gehen auch über WLAN:
 
 ```bash
-export ABFAHRT_OTA_PASSWORD=<OTA_PASSWORD from secrets.h>
+export ABFAHRT_OTA_PASSWORD=<OTA_PASSWORD aus secrets.h>
 pio run -e esp32s3-ota -t upload
 ```
 
-### Automatic updates from GitHub
+### Automatische Updates von GitHub
 
-Every push to `main` makes GitHub Actions (`.github/workflows/firmware.yml`) run the tests,
-build the firmware and publish it as release `build-<N>`, where N is the number of commits.
-After every start, including the daily reboot at 04:00 during the off time, the board asks
-GitHub for the newest release. If it is newer than the running firmware, the board installs it
-and restarts. A firmware built locally from the same commit counts as up to date.
+Bei jedem Push auf `main` lässt GitHub Actions (`.github/workflows/firmware.yml`) die Tests
+laufen, baut die Firmware und veröffentlicht sie als Release `build-<N>`, wobei N die Anzahl
+der Commits ist. Nach jedem Start, auch nach dem täglichen Neustart um 04:00 während der
+Ruhezeit, fragt die Tafel bei GitHub nach dem neuesten Release. Ist es neuer als die laufende
+Firmware, installiert sie es und startet neu. Eine lokal aus demselben Commit gebaute Firmware
+gilt als aktuell.
 
-The repo and its releases are public. The CI builds without `secrets.h`, so the released
-firmware contains no passwords, and the board needs no token to download it.
+Das Repo und seine Releases sind öffentlich. Die CI baut ohne `secrets.h`, daher enthält die
+veröffentlichte Firmware keine Passwörter, und die Tafel braucht zum Herunterladen keinen Token.
 
-The serial log shows `[update] build 12 is up to date` or `[update] build-13 > 12, installing`.
-While an update installs, the panel shows "Software-Update ...". `AUTO_UPDATE 0` in
-`config.h` turns updates off. The bootloader has no automatic rollback: a firmware that
-crashes before the update check has to be flashed over USB. That's why the CI only publishes
-builds that pass the tests.
+Das serielle Log zeigt `[update] build 12 is up to date` oder `[update] build-13 > 12, installing`.
+Während ein Update installiert wird, zeigt das Panel „Software-Update ...". `AUTO_UPDATE 0` in
+`config.h` schaltet Updates ab. Der Bootloader hat kein automatisches Rollback: Eine Firmware,
+die vor der Update-Prüfung abstürzt, muss über USB geflasht werden. Deshalb veröffentlicht die
+CI nur Builds, die die Tests bestehen.
 
-### Settings page
+### Einstellungsseite
 
-Open `http://abfahrtstafel.local` (or the IP from the serial log) from any device in the same
-WiFi. There is no login. On the page you can set:
+`http://abfahrtstafel.local` (oder die IP aus dem seriellen Log) von einem beliebigen Gerät im
+selben WLAN öffnen. Es gibt kein Login. Auf der Seite lässt sich einstellen:
 
-- **Ruhezeit** (default 02:00–06:00): the panel is completely dark and the board makes no API
-  calls. It fetches again 2 minutes before the panel comes back on (`WAKE_FETCH_LEAD_S`).
-- **Helligkeit** in percent: a default (85 %; the **Standard** button resets the slider to
-  it) plus up to 4 time windows with their own brightness. 100 % is capped at 70 % of the
-  panel's hardware brightness (`BRIGHTNESS_MAX`).
-- **Promo-Texte**: show time, pause, and which texts appear. The built-in texts
-  (`PROMO_TEXTS`) can be switched on and off and edited; ↺ restores the firmware's version.
-  You can add up to 20 texts of your own, each
-  with an icon, an optional right column and an optional time window.
-- **Icons**: the built-in icons (Instagram, Grilled Cheese, Flat White, Kuchen, Bier) plus up
-  to 8 icons of your own, drawn in a 12×9 pixel editor.
-- **WLAN**: name and password of the WiFi, used after a restart (see above).
+- **Ruhezeit** (Standard 02:00–06:00): Das Panel ist komplett dunkel, und die Tafel ruft keine
+  Daten ab. 2 Minuten bevor das Panel wieder angeht, holt sie neue Daten (`WAKE_FETCH_LEAD_S`).
+- **Helligkeit** in Prozent: ein Standardwert (85 %; der Knopf **Standard** setzt den Regler
+  darauf zurück) und bis zu 4 Zeitfenster mit eigener Helligkeit. 100 % entsprechen 70 % der
+  Hardware-Helligkeit des Panels (`BRIGHTNESS_MAX`).
+- **Promo-Texte**: Anzeigedauer, Pause und welche Texte erscheinen. Die eingebauten Texte
+  (`PROMO_TEXTS`) lassen sich an- und ausschalten und bearbeiten; ↺ stellt die Version der
+  Firmware wieder her. Dazu kommen bis zu 20 eigene Texte, jeweils mit Symbol, optionaler
+  rechter Spalte und optionalem Zeitfenster.
+- **Icons**: die eingebauten Symbole (Instagram, Grilled Cheese, Flat White, Kuchen, Bier) und
+  bis zu 8 eigene, gezeichnet in einem 12×9-Pixel-Editor.
+- **WLAN**: Name und Passwort des WLANs, gilt nach einem Neustart (siehe oben).
 
-The board stores the settings in flash (NVS), a partition that firmware updates (from GitHub,
-OTA or a normal USB upload) don't touch, so they survive restarts and updates. Only erasing the
-whole flash (`pio run -t erase`) resets them. The values in `config.h` are only the defaults:
-a built-in text that wasn't edited follows new firmware; an edited one keeps your version,
-even if the firmware drops or changes that text.
+Die Tafel speichert die Einstellungen im Flash (NVS), in einer Partition, die Firmware-Updates
+(von GitHub, per OTA oder ein normaler USB-Upload) nicht anrühren. So überstehen sie Neustarts
+und Updates. Nur das Löschen des ganzen Flashs (`pio run -t erase`) setzt sie zurück. Die Werte
+in `config.h` sind nur die Standardwerte: Ein eingebauter Text, der nicht bearbeitet wurde,
+folgt neuer Firmware; ein bearbeiteter behält deine Version, auch wenn die Firmware den Text
+entfernt oder ändert.
 
-### Tests (parser, run on the Mac)
+### Tests (Parser, laufen auf dem Mac)
 
 ```bash
 pio test -e native
 ```
 
-These tests need a host compiler. If you haven't accepted the Xcode license yet, run
-`sudo xcodebuild -license` once first.
+Die Tests brauchen einen Host-Compiler. Wer die Xcode-Lizenz noch nicht akzeptiert hat, führt
+vorher einmal `sudo xcodebuild -license` aus.
 
-## What the display shows (details)
+## Was die Anzeige zeigt (im Detail)
 
-| Display | Meaning |
+| Anzeige | Bedeutung |
 |---|---|
-| `sofort` | departs in under 1 minute |
-| `7 min` | real-time forecast, or the timetable time if there's no forecast |
-| `13:40` | 60 minutes or more away |
-| `fällt aus` | trip is cancelled |
-| bottom line, scrolling | VRN disruption messages for the lines shown |
-| `!` next to the clock | no WiFi, or the data is more than 5 minutes old |
-| `Zurzeit keine Abfahrtsinformationen` | no departures, or the data is more than 60 minutes old |
-| Instagram logo + `@frankys_by_coffeetoego` in the 4th row | promo texts: now and then, only while that departure is ≥ `PROMO_MIN_MINUTES` away (texts, icons and timing on the settings page) |
-| tram/bus driving out of a row | 1 in 5 tram departures and every bus departure, only if no other one leaves in the same minute: the two-car tram (or the bus) pulls away and drives out (`DEPART_ANIM_CHANCE`, `DEPART_ANIM_CHANCE_BUS`) |
+| `sofort` | fährt in unter 1 Minute ab |
+| `7 min` | Echtzeit-Prognose, oder die Fahrplanzeit, wenn es keine Prognose gibt |
+| `13:40` | 60 Minuten oder mehr entfernt |
+| `fällt aus` | Fahrt fällt aus |
+| unterste Zeile, durchlaufend | Störungsmeldungen des VRN für die angezeigten Linien |
+| `!` neben der Uhr | kein WLAN, oder die Daten sind älter als 5 Minuten |
+| `Zurzeit keine Abfahrtsinformationen` | keine Abfahrten, oder die Daten sind älter als 60 Minuten |
+| Instagram-Logo + `@frankys_by_coffeetoego` in der 4. Zeile | Promo-Texte: ab und zu, nur solange diese Abfahrt ≥ `PROMO_MIN_MINUTES` entfernt ist (Texte, Symbole und Zeiten auf der Einstellungsseite) |
+| Bahn/Bus fährt aus einer Zeile | bei 1 von 5 Bahn-Abfahrten und jeder Bus-Abfahrt, nur wenn in derselben Minute keine andere abfährt: die zweiteilige Bahn (oder der Bus) fährt an und aus dem Bild (`DEPART_ANIM_CHANCE`, `DEPART_ANIM_CHANCE_BUS`) |
 
-## 24/7 operation
+## Dauerbetrieb rund um die Uhr
 
-- **WiFi lost:** automatic reconnect; the WiFi stack is restarted after 30 s and the board
-  reboots after 15 min. Meanwhile it keeps counting down from the last data it received.
-- **API errors:** it switches to the fallback host and backs off 30 s → 60 → 120 → 300 s.
-  The last good data stays on the display.
-- **Watchdog** (90 s) on both tasks, a reboot if internal RAM runs low, and an optional daily
-  reboot at 04:00 (`DAILY_REBOOT_HOUR`), which also checks for a firmware update.
-- **Off time** from 02:00 to 06:00 and **dimming** from 23:00 to 05:00. Both are defaults that
-  you can change on the settings page.
-- **TLS:** the board checks the server certificate against ISRG Root X1/X2 (`include/certs.h`,
-  valid until 2035/2040). If VRN ever switches to a different certificate authority, add its
-  root certificate to that file.
+- **WLAN weg:** automatisches Neuverbinden; nach 30 s wird der WLAN-Stack neu gestartet, nach
+  15 min startet die Tafel neu. Solange zählt sie mit den zuletzt empfangenen Daten weiter herunter.
+- **API-Fehler:** Sie wechselt zum Ausweich-Host und wartet immer länger: 30 s → 60 → 120 → 300 s.
+  Die letzten guten Daten bleiben auf der Anzeige.
+- **Watchdog** (90 s) auf beiden Tasks, Neustart bei knappem internem RAM und optional ein
+  täglicher Neustart um 04:00 (`DAILY_REBOOT_HOUR`), bei dem sie auch nach einem
+  Firmware-Update sucht.
+- **Ruhezeit** von 02:00 bis 06:00 und **Dimmen** von 23:00 bis 05:00. Beides sind
+  Standardwerte, die sich auf der Einstellungsseite ändern lassen.
+- **TLS:** Die Tafel prüft das Serverzertifikat gegen ISRG Root X1/X2 (`include/certs.h`,
+  gültig bis 2035/2040). Falls der VRN einmal zu einer anderen Zertifizierungsstelle wechselt,
+  deren Root-Zertifikat in diese Datei eintragen.
 
-## Code structure
+## Aufbau des Codes
 
-| File | Purpose |
+| Datei | Zweck |
 |---|---|
-| `include/config.h` | stop, filters, pins, brightness, timings |
-| `src/parse.cpp` | JSON → departures, umlauts (CP437), countdown text (tested on the host) |
-| `src/vrn_client.cpp` | HTTPS request, streaming JSON parse with filter, PSRAM |
-| `src/net.cpp` | WiFi watchdog, NTP, OTA |
-| `src/settings.cpp` | run-time settings: defaults, time windows, JSON (tested on the host) |
-| `src/settings_store.cpp` | settings in flash (NVS), handover to the render loop |
-| `src/web.cpp`, `src/web_page.h` | settings page and its JSON API |
-| `src/updater.cpp` | firmware update from the GitHub releases |
-| `src/icons.cpp` | built-in promo icons |
-| `src/render.cpp` | rnv layout, ticker, status screens |
-| `src/depart_anim.cpp` | departure animation (sprites + timeline) |
-| `src/display.cpp` | panel setup, dimming |
-| `src/main.cpp` | network task (core 0) and render loop (core 1, ~30 fps) |
-| `.github/workflows/firmware.yml` | CI: tests, build, release |
+| `include/config.h` | Haltestelle, Filter, Pins, Helligkeit, Zeiten |
+| `src/parse.cpp` | JSON → Abfahrten, Umlaute (CP437), Countdown-Text (auf dem Host getestet) |
+| `src/vrn_client.cpp` | HTTPS-Anfrage, Streaming-JSON-Parser mit Filter, PSRAM |
+| `src/net.cpp` | WLAN-Watchdog, NTP, OTA |
+| `src/settings.cpp` | Einstellungen zur Laufzeit: Standardwerte, Zeitfenster, JSON (auf dem Host getestet) |
+| `src/settings_store.cpp` | Einstellungen im Flash (NVS), Übergabe an die Render-Schleife |
+| `src/web.cpp`, `src/web_page.h` | Einstellungsseite und ihre JSON-API |
+| `src/updater.cpp` | Firmware-Update aus den GitHub-Releases |
+| `src/icons.cpp` | eingebaute Promo-Symbole |
+| `src/render.cpp` | rnv-Layout, Laufschrift, Statusbildschirme |
+| `src/depart_anim.cpp` | Abfahrtsanimation (Sprites + Zeitablauf) |
+| `src/display.cpp` | Panel-Einrichtung, Dimmen |
+| `src/main.cpp` | Netzwerk-Task (Core 0) und Render-Schleife (Core 1, ~30 fps) |
+| `.github/workflows/firmware.yml` | CI: Tests, Build, Release |
