@@ -37,6 +37,7 @@ struct CustomIcon {
 struct DimWindow {
   TimeWindow win;
   uint8_t value = 0;  // percent
+  int32_t skipDay = 0;  // localDay() on which the skipped occurrence starts, 0 = none
 };
 
 struct Settings {
@@ -60,9 +61,16 @@ void promoFromConfig(const char* text, Promo& p);
 
 bool inWindow(const TimeWindow& w, int minuteOfDay);
 int minuteOfDay(time_t now);  // local time
+int32_t localDay(time_t now);  // local date as days since 1970-01-01
+
+// localDay() on which the occurrence of `w` that covers `minuteOfDay` of
+// `day` started (the day before for the part after midnight)
+int32_t windowStartDay(const TimeWindow& w, int minuteOfDay, int32_t day);
 
 bool isOffTime(const Settings& s, int minuteOfDay);
-uint8_t brightnessAt(const Settings& s, int minuteOfDay);  // percent
+// percent; dim windows skipped for the occurrence that started on `day`
+// don't count (day 0: ignore skips)
+uint8_t brightnessAt(const Settings& s, int minuteOfDay, int32_t day = 0);
 
 // Percent -> panel brightness 0..BRIGHTNESS_MAX
 uint8_t brightnessToPanel(uint8_t percent);

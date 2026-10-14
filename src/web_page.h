@@ -22,6 +22,7 @@ section{background:var(--card);border:1px solid var(--line);border-radius:10px;p
 .hint{color:var(--muted);font-size:13px;margin:4px 0 10px}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
 .row:first-child{border-top:0}
+.row.paused input{opacity:.5}
 label{display:inline-flex;align-items:center;gap:6px}
 input,select,button{font:inherit;color:inherit}
 input[type=text],input[type=time],input[type=number],select{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 7px}
@@ -61,7 +62,7 @@ footer button{background:var(--accent);border-color:var(--accent);color:#fff;pad
 <section>
 <h2>Helligkeit</h2>
 <div class="row"><button id="brightReset" title="auf den Standardwert setzen">Standard</button><input type="range" min="1" max="100" id="bright"><span class="val" id="brightVal"></span></div>
-<div class="hint">Zeitfenster mit eigener Helligkeit (das erste passende gilt):</div>
+<div class="hint">Zeitfenster mit eigener Helligkeit (das erste passende gilt). ⏸ setzt ein Zeitfenster einmal aus (heute bzw. das nächste Mal) und speichert sofort.</div>
 <div id="dim"></div>
 <button class="add" id="addDim">+ Zeitfenster</button>
 </section>
@@ -126,15 +127,28 @@ function iconOptions(sel){
   return s;
 }
 
+function mins(v){const [h,m]=v.split(':');return h*60+ +m}
+function ymd(t){const p=n=>String(n).padStart(2,'0');return t.getFullYear()+'-'+p(t.getMonth()+1)+'-'+p(t.getDate())}
+// start date of the window's current occurrence, or of the next one
+function nextStart(d){
+  const now=new Date(),m=now.getHours()*60+now.getMinutes(),f=mins(d.from),t=mins(d.to);
+  const day=n=>ymd(new Date(now.getFullYear(),now.getMonth(),now.getDate()+n));
+  if(f>t&&m<t)return day(-1);
+  return f<t&&m>=t?day(1):day(0);
+}
 function renderDim(){
   const box=$('dim');box.replaceChildren();
   S.dim.forEach((d,i)=>{
     const val=el('span',{className:'val',textContent:d.pct+' %'});
     const r=el('input',{type:'range',min:1,max:100,value:d.pct,oninput:e=>{d.pct=+e.target.value;val.textContent=d.pct+' %'}});
-    box.append(el('div',{className:'row'},
+    const paused=!!d.skip&&d.from!==d.to&&d.skip===nextStart(d);
+    box.append(el('div',{className:'row'+(paused?' paused':'')},
       el('input',{type:'time',value:time(d.from),onchange:e=>d.from=e.target.value}),'bis',
       el('input',{type:'time',value:time(d.to),onchange:e=>d.to=e.target.value}),r,val,
-      el('button',{className:'del',textContent:'✕',onclick:()=>{S.dim.splice(i,1);renderDim()}})));
+      el('button',{textContent:paused?'▶':'⏸',title:paused?'wieder aktivieren':'einmal aussetzen (heute bzw. das nächste Mal)',
+        onclick:()=>{if(paused)delete d.skip;else d.skip=nextStart(d);save()}}),
+      el('button',{className:'del',textContent:'✕',onclick:()=>{S.dim.splice(i,1);renderDim()}}),
+      paused?el('div',{className:'sub',style:'padding-left:0;color:var(--muted);font-size:13px',textContent:'Einmal ausgesetzt, danach gilt das Zeitfenster wieder.'}):''));
   });
   $('addDim').disabled=S.dim.length>=MAX_DIM;
 }
@@ -235,7 +249,7 @@ async function load(){
   const r=await fetch('/api/settings');S=await r.json();render();
 }
 let msgTimer=0;
-$('save').onclick=async()=>{
+async function save(){
   clearTimeout(msgTimer);
   $('msg').textContent='Speichere ...';
   try{
@@ -244,8 +258,9 @@ $('save').onclick=async()=>{
     S=await r.json();render();
     $('msg').textContent='Gespeichert ✓';
     msgTimer=setTimeout(()=>$('msg').textContent='',3000);
-  }catch(e){$('msg').textContent='Fehler: '+e.message}
-};
+  }catch(e){$('msg').textContent='Fehler: '+e.message;renderDim()}
+}
+$('save').onclick=save;
 
 async function status(){
   try{

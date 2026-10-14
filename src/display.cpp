@@ -41,7 +41,7 @@ static bool asleep = false;
 // Brightness from the settings' dim windows; the default one while the time
 // isn't known.
 static void updateBrightness(const Settings& s, const DisplayStatus& st, time_t now) {
-  uint8_t want = brightnessToPanel(st.timeValid ? brightnessAt(s, minuteOfDay(now)) : s.brightness);
+  uint8_t want = brightnessToPanel(st.timeValid ? brightnessAt(s, minuteOfDay(now), localDay(now)) : s.brightness);
   if (want != currentBrightness) {
     currentBrightness = want;
     matrix->setBrightness8(want);

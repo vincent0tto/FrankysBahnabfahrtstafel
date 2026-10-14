@@ -85,11 +85,47 @@ int minuteOfDay(time_t now) {
   return lt.tm_hour * 60 + lt.tm_min;
 }
 
+// days since 1970-01-01 <-> civil date (proleptic Gregorian)
+static int32_t daysFromCivil(int y, int m, int d) {
+  y -= m <= 2;
+  int era = (y >= 0 ? y : y - 399) / 400;
+  int yoe = y - era * 400;
+  int doy = (153 * (m + (m > 2 ? -3 : 9)) + 2) / 5 + d - 1;
+  int doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+  return era * 146097 + doe - 719468;
+}
+
+static void civilFromDays(int32_t z, int& y, int& m, int& d) {
+  z += 719468;
+  int era = (z >= 0 ? z : z - 146096) / 146097;
+  int doe = z - era * 146097;
+  int yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+  int doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+  int mp = (5 * doy + 2) / 153;
+  d = doy - (153 * mp + 2) / 5 + 1;
+  m = mp < 10 ? mp + 3 : mp - 9;
+  y = yoe + era * 400 + (m <= 2);
+}
+
+int32_t localDay(time_t now) {
+  struct tm lt;
+  localtime_r(&now, &lt);
+  return daysFromCivil(lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday);
+}
+
+int32_t windowStartDay(const TimeWindow& w, int m, int32_t day) {
+  return w.from > w.to && m < w.to ? day - 1 : day;
+}
+
 bool isOffTime(const Settings& s, int m) { return s.offEnabled && inWindow(s.off, m); }
 
-uint8_t brightnessAt(const Settings& s, int m) {
-  for (int i = 0; i < s.nDim; i++)
-    if (inWindow(s.dim[i].win, m)) return s.dim[i].value;
+uint8_t brightnessAt(const Settings& s, int m, int32_t day) {
+  for (int i = 0; i < s.nDim; i++) {
+    const DimWindow& d = s.dim[i];
+    if (!inWindow(d.win, m)) continue;
+    if (day && d.skipDay && d.skipDay == windowStartDay(d.win, m, day)) continue;
+    return d.value;
+  }
   return s.brightness;
 }
 
@@ -114,6 +150,16 @@ static int parseTime(const char* s) {
   char end;
   if (sscanf(s, "%d:%d%c", &h, &m, &end) != 2 || h < 0 || m < 0 || m > 59 || h * 60 + m > 1440) return -1;
   return h * 60 + m;
+}
+
+// "YYYY-MM-DD" -> localDay() value, 0 if missing or malformed
+static int32_t parseDate(const char* s) {
+  if (!s) return 0;
+  int y, m, d;
+  char end;
+  if (sscanf(s, "%d-%d-%d%c", &y, &m, &d, &end) != 3 || y < 2000 || y > 2200 || m < 1 || m > 12 || d < 1 || d > 31)
+    return 0;
+  return daysFromCivil(y, m, d);
 }
 
 static void windowToJson(const TimeWindow& w, JsonObject o) {
@@ -172,6 +218,13 @@ void settingsToJson(const Settings& s, JsonObject out, bool forWeb) {
     JsonObject d = dim.add<JsonObject>();
     windowToJson(s.dim[i].win, d);
     d["pct"] = s.dim[i].value;
+    if (s.dim[i].skipDay) {
+      int y, m, dd;
+      char t[12];
+      civilFromDays(s.dim[i].skipDay, y, m, dd);
+      snprintf(t, sizeof(t), "%04d-%02d-%02d", y, m, dd);
+      d["skip"] = (const char*)t;
+    }
   }
   out["promoShowS"] = s.promoShowS;
   out["promoIntervalS"] = s.promoIntervalS;
@@ -234,6 +287,7 @@ bool settingsFromJson(JsonVariantConst in, Settings& s) {
       DimWindow& w = s.dim[s.nDim];
       if (!windowFromJson(d, w.win)) continue;
       w.value = (uint8_t)clampU(d["pct"], 1, 100, s.brightness);
+      w.skipDay = parseDate(d["skip"]);
       s.nDim++;
     }
   }

@@ -119,6 +119,37 @@ void test_json_roundtrip() {
   TEST_ASSERT_EQUAL_HEX16(0x0F0, t.icons[2].rows[0]);
 }
 
+void test_dim_skip() {
+  settingsDefaults(s);
+  s.dim[0].win = win(22 * 60, 6 * 60);
+  s.dim[0].value = 20;
+  s.dim[1].win = win(0, 12 * 60);
+  s.dim[1].value = 50;
+  s.nDim = 2;
+  int32_t day = 20740;  // 2026-10-14
+  TEST_ASSERT_EQUAL(day - 1, windowStartDay(s.dim[0].win, 3 * 60, day));
+  TEST_ASSERT_EQUAL(day, windowStartDay(s.dim[0].win, 23 * 60, day));
+
+  s.dim[0].skipDay = day;  // tonight's 22:00-06:00 skipped
+  TEST_ASSERT_EQUAL(20, brightnessAt(s, 3 * 60, day));        // last night's still applies
+  TEST_ASSERT_EQUAL(s.brightness, brightnessAt(s, 23 * 60, day));
+  TEST_ASSERT_EQUAL(50, brightnessAt(s, 3 * 60, day + 1));    // the next matching one
+  TEST_ASSERT_EQUAL(20, brightnessAt(s, 23 * 60, day + 1));   // only once
+  TEST_ASSERT_EQUAL(20, brightnessAt(s, 23 * 60, 0));         // day unknown: no skips
+
+  JsonDocument doc;
+  settingsToJson(s, doc.to<JsonObject>(), false);
+  TEST_ASSERT_EQUAL_STRING("2026-10-14", doc["dim"][0]["skip"]);
+  TEST_ASSERT_FALSE(doc["dim"][1]["skip"].is<const char*>());
+  TEST_ASSERT_TRUE(settingsFromJson(doc.as<JsonVariantConst>(), t));
+  TEST_ASSERT_EQUAL(day, t.dim[0].skipDay);
+  TEST_ASSERT_EQUAL(0, t.dim[1].skipDay);
+
+  deserializeJson(doc, "{\"dim\":[{\"from\":\"1:00\",\"to\":\"2:00\",\"skip\":\"2026-13-01\"}]}");
+  TEST_ASSERT_TRUE(settingsFromJson(doc.as<JsonVariantConst>(), t));
+  TEST_ASSERT_EQUAL(0, t.dim[0].skipDay);
+}
+
 void test_json_clamps_and_rejects() {
   JsonDocument doc;
   deserializeJson(doc,
@@ -205,6 +236,7 @@ int main() {
   RUN_TEST(test_defaults);
   RUN_TEST(test_promo_from_config);
   RUN_TEST(test_json_roundtrip);
+  RUN_TEST(test_dim_skip);
   RUN_TEST(test_json_clamps_and_rejects);
   RUN_TEST(test_edited_preset);
   RUN_TEST(test_old_brightness_dropped);
