@@ -30,7 +30,7 @@ Schriesheim Bahnhof                     10:42
   wenn er abfährt.
 - **Nachtruhe:** nachts schaltet sich die Tafel ab, am späten Abend wird sie dunkler.
 - **Leicht zu ändern:** Nachrichten, Symbole, Helligkeit und Zeiten lassen sich von jedem
-  Handy im WLAN des Cafés ändern, ganz ohne Kabel oder Computer.
+  Gerät im Mitarbeiter-WLAN des Cafés ändern, ganz ohne Kabel oder Computer.
 - **Kümmert sich um sich selbst:** nach WLAN-Problemen verbindet sie sich neu, und Updates
   installiert sie von allein.
 

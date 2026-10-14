@@ -7,6 +7,9 @@ name: firmware
 on:
   push:
     branches: [main]
+    paths-ignore:  # pushes that only change docs don't make a new release
+      - '**.md'
+      - 'docs/**'
   workflow_dispatch:
 
 concurrency:
