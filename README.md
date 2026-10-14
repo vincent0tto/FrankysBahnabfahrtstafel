@@ -92,7 +92,7 @@ Eine Registrierung ist nicht nötig. Wer möchte, kann sich unter
 - Flachbandkabel von Panel 1 **OUT** zu Panel 2 **IN**, dann von Panel 2 OUT zu Panel 3 IN.
   Von vorne gesehen ist Panel 1 das **linke**. Wenn das Bild in der falschen Reihenfolge
   erscheint, die Panels umstecken.
-- **Strom:** ein 5-V-Netzteil mit mindestens 10 A (z. B. MeanWell LRS‑75‑5) an den
+- **Strom:** ein 5-V-Netzteil mit mindestens 10 A (verbaut: MeanWell LRS‑100‑5, 18 A) an den
   VH4-Stromanschluss jedes Panels. GND des Netzteils mit GND des ESP32 verbinden. Die Panels
   nicht über den ESP32 versorgen. Der ESP32 selbst kann über USB oder den 5-V-Pin desselben
   Netzteils laufen.
