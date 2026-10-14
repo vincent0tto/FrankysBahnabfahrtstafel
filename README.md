@@ -30,7 +30,7 @@ Schriesheim Bahnhof                     10:42
   wenn er abfährt.
 - **Nachtruhe:** nachts schaltet sich die Tafel ab, am späten Abend wird sie dunkler.
 - **Leicht zu ändern:** Nachrichten, Symbole, Helligkeit und Zeiten lassen sich von jedem
-  Gerät im Mitarbeiter-WLAN des Cafés ändern, ganz ohne Kabel oder Computer.
+  Handy, Tablet oder Laptop im Mitarbeiter-WLAN des Cafés ändern, ganz ohne Kabel.
 - **Kümmert sich um sich selbst:** nach WLAN-Problemen verbindet sie sich neu, und Updates
   installiert sie von allein.
 
@@ -66,8 +66,9 @@ GraphQL-Data-Hub der rnv bräuchte einen API-Key, den man per E-Mail an opendata
 beantragt. Dieses Projekt braucht ihn nicht.
 
 Lizenz: *Datenlizenz Deutschland – Namensnennung*, Quelle **Verkehrsverbund Rhein‑Neckar (VRN)**.
-Die Bedingungen des VRN sehen eine kostenlose Registrierung unter <https://opendata.vrn.de> vor.
-Der Endpunkt funktioniert auch ohne, aber registrieren gehört sich.
+Es gelten die [Nutzungsbedingungen](https://opendata.vrn.de/nutzungsbedingungen) des VRN.
+Eine Registrierung ist nicht nötig. Wer möchte, kann sich unter
+<https://opendata.vrn.de/user/register> kostenlos registrieren; einen API-Key gibt es dafür nicht.
 
 ### Eine andere Haltestelle?
 
