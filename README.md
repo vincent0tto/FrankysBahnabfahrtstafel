@@ -1,8 +1,16 @@
-# Frankys Bahnabfahrtstafel
+# Franky's Bahnabfahrtstafel
 
-An rnv-style departure board (amber LED look) for **Schriesheim, Bahnhof**, built from an
-ESP32-S3-DEV-KIT-N8R8 and three Waveshare 22100 panels (64×64, P3, HUB75E, 1/32 scan)
-mounted side by side, which gives 192×64 px.
+A small departure board for **[Franky's](https://frankys-schriesheim.de)**, the café right
+next to the station in Schriesheim. It shows when the next trams and buses leave
+**Schriesheim Bahnhof**, so you can finish your coffee and still catch your train.
+
+- 🌐 Website: <https://frankys-schriesheim.de>
+- 📸 Instagram: [@frankys_by_coffeetoego](https://www.instagram.com/frankys_by_coffeetoego/)
+
+## What it does
+
+The board looks like the amber LED displays at the rnv stops and shows the next departures
+with live times, just like at the platform:
 
 ```
 Schriesheim Bahnhof                     10:42
@@ -10,8 +18,31 @@ Schriesheim Bahnhof                     10:42
  5  Heidelberg                         sofort
  5  Weinheim                            3 min
 628 Wilhelmsfeld Autohalle              8 min
- 5  Weinheim Alter OEG-Bahnhof          12 min   <- or the scrolling disruption text
+ 5  Weinheim Alter OEG-Bahnhof          12 min
 ```
+
+- **Live times:** delays are already included, cancelled trips show `fällt aus`, and
+  disruption notices scroll along the bottom line.
+- **A little extra from the café:** now and then a line shows a message from Franky's,
+  for example the Instagram handle or what's on offer, with a small pixel icon.
+- **Tiny trams:** every so often a little tram or bus drives out of its row when it departs.
+- **Night rest:** at night the board switches itself off and dims in the late evening.
+- **Easy to change:** messages, icons, brightness and times can be changed from any phone in
+  the café's WiFi, no cable or computer needed.
+- **Looks after itself:** it reconnects after WiFi problems and installs updates on its own.
+
+The departure data comes from the Verkehrsverbund Rhein‑Neckar (VRN).
+
+---
+
+# Technical details
+
+Everything below is for whoever builds, repairs or develops the board.
+
+## Hardware
+
+An ESP32-S3-DEV-KIT-N8R8 drives three Waveshare 22100 panels (64×64, P3, HUB75E, 1/32 scan)
+mounted side by side, which gives 192×64 px.
 
 Long destinations scroll (pause, slide to the end, pause, jump back).
 Fonts and layout are set at the top of `src/render.cpp`. To preview a layout without
@@ -137,7 +168,7 @@ pio test -e native
 These tests need a host compiler. If you haven't accepted the Xcode license yet, run
 `sudo xcodebuild -license` once first.
 
-## What the display shows
+## What the display shows (details)
 
 | Display | Meaning |
 |---|---|
