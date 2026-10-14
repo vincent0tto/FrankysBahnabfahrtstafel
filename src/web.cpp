@@ -6,6 +6,7 @@
 #include <WiFi.h>
 
 #include "config.h"
+#include "credentials.h"
 #include "net.h"
 #include "psram_alloc.h"
 #include "settings_store.h"
@@ -69,6 +70,7 @@ static void handleStatus() {
   doc["dataAgeS"] = lastFetch && timeValid() ? (long)(now - lastFetch) : -1;
   doc["off"] = timeValid() && isOffTime(settingsNet(), minuteOfDay(now));
   doc["rssi"] = WiFi.RSSI();
+  doc["ssid"] = WiFi.SSID();
   doc["heap"] = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
   doc["psram"] = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
   sendJson(doc);
@@ -81,6 +83,29 @@ static void handleRestart() {
   server.send(200, "text/plain", "ok");
   restartAtMs = millis() + 500;
   if (!restartAtMs) restartAtMs = 1;
+}
+
+// New WiFi, used after the restart. A wrong one does no harm: the board
+// falls back to the previous one (src/net.cpp). The password is never sent back.
+static void handleWifi() {
+  JsonDocument doc(&spiRam);
+  const String& body = server.arg("plain");
+  if (body.length() > 512 || deserializeJson(doc, body)) {
+    server.send(400, "text/plain", "ungültige Daten");
+    return;
+  }
+  const char* ssid = doc["ssid"] | "";
+  const char* pass = doc["pass"] | "";
+  size_t ns = strlen(ssid), np = strlen(pass);
+  if (ns < 1 || ns > 32 || (np > 0 && np < 8) || np > 63) {
+    server.send(400, "text/plain", "WLAN-Name 1–32 Zeichen, Passwort leer oder 8–63 Zeichen");
+    return;
+  }
+  if (!credentialsSetWifi(ssid, pass)) {
+    server.send(500, "text/plain", "Speichern im Flash fehlgeschlagen");
+    return;
+  }
+  handleRestart();
 }
 
 // Browsers and iOS also ask for the fixed paths on their own, so all point here.
@@ -99,6 +124,7 @@ void webBegin() {
   server.on("/api/settings", HTTP_POST, handleSave);
   server.on("/api/status", HTTP_GET, handleStatus);
   server.on("/api/restart", HTTP_POST, handleRestart);
+  server.on("/api/wifi", HTTP_POST, handleWifi);
   server.onNotFound([] { server.send(404, "text/plain", "not found"); });
   server.begin();
   MDNS.addService("http", "tcp", 80);  // mDNS itself is started by ArduinoOTA

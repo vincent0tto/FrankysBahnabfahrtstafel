@@ -57,8 +57,8 @@
 // ---- Firmware update from GitHub ------------------------------------------
 // After each start the board asks GitHub for the newest release (built by
 // .github/workflows/firmware.yml on every push to main) and installs it if
-// it is newer than the running firmware. The repo is private, so this needs
-// UPDATE_TOKEN in secrets.h.
+// it is newer than the running firmware. Repo and releases are public, the
+// firmware there contains no passwords (src/credentials.cpp).
 #define AUTO_UPDATE   1   // 0 = off
 #define GITHUB_REPO   "vincent0tto/FrankysBahnabfahrtstafel"
 #define UPDATE_ASSET  "firmware.bin"

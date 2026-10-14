@@ -1,6 +1,6 @@
 #pragma once
 // The settings page served by src/web.cpp at "/". Talks to /api/settings
-// /api/status and /api/restart (JSON, format: settingsToJson in src/settings.cpp).
+// /api/status, /api/restart and /api/wifi (JSON, format: settingsToJson in src/settings.cpp).
 #include <pgmspace.h>
 
 static const char WEB_PAGE[] PROGMEM = R"rawliteral(<!doctype html>
@@ -90,6 +90,15 @@ footer button{background:var(--accent);border-color:var(--accent);color:#fff;pad
 <button id="editClear">Leeren</button><button id="editDone">Fertig</button></div>
 </div>
 <button class="add" id="addIcon">+ Eigenes Icon</button>
+</section>
+
+<section>
+<h2>WLAN</h2>
+<div class="hint">Verbunden mit <b id="ssidNow">?</b>. Nach dem Speichern startet die Tafel neu. Klappt die Verbindung nicht (z. B. Tippfehler), nimmt sie nach etwa einer Minute wieder das bisherige WLAN.</div>
+<div class="row"><input type="text" id="ssid" maxlength="32" placeholder="WLAN-Name" autocomplete="off" autocapitalize="off">
+<input type="text" id="pass" maxlength="63" placeholder="Passwort" autocomplete="off" autocapitalize="off" spellcheck="false">
+<button id="wifiSave">WLAN speichern</button></div>
+<span id="wifiMsg" class="hint"></span>
 </section>
 
 <section>
@@ -270,21 +279,36 @@ async function status(){
     const s=await (await fetch('/api/status')).json();
     const age=s.dataAgeS<0?'noch keine Daten':'Daten von vor '+(s.dataAgeS<120?s.dataAgeS+' s':Math.round(s.dataAgeS/60)+' min');
     const up=s.uptimeS<7200?Math.round(s.uptimeS/60)+' min':Math.round(s.uptimeS/3600)+' h';
+    $('ssidNow').textContent=s.ssid;
     $('status').textContent=`Firmware ${s.build} · läuft seit ${up} · ${age} · ${s.off?'Ruhezeit':'Panel an'} · WLAN ${s.rssi} dBm`;
   }catch(e){$('status').textContent='Tafel nicht erreichbar'}
+}
+// waits for the board to come back after a restart, then reloads the page
+async function afterRestart(msg){
+  const t0=Date.now();
+  await new Promise(r=>setTimeout(r,5000));
+  for(;;){
+    try{const s=await (await fetch('/api/status',{cache:'no-store'})).json();if(s.uptimeS<120){location.reload();return}}catch(e){}
+    if(Date.now()-t0>120000){msg.textContent='Tafel meldet sich nicht, bitte Seite neu laden.';return}
+    await new Promise(r=>setTimeout(r,2000));
+  }
 }
 $('restart').onclick=async()=>{
   if(!confirm('Tafel jetzt neu starten? Nicht gespeicherte Änderungen gehen verloren.'))return;
   $('restart').disabled=true;$('restartMsg').textContent='Starte neu ...';
   try{const r=await fetch('/api/restart',{method:'POST'});if(!r.ok)throw new Error(await r.text())}
   catch(e){$('restartMsg').textContent='Fehler: '+e.message;$('restart').disabled=false;return}
-  const t0=Date.now();
-  await new Promise(r=>setTimeout(r,5000));
-  for(;;){
-    try{const s=await (await fetch('/api/status',{cache:'no-store'})).json();if(s.uptimeS<120){location.reload();return}}catch(e){}
-    if(Date.now()-t0>90000){$('restartMsg').textContent='Tafel meldet sich nicht, bitte Seite neu laden.';return}
-    await new Promise(r=>setTimeout(r,2000));
-  }
+  afterRestart($('restartMsg'));
+};
+$('wifiSave').onclick=async()=>{
+  const ssid=$('ssid').value.trim(),pass=$('pass').value;
+  if(!ssid){$('wifiMsg').textContent='Bitte WLAN-Namen eingeben.';return}
+  if(!confirm('Tafel mit „'+ssid+'“ verbinden und neu starten? Nicht gespeicherte Änderungen gehen verloren.'))return;
+  $('wifiSave').disabled=true;$('wifiMsg').textContent='Speichere und starte neu ...';
+  try{const r=await fetch('/api/wifi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ssid,pass})});if(!r.ok)throw new Error(await r.text())}
+  catch(e){$('wifiMsg').textContent='Fehler: '+e.message;$('wifiSave').disabled=false;return}
+  $('wifiMsg').textContent='Gespeichert, Tafel verbindet sich neu. Ist das neue WLAN ein anderes, ist die Seite erst wieder erreichbar, wenn dieses Gerät auch darin ist.';
+  afterRestart($('wifiMsg'));
 };
 load().catch(e=>$('msg').textContent='Laden fehlgeschlagen: '+e.message);
 status();setInterval(status,15000);

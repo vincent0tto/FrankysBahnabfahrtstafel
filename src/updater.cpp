@@ -10,13 +10,9 @@
 #include "certs.h"
 #include "config.h"
 #include "psram_alloc.h"
-#include "secrets.h"
 
 #ifndef FW_BUILD
 #define FW_BUILD 0
-#endif
-#ifndef UPDATE_TOKEN
-#define UPDATE_TOKEN ""  // older secrets.h without it: no updates
 #endif
 
 static const uint32_t UPDATE_TIMEOUT_MS = 15000;
@@ -39,14 +35,13 @@ static void setupHttp(HTTPClient& http) {
   http.setUserAgent("FrankysBahnabfahrtstafel/1.0 (ESP32)");  // GitHub requires one
 }
 
-// Newest release: its build number and the API URL of its firmware asset.
+// Newest release: its build number and the download URL of its firmware.
 static bool latestRelease(int& build, String& assetUrl) {
   WiFiClientSecure client;
   setupClient(client);
   HTTPClient http;
   setupHttp(http);
   if (!http.begin(client, "https://api.github.com/repos/" GITHUB_REPO "/releases/latest")) return false;
-  http.addHeader("Authorization", "Bearer " UPDATE_TOKEN);
   http.addHeader("Accept", "application/vnd.github+json");
   int code = http.GET();
   if (code != HTTP_CODE_OK) {
@@ -57,7 +52,7 @@ static bool latestRelease(int& build, String& assetUrl) {
   JsonDocument filter;
   filter["tag_name"] = true;
   filter["assets"][0]["name"] = true;
-  filter["assets"][0]["url"] = true;
+  filter["assets"][0]["browser_download_url"] = true;
   JsonDocument doc(&spiRam);
   DeserializationError err = deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));
   client.stop();
@@ -73,38 +68,19 @@ static bool latestRelease(int& build, String& assetUrl) {
   }
   build = atoi(tag + 6);
   for (JsonObject a : doc["assets"].as<JsonArray>())
-    if (strcmp(a["name"] | "", UPDATE_ASSET) == 0) assetUrl = a["url"].as<const char*>();
+    if (strcmp(a["name"] | "", UPDATE_ASSET) == 0) assetUrl = a["browser_download_url"].as<const char*>();
   if (assetUrl.isEmpty()) Serial.printf("[update] %s has no " UPDATE_ASSET "\n", tag);
   return !assetUrl.isEmpty();
 }
 
-// The asset API answers with a redirect to a short-lived download link that
-// must be fetched without the token.
-static bool downloadLink(const String& assetUrl, String& link) {
+// The download URL redirects to a short-lived link on another host.
+static bool install(const String& url) {
   WiFiClientSecure client;
   setupClient(client);
   HTTPClient http;
   setupHttp(http);
-  http.setFollowRedirects(HTTPC_DISABLE_FOLLOW_REDIRECTS);
-  const char* keep[] = {"Location"};
-  http.collectHeaders(keep, 1);
-  if (!http.begin(client, assetUrl)) return false;
-  http.addHeader("Authorization", "Bearer " UPDATE_TOKEN);
-  http.addHeader("Accept", "application/octet-stream");
-  int code = http.GET();
-  link = http.header("Location");
-  client.stop();
-  http.end();
-  if (link.isEmpty()) Serial.printf("[update] asset: HTTP %d without redirect\n", code);
-  return !link.isEmpty();
-}
-
-static bool install(const String& link) {
-  WiFiClientSecure client;
-  setupClient(client);
-  HTTPClient http;
-  setupHttp(http);
-  if (!http.begin(client, link)) return false;
+  http.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
+  if (!http.begin(client, url)) return false;
   int code = http.GET();
   int len = http.getSize();
   if (code != HTTP_CODE_OK || len <= 0) {
@@ -150,10 +126,6 @@ static bool install(const String& link) {
 
 void updateCheckAndInstall() {
 #if AUTO_UPDATE
-  if (!UPDATE_TOKEN[0]) {
-    Serial.println("[update] no UPDATE_TOKEN in secrets.h, skipped");
-    return;
-  }
   int build = 0;
   String assetUrl;
   if (!latestRelease(build, assetUrl)) return;
@@ -163,9 +135,8 @@ void updateCheckAndInstall() {
   }
   Serial.printf("[update] build-%d > %d, installing\n", build, FW_BUILD);
   running = true;
-  String link;
   esp_task_wdt_reset();
-  if (downloadLink(assetUrl, link) && install(link)) {
+  if (install(assetUrl)) {
     Serial.println("[update] done, restarting");
     delay(200);
     ESP.restart();

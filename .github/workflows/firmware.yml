@@ -1,7 +1,7 @@
 # Builds the firmware on every push to main and publishes it as release
 # "build-<number of commits>". The board installs it after its next start
-# (src/updater.cpp). Needs these repository secrets (Settings -> Secrets and
-# variables -> Actions): WIFI_SSID, WIFI_PASSWORD, OTA_PASSWORD, UPDATE_TOKEN.
+# (src/updater.cpp). Built without include/secrets.h: the releases are public,
+# the board keeps its passwords in flash (src/credentials.cpp).
 name: firmware
 
 on:
@@ -37,24 +37,6 @@ jobs:
 
       - name: Install PlatformIO
         run: pip install platformio
-
-      - name: Write secrets.h
-        env:
-          WIFI_SSID: ${{ secrets.WIFI_SSID }}
-          WIFI_PASSWORD: ${{ secrets.WIFI_PASSWORD }}
-          OTA_PASSWORD: ${{ secrets.OTA_PASSWORD }}
-          UPDATE_TOKEN: ${{ secrets.UPDATE_TOKEN }}
-        run: |
-          for v in WIFI_SSID WIFI_PASSWORD OTA_PASSWORD UPDATE_TOKEN; do
-            if [ -z "${!v}" ]; then echo "::error::repository secret $v is missing"; exit 1; fi
-          done
-          python3 - <<'PY'
-          import json, os
-          lines = ["#pragma once"]
-          for v in ["WIFI_SSID", "WIFI_PASSWORD", "OTA_PASSWORD", "UPDATE_TOKEN"]:
-              lines.append("#define %s %s" % (v, json.dumps(os.environ[v])))
-          open("include/secrets.h", "w").write("\n".join(lines) + "\n")
-          PY
 
       - name: Tests
         run: pio test -e native

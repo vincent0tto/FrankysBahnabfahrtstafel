@@ -68,11 +68,17 @@ without one, but registering is the polite thing to do.
 
 ```bash
 brew install platformio              # once
-cp include/secrets.h.example include/secrets.h   # then fill in WLAN SSID/password, UPDATE_TOKEN
+cp include/secrets.h.example include/secrets.h   # then fill in WLAN SSID/password, OTA password
 pio run -e esp32s3 -t upload -t monitor
 ```
 
 Use the **UART** USB-C port (CH343) for flashing and for the serial log.
+
+The firmware itself holds no passwords. On its first start the board copies the values from
+`secrets.h` into its flash (NVS, `src/credentials.cpp`) and uses them from there, also after
+updates from GitHub. It only takes them again when `secrets.h` changes. Later the WiFi can be
+changed on the settings page; if the board can't connect to a new WiFi, it falls back to the
+previous one. If the old WiFi is gone too, flash once over USB with an updated `secrets.h`.
 
 Later updates can go over WiFi:
 
@@ -89,15 +95,8 @@ After every start, including the daily reboot at 04:00 during the off time, the 
 GitHub for the newest release. If it is newer than the running firmware, the board installs it
 and restarts. A firmware built locally from the same commit counts as up to date.
 
-Set this up once:
-
-1. Create a fine-grained token at <https://github.com/settings/personal-access-tokens>. Give it
-   access to **only this repository** and the permission **Contents: read-only**. Choose an
-   expiry date you will notice; when the token expires, updates stop and nothing else breaks.
-2. Put the token into `include/secrets.h` as `UPDATE_TOKEN` and flash once over USB or OTA.
-3. In the repo, go to *Settings → Secrets and variables → Actions* and add `WIFI_SSID`,
-   `WIFI_PASSWORD`, `OTA_PASSWORD` and `UPDATE_TOKEN`. The CI builds `secrets.h` from these
-   secrets. The repo is private, so the firmware in the releases is private too.
+The repo and its releases are public. The CI builds without `secrets.h`, so the released
+firmware contains no passwords, and the board needs no token to download it.
 
 The serial log shows `[update] build 12 is up to date` or `[update] build-13 > 12, installing`.
 While an update installs, the panel shows "Software-Update ...". `AUTO_UPDATE 0` in
@@ -121,6 +120,7 @@ WiFi. There is no login. On the page you can set:
   with an icon, an optional right column and an optional time window.
 - **Icons**: the built-in icons (Instagram, Grilled Cheese, Flat White, Kuchen, Bier) plus up
   to 8 icons of your own, drawn in a 12×9 pixel editor.
+- **WLAN**: name and password of the WiFi, used after a restart (see above).
 
 The board stores the settings in flash (NVS), a partition that firmware updates (from GitHub,
 OTA or a normal USB upload) don't touch, so they survive restarts and updates. Only erasing the
