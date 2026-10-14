@@ -9,6 +9,9 @@ static const char WEB_PAGE[] PROGMEM = R"rawliteral(<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Abfahrtstafel</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Abfahrtstafel">
 <style>
 :root{--bg:#f6f4f1;--card:#fff;--fg:#222;--muted:#777;--line:#e2ddd6;--accent:#d9730d;--led:#ff7800;--ledoff:#2a2420;--panel:#120f0c}
 @media (prefers-color-scheme:dark){:root{--bg:#151311;--card:#1f1c19;--fg:#eee;--muted:#9a948c;--line:#38332d;--accent:#ff8a1f}}

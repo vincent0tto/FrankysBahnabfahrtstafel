@@ -10,6 +10,7 @@
 #include "psram_alloc.h"
 #include "settings_store.h"
 #include "updater.h"
+#include "web_icon.h"
 #include "web_page.h"
 
 static const size_t MAX_BODY = 16384;  // a full settings JSON is ~5 KB
@@ -82,9 +83,18 @@ static void handleRestart() {
   if (!restartAtMs) restartAtMs = 1;
 }
 
+// Browsers and iOS also ask for the fixed paths on their own, so all point here.
+static void sendIcon() {
+  server.sendHeader("Cache-Control", "max-age=604800");
+  server.send_P(200, "image/png", (PGM_P)WEB_ICON_PNG, sizeof(WEB_ICON_PNG));
+}
+
 void webBegin() {
   if (started) return;
   server.on("/", HTTP_GET, [] { server.send_P(200, "text/html; charset=utf-8", WEB_PAGE); });
+  for (const char* path : {"/favicon.png", "/favicon.ico", "/apple-touch-icon.png", "/apple-touch-icon-precomposed.png"}) {
+    server.on(path, HTTP_GET, sendIcon);
+  }
   server.on("/api/settings", HTTP_GET, sendSettings);
   server.on("/api/settings", HTTP_POST, handleSave);
   server.on("/api/status", HTTP_GET, handleStatus);
