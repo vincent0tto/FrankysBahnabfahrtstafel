@@ -199,7 +199,7 @@ vorher einmal `sudo xcodebuild -license` aus.
 
 - **WLAN weg:** automatisches Neuverbinden; nach 30 s wird der WLAN-Stack neu gestartet, nach
   15 min startet die Tafel neu. Solange zählt sie mit den zuletzt empfangenen Daten weiter herunter.
-- **API-Fehler:** Sie wechselt zum Ausweich-Host und wartet immer länger: 30 s → 60 → 120 → 300 s.
+- **API-Fehler:** Sie wechselt zum Ausweich-Host; klappt beides nicht, versucht sie es nach 30 s erneut.
   Die letzten guten Daten bleiben auf der Anzeige.
 - **Watchdog** (90 s) auf beiden Tasks, Neustart bei knappem internem RAM und optional ein
   täglicher Neustart um 04:00 (`DAILY_REBOOT_HOUR`), bei dem sie auch nach einem

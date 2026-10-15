@@ -42,7 +42,7 @@
 #define API_LIMIT         20        // events requested per call
 
 #define POLL_INTERVAL_S        30   // normal refresh
-#define POLL_BACKOFF_MAX_S    300   // max. wait after repeated errors
+#define POLL_RETRY_S           30   // wait after a failed fetch (both hosts), no backoff
 #define HTTP_TIMEOUT_MS     10000
 
 // ---- Robustness -----------------------------------------------------------

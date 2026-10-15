@@ -3,7 +3,7 @@
 // Data: Verkehrsverbund Rhein-Neckar (VRN), Datenlizenz Deutschland – Namensnennung.
 //
 // Core 0: netTask   – WiFi, NTP, OTA, settings web page, firmware update
-//                     check after start, API polling with backoff
+//                     check after start, API polling
 // Core 1: loop()    – renders ~30 fps from the last good data
 
 #include <Arduino.h>
@@ -52,7 +52,6 @@ static void netTask(void*) {
 
   static Board fresh;
   uint32_t nextFetchMs = 0;
-  uint32_t backoffS = POLL_INTERVAL_S;
   uint32_t failures = 0;
   bool updateChecked = false;
 
@@ -83,17 +82,15 @@ static void netTask(void*) {
         xSemaphoreGive(boardMutex);
         webNoteFetch(fresh.fetchedAt);
         failures = 0;
-        backoffS = POLL_INTERVAL_S;
         Log.printf("[vrn] %d departures, heap %u, psram %u\n", fresh.n,
                    (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
                    (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
       } else {
         failures++;
-        backoffS = min<uint32_t>(backoffS * 2, POLL_BACKOFF_MAX_S);
         Log.printf("[vrn] %s (#%u), next try in %us\n", fetchResultName(r), (unsigned)failures,
-                   (unsigned)backoffS);
+                   (unsigned)POLL_RETRY_S);
       }
-      nextFetchMs = millis() + (r == FetchResult::Ok ? POLL_INTERVAL_S : backoffS) * 1000UL;
+      nextFetchMs = millis() + (r == FetchResult::Ok ? POLL_INTERVAL_S : POLL_RETRY_S) * 1000UL;
     }
 
     rebootChecks();
