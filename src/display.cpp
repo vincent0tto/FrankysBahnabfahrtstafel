@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include "config.h"
+#include "log.h"
 
 static MatrixPanel_I2S_DMA* matrix = nullptr;
 static U8G2_FOR_ADAFRUIT_GFX u8;
@@ -25,7 +26,7 @@ bool displayBegin() {
   cfg.min_refresh_rate = PANEL_MIN_REFRESH_HZ;
   matrix = new MatrixPanel_I2S_DMA(cfg);
   if (!matrix->begin()) {
-    Serial.println("[display] begin() failed (not enough DMA memory?)");
+    Log.println("[display] begin() failed (not enough DMA memory?)");
     return false;
   }
   amber = matrix->color565(COLOR_R, COLOR_G, COLOR_B);
@@ -55,7 +56,7 @@ bool displayRender(const Board& b, const Settings& s, const DisplayStatus& st, t
   bool off = st.timeValid && isOffTime(s, minuteOfDay(now));
   if (off) {
     if (!asleep) {
-      Serial.println("[display] off time, panel dark");
+      Log.println("[display] off time, panel dark");
       for (int i = 0; i < 2; i++) {
         matrix->clearScreen();
         matrix->flipDMABuffer();
@@ -67,7 +68,7 @@ bool displayRender(const Board& b, const Settings& s, const DisplayStatus& st, t
     return true;
   }
   if (asleep) {
-    Serial.println("[display] off time over");
+    Log.println("[display] off time over");
     asleep = false;
   }
   updateBrightness(s, st, now);

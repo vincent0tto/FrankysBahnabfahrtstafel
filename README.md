@@ -159,6 +159,9 @@ selben WLAN öffnen. Es gibt kein Login. Auf der Seite lässt sich einstellen:
 - **Icons**: die eingebauten Symbole (Instagram, Grilled Cheese, Flat White, Kuchen, Bier) und
   bis zu 8 eigene, gezeichnet in einem 12×9-Pixel-Editor.
 - **WLAN**: Name und Passwort des WLANs, gilt nach einem Neustart (siehe oben).
+- **Log**: die letzten Meldungen der Tafel (dieselben wie am USB-Anschluss, mit Uhrzeit), wird
+  alle 10 Sekunden ergänzt, solange es angezeigt wird und der Tab im Vordergrund ist. Die Tafel hält etwa 32 KB davon im PSRAM
+  (`LOG_BUFFER_BYTES`); nach einem Neustart beginnt es von vorn.
 
 Die Tafel speichert die Einstellungen im Flash (NVS), in einer Partition, die Firmware-Updates
 (von GitHub, per OTA oder ein normaler USB-Upload) nicht anrühren. So überstehen sie Neustarts

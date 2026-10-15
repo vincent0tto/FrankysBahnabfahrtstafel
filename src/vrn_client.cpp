@@ -8,6 +8,7 @@
 
 #include "certs.h"
 #include "config.h"
+#include "log.h"
 #include "parse.h"
 #include "psram_alloc.h"
 
@@ -46,12 +47,12 @@ static FetchResult fetchFrom(const char* baseUrl, Board& out) {
   if (code <= 0) {
     char err[96] = "";
     client.lastError(err, sizeof(err));
-    Serial.printf("[vrn] %s: %s (tls: %s)\n", baseUrl, http.errorToString(code).c_str(), err);
+    Log.printf("[vrn] %s: %s (tls: %s)\n", baseUrl, http.errorToString(code).c_str(), err);
     http.end();
     return FetchResult::NetworkError;
   }
   if (code != HTTP_CODE_OK) {
-    Serial.printf("[vrn] %s: HTTP %d\n", baseUrl, code);
+    Log.printf("[vrn] %s: HTTP %d\n", baseUrl, code);
     http.end();
     return FetchResult::HttpError;
   }
@@ -65,7 +66,7 @@ static FetchResult fetchFrom(const char* baseUrl, Board& out) {
   client.stop();
   http.end();
   if (err) {
-    Serial.printf("[vrn] %s: JSON %s\n", baseUrl, err.c_str());
+    Log.printf("[vrn] %s: JSON %s\n", baseUrl, err.c_str());
     return FetchResult::ParseError;
   }
 
@@ -78,7 +79,7 @@ static FetchResult fetchFrom(const char* baseUrl, Board& out) {
   static Board tmp;  // only used from the network task
   time_t now = time(nullptr);
   if (!parseDepartures(doc.as<JsonVariantConst>(), now, opt, tmp)) {
-    Serial.printf("[vrn] %s: response without stopEvents\n", baseUrl);
+    Log.printf("[vrn] %s: response without stopEvents\n", baseUrl);
     return FetchResult::ParseError;
   }
   tmp.fetchedAt = now;

@@ -3,6 +3,8 @@
 #include <Arduino.h>
 #include <Preferences.h>
 
+#include "log.h"
+
 #if __has_include("secrets.h")
 #include "secrets.h"
 #endif
@@ -63,11 +65,11 @@ void credentialsBegin() {
       ok = prefs.putUInt("seed", seed) == sizeof(seed);
       prefs.end();
     }
-    Serial.printf("[cred] taken from secrets.h%s\n", ok ? "" : ", storing FAILED");
+    Log.printf("[cred] taken from secrets.h%s\n", ok ? "" : ", storing FAILED");
   }
 #endif
 
-  Serial.printf("[cred] wifi \"%s\", previous \"%s\"\n", ssid.c_str(), prevSsid.c_str());
+  Log.printf("[cred] wifi \"%s\", previous \"%s\"\n", ssid.c_str(), prevSsid.c_str());
 }
 
 const char* credentialsSsid(bool previous) { return (previous ? prevSsid : ssid).c_str(); }
@@ -77,7 +79,7 @@ const char* credentialsOta() { return ota.c_str(); }
 void credentialsSwap() {
   std::swap(ssid, prevSsid);
   std::swap(pass, prevPass);
-  Serial.printf("[cred] previous wifi \"%s\" works, made current%s\n", ssid.c_str(), store() ? "" : ", storing FAILED");
+  Log.printf("[cred] previous wifi \"%s\" works, made current%s\n", ssid.c_str(), store() ? "" : ", storing FAILED");
 }
 
 bool credentialsSetWifi(const char* newSsid, const char* newPass) {
@@ -88,6 +90,6 @@ bool credentialsSetWifi(const char* newSsid, const char* newPass) {
   ssid = newSsid;
   pass = newPass;
   bool ok = store();
-  Serial.printf("[cred] wifi \"%s\" %s\n", ssid.c_str(), ok ? "saved" : "saving FAILED");
+  Log.printf("[cred] wifi \"%s\" %s\n", ssid.c_str(), ok ? "saved" : "saving FAILED");
   return ok;
 }

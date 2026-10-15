@@ -7,6 +7,7 @@
 
 #include "config.h"
 #include "credentials.h"
+#include "log.h"
 #include "net.h"
 #include "psram_alloc.h"
 #include "settings_store.h"
@@ -76,6 +77,24 @@ static void handleStatus() {
   sendJson(doc);
 }
 
+// Log text after position `since` (see src/log.h). The page keeps polling
+// with X-Log-Next; X-Log-Boot changes after a restart.
+static void handleLog() {
+  char* buf = (char*)heap_caps_malloc(LOG_BUFFER_BYTES, MALLOC_CAP_SPIRAM);
+  if (!buf) {
+    server.send(500, "text/plain", "out of memory");
+    return;
+  }
+  uint32_t start;
+  size_t n = logRead(strtoul(server.arg("since").c_str(), nullptr, 10), buf, LOG_BUFFER_BYTES, start);
+  server.sendHeader("Cache-Control", "no-store");
+  server.sendHeader("X-Log-Boot", String(logBootId()));
+  server.sendHeader("X-Log-Start", String(start));
+  server.sendHeader("X-Log-Next", String(start + n));
+  server.send_P(200, "text/plain; charset=utf-8", buf, n);
+  heap_caps_free(buf);
+}
+
 // Restarts from webLoop() a moment later, so the reply still gets out. Saving
 // settings, OTA and the update check all run in the network task like this
 // handler, so none of them can be cut off half-way.
@@ -125,17 +144,18 @@ void webBegin() {
   server.on("/api/status", HTTP_GET, handleStatus);
   server.on("/api/restart", HTTP_POST, handleRestart);
   server.on("/api/wifi", HTTP_POST, handleWifi);
+  server.on("/api/log", HTTP_GET, handleLog);
   server.onNotFound([] { server.send(404, "text/plain", "not found"); });
   server.begin();
   MDNS.addService("http", "tcp", 80);  // mDNS itself is started by ArduinoOTA
   started = true;
-  Serial.printf("[web] settings page at http://%s.local/ (%s)\n", HOSTNAME, WiFi.localIP().toString().c_str());
+  Log.printf("[web] settings page at http://%s.local/ (%s)\n", HOSTNAME, WiFi.localIP().toString().c_str());
 }
 
 void webLoop() {
   if (started) server.handleClient();
   if (restartAtMs && (int32_t)(millis() - restartAtMs) >= 0) {
-    Serial.println("[web] restart requested, rebooting");
+    Log.println("[web] restart requested, rebooting");
     delay(100);
     ESP.restart();
   }

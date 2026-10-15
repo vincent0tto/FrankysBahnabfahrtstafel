@@ -53,6 +53,7 @@
 #define WDT_TIMEOUT_S             90   // > 3x HTTP_TIMEOUT_MS
 #define MIN_FREE_HEAP_BYTES    20000      // reboot below this (internal RAM)
 #define DAILY_REBOOT_HOUR          4      // -1 = disabled; also checks for a firmware update
+#define LOG_BUFFER_BYTES   (32 * 1024)    // newest serial log for the settings page (PSRAM)
 
 // ---- Firmware update from GitHub ------------------------------------------
 // After each start the board asks GitHub for the newest release (built by

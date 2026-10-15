@@ -5,6 +5,7 @@
 
 #include <new>
 
+#include "log.h"
 #include "psram_alloc.h"
 
 static const char* const NVS_NAMESPACE = "tafel";
@@ -24,7 +25,7 @@ void settingsBegin() {
   settingsDefaults(current);
   Preferences prefs;
   if (!prefs.begin(NVS_NAMESPACE, true)) {  // fails if nothing was ever stored
-    Serial.println("[settings] none stored, using defaults");
+    Log.println("[settings] none stored, using defaults");
     return;
   }
   size_t n = prefs.getBytesLength(NVS_KEY);
@@ -35,9 +36,9 @@ void settingsBegin() {
     Settings& loaded = settingsScratch();
     if (!err && settingsFromJson(doc.as<JsonVariantConst>(), loaded)) {
       current = loaded;
-      Serial.printf("[settings] loaded (%u bytes)\n", (unsigned)n);
+      Log.printf("[settings] loaded (%u bytes)\n", (unsigned)n);
     } else {
-      Serial.printf("[settings] stored data broken (%s), using defaults\n", err.c_str());
+      Log.printf("[settings] stored data broken (%s), using defaults\n", err.c_str());
     }
   }
   heap_caps_free(buf);
@@ -64,7 +65,7 @@ bool settingsSave(const Settings& s) {
     prefs.end();
   }
   heap_caps_free(buf);
-  Serial.printf("[settings] %s (%u bytes)\n", ok ? "saved" : "saving FAILED", (unsigned)n);
+  Log.printf("[settings] %s (%u bytes)\n", ok ? "saved" : "saving FAILED", (unsigned)n);
   return ok;
 }
 

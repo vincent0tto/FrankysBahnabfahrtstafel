@@ -14,6 +14,7 @@
 
 #include "config.h"
 #include "display.h"
+#include "log.h"
 #include "net.h"
 #include "settings_store.h"
 #include "updater.h"
@@ -27,7 +28,7 @@ static SemaphoreHandle_t boardMutex;
 static void rebootChecks() {
   size_t freeInternal = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
   if (freeInternal < MIN_FREE_HEAP_BYTES) {
-    Serial.printf("[sys] low internal heap (%u), rebooting\n", (unsigned)freeInternal);
+    Log.printf("[sys] low internal heap (%u), rebooting\n", (unsigned)freeInternal);
     delay(100);
     ESP.restart();
   }
@@ -37,7 +38,7 @@ static void rebootChecks() {
     struct tm lt;
     localtime_r(&now, &lt);
     if (lt.tm_hour == DAILY_REBOOT_HOUR && lt.tm_min == 0) {
-      Serial.println("[sys] daily reboot");
+      Log.println("[sys] daily reboot");
       delay(100);
       ESP.restart();
     }
@@ -83,14 +84,14 @@ static void netTask(void*) {
         webNoteFetch(fresh.fetchedAt);
         failures = 0;
         backoffS = POLL_INTERVAL_S;
-        Serial.printf("[vrn] %d departures, heap %u, psram %u\n", fresh.n,
-                      (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
-                      (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+        Log.printf("[vrn] %d departures, heap %u, psram %u\n", fresh.n,
+                   (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+                   (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
       } else {
         failures++;
         backoffS = min<uint32_t>(backoffS * 2, POLL_BACKOFF_MAX_S);
-        Serial.printf("[vrn] %s (#%u), next try in %us\n", fetchResultName(r), (unsigned)failures,
-                      (unsigned)backoffS);
+        Log.printf("[vrn] %s (#%u), next try in %us\n", fetchResultName(r), (unsigned)failures,
+                   (unsigned)backoffS);
       }
       nextFetchMs = millis() + (r == FetchResult::Ok ? POLL_INTERVAL_S : backoffS) * 1000UL;
     }
@@ -102,8 +103,9 @@ static void netTask(void*) {
 
 void setup() {
   Serial.begin(115200);
+  logBegin();
   delay(500);
-  Serial.printf("\n[sys] Frankys Bahnabfahrtstafel, reset reason %d\n", (int)esp_reset_reason());
+  Log.printf("\n[sys] Frankys Bahnabfahrtstafel, reset reason %d\n", (int)esp_reset_reason());
 
   boardMutex = xSemaphoreCreateMutex();
   settingsBegin();
@@ -114,8 +116,8 @@ void setup() {
     delay(5000);
     ESP.restart();
   }
-  Serial.printf("[sys] display ok, free internal heap %u\n",
-                (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+  Log.printf("[sys] display ok, free internal heap %u\n",
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
 
   xTaskCreatePinnedToCore(netTask, "net", 16384, nullptr, 1, nullptr, 0);
 }

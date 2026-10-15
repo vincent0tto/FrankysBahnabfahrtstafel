@@ -1,6 +1,6 @@
 #pragma once
 // The settings page served by src/web.cpp at "/". Talks to /api/settings
-// /api/status, /api/restart and /api/wifi (JSON, format: settingsToJson in src/settings.cpp).
+// /api/status, /api/restart, /api/wifi and /api/log (JSON, format: settingsToJson in src/settings.cpp).
 #include <pgmspace.h>
 
 static const char WEB_PAGE[] PROGMEM = R"rawliteral(<!doctype html>
@@ -48,6 +48,7 @@ canvas.icon{background:var(--panel);border-radius:4px;image-rendering:pixelated;
 footer{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 16px;display:flex;gap:12px;align-items:center;justify-content:center}
 footer button{background:var(--accent);border-color:var(--accent);color:#fff;padding:8px 22px;font-weight:600}
 #msg{font-size:14px;color:var(--muted)}
+#log{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;margin:0 0 8px;max-height:60vh;overflow:auto;font:12px/1.35 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-all}
 </style>
 </head>
 <body>
@@ -99,6 +100,13 @@ footer button{background:var(--accent);border-color:var(--accent);color:#fff;pad
 <input type="text" id="pass" maxlength="63" placeholder="Passwort" autocomplete="off" autocapitalize="off" spellcheck="false">
 <button id="wifiSave">WLAN speichern</button></div>
 <span id="wifiMsg" class="hint"></span>
+</section>
+
+<section>
+<h2>Log</h2>
+<div class="hint">Die letzten Meldungen der Tafel, dieselben wie am USB-Anschluss. Wird laufend ergänzt, solange es angezeigt wird.</div>
+<pre id="log" hidden></pre>
+<button id="logToggle">Anzeigen</button>
 </section>
 
 <section>
@@ -309,6 +317,34 @@ $('wifiSave').onclick=async()=>{
   catch(e){$('wifiMsg').textContent='Fehler: '+e.message;$('wifiSave').disabled=false;return}
   $('wifiMsg').textContent='Gespeichert, Tafel verbindet sich neu. Ist das neue WLAN ein anderes, ist die Seite erst wieder erreichbar, wenn dieses Gerät auch darin ist.';
   afterRestart($('wifiMsg'));
+};
+// polls /api/log while shown and the tab is visible, appending what is new
+// since the last poll (rarely: each request holds up the network task)
+const LOG_KEEP=200000,LOG_POLL_MS=10000;
+let logBoot=null,logNext=0,logTimer=0,logOn=false,logGen=0;
+async function pollLog(){
+  const gen=logGen;
+  if(document.hidden){logTimer=setTimeout(pollLog,LOG_POLL_MS);return}
+  try{
+    const r=await fetch('/api/log?since='+logNext,{cache:'no-store'});
+    if(!r.ok)throw new Error(r.status);
+    const boot=r.headers.get('X-Log-Boot'),start=+r.headers.get('X-Log-Start'),t=await r.text();
+    if(gen!==logGen)return;  // hidden (and maybe shown again) meanwhile
+    const p=$('log'),atEnd=p.scrollTop+p.clientHeight>=p.scrollHeight-20;
+    let add='';
+    if(boot!==logBoot){if(logBoot!==null)add='––– Neustart –––\n';logBoot=boot;logNext=0}
+    if(start!==logNext)add+='…\n';
+    add+=t;logNext=+r.headers.get('X-Log-Next');
+    if(add){let s=p.textContent+add;if(s.length>LOG_KEEP)s=s.slice(s.indexOf('\n',s.length-LOG_KEEP)+1);p.textContent=s}
+    if(atEnd)p.scrollTop=p.scrollHeight;
+  }catch(e){}
+  if(logOn&&gen===logGen)logTimer=setTimeout(pollLog,LOG_POLL_MS);
+}
+// back in the foreground: catch up at once
+document.addEventListener('visibilitychange',()=>{if(logOn&&!document.hidden){clearTimeout(logTimer);logGen++;pollLog()}});
+$('logToggle').onclick=()=>{
+  logOn=!logOn;$('log').hidden=!logOn;$('logToggle').textContent=logOn?'Ausblenden':'Anzeigen';
+  clearTimeout(logTimer);logGen++;if(logOn)pollLog();
 };
 load().catch(e=>$('msg').textContent='Laden fehlgeschlagen: '+e.message);
 status();setInterval(status,15000);

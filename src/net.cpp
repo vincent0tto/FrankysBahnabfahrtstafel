@@ -9,6 +9,7 @@
 
 #include "config.h"
 #include "credentials.h"
+#include "log.h"
 #include "web.h"
 
 static uint32_t lastConnectedMs = 0;
@@ -21,27 +22,27 @@ static bool usingPrevious = false;  // trying the WiFi from before the last chan
 static void connect() {
   const char* ssid = credentialsSsid(usingPrevious);
   if (!ssid[0]) {
-    Serial.println("[wifi] no credentials, flash once with include/secrets.h");
+    Log.println("[wifi] no credentials, flash once with include/secrets.h");
     return;
   }
-  Serial.printf("[wifi] connecting to \"%s\"%s\n", ssid, usingPrevious ? " (previous)" : "");
+  Log.printf("[wifi] connecting to \"%s\"%s\n", ssid, usingPrevious ? " (previous)" : "");
   WiFi.begin(ssid, credentialsPass(usingPrevious));
 }
 
 static void startOta() {
   if (!credentialsOta()[0]) {
-    Serial.println("[ota] no password stored, OTA off");
+    Log.println("[ota] no password stored, OTA off");
     MDNS.begin(HOSTNAME);  // otherwise done by ArduinoOTA, the web page needs it
     otaStarted = true;
     return;
   }
   ArduinoOTA.setHostname(HOSTNAME);
   ArduinoOTA.setPassword(credentialsOta());
-  ArduinoOTA.onStart([] { Serial.println("[ota] start"); });
+  ArduinoOTA.onStart([] { Log.println("[ota] start"); });
   // handle() blocks for the whole upload; keep the watchdog quiet meanwhile
   ArduinoOTA.onProgress([](unsigned int, unsigned int) { esp_task_wdt_reset(); });
-  ArduinoOTA.onEnd([] { Serial.println("[ota] done, rebooting"); });
-  ArduinoOTA.onError([](ota_error_t e) { Serial.printf("[ota] error %u\n", e); });
+  ArduinoOTA.onEnd([] { Log.println("[ota] done, rebooting"); });
+  ArduinoOTA.onError([](ota_error_t e) { Log.printf("[ota] error %u\n", e); });
   ArduinoOTA.begin();
   otaStarted = otaActive = true;
 }
@@ -62,7 +63,7 @@ bool netMaintain() {
   uint32_t now = millis();
   if (WiFi.status() == WL_CONNECTED) {
     if (!wasConnected) {
-      Serial.printf("[wifi] connected, ip %s, rssi %d\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
+      Log.printf("[wifi] connected, ip %s, rssi %d\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
       wasConnected = true;
       if (usingPrevious) {
         credentialsSwap();
@@ -78,16 +79,16 @@ bool netMaintain() {
   }
 
   if (wasConnected) {
-    Serial.println("[wifi] connection lost");
+    Log.println("[wifi] connection lost");
     wasConnected = false;
   }
   if (now - lastConnectedMs > WIFI_REBOOT_S * 1000UL) {
-    Serial.println("[wifi] offline too long, rebooting");
+    Log.println("[wifi] offline too long, rebooting");
     delay(100);
     ESP.restart();
   }
   if (now - lastKickMs > WIFI_RECONNECT_S * 1000UL) {
-    Serial.println("[wifi] reconnecting");
+    Log.println("[wifi] reconnecting");
     lastKickMs = now;
     WiFi.disconnect();
     // alternate with the previous WiFi, so a mistyped change doesn't lock the board out
