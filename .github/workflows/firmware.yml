@@ -1,6 +1,6 @@
 # Builds the firmware on every push to main and publishes it as release
-# "build-<number of commits>". The board installs it after its next start
-# (src/updater.cpp). Built without include/secrets.h: the releases are public,
+# "build-<run number>", the number shown in the Actions tab. The board installs
+# it after its next start (src/updater.cpp). Built without include/secrets.h: the releases are public,
 # the board keeps its passwords in flash (src/credentials.cpp).
 name: firmware
 
@@ -24,8 +24,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # commit count = build number (tools/version.py)
 
       - uses: actions/setup-python@v5
         with:
@@ -51,7 +49,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          N=$(git rev-list --count HEAD)
+          N=${{ github.run_number }}  # same as FW_BUILD (tools/version.py)
           if gh release view "build-$N" >/dev/null 2>&1; then echo "build-$N exists"; exit 0; fi
           gh release create "build-$N" .pio/build/esp32s3/firmware.bin \
             --target "$GITHUB_SHA" --title "build-$N" --notes "$(git log -1 --pretty=%s)"

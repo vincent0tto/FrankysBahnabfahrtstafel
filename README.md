@@ -127,11 +127,13 @@ pio run -e esp32s3-ota -t upload
 ### Automatische Updates von GitHub
 
 Bei jedem Push auf `main` lässt GitHub Actions (`.github/workflows/firmware.yml`) die Tests
-laufen, baut die Firmware und veröffentlicht sie als Release `build-<N>`, wobei N die Anzahl
-der Commits ist. Nach jedem Start, auch nach dem täglichen Neustart um 04:00 während der
-Ruhezeit, fragt die Tafel bei GitHub nach dem neuesten Release. Ist es neuer als die laufende
-Firmware, installiert sie es und startet neu. Eine lokal aus demselben Commit gebaute Firmware
-gilt als aktuell.
+laufen, baut die Firmware und veröffentlicht sie als Release `build-<N>`, wobei N die Nummer
+des Actions-Laufs ist (wie im Actions-Tab, z. B. „firmware #16"). Nach jedem Start, auch nach
+dem täglichen Neustart um 04:00 während der Ruhezeit, fragt die Tafel bei GitHub nach dem
+neuesten Release. Ist es neuer als die laufende Firmware, installiert sie es und startet neu.
+Eine lokal gebaute Firmware bekommt die Nummer des neuesten `build-*`-Tags in ihrer
+Git-Historie (`git pull` holt die Tags mit); aus demselben Commit gebaut gilt sie also als
+aktuell.
 
 Das Repo und seine Releases sind öffentlich. Die CI baut ohne `secrets.h`, daher enthält die
 veröffentlichte Firmware keine Passwörter, und die Tafel braucht zum Herunterladen keinen Token.
