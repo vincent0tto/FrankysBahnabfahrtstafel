@@ -14,7 +14,7 @@ static const char WEB_PAGE[] PROGMEM = R"rawliteral(<!doctype html>
 <meta name="apple-mobile-web-app-title" content="Abfahrtstafel">
 <style>
 :root{--bg:#f6f4f1;--card:#fff;--fg:#222;--muted:#777;--line:#e2ddd6;--accent:#d9730d;--led:#ff7800;--ledoff:#2a2420;--panel:#120f0c}
-@media (prefers-color-scheme:dark){:root{--bg:#151311;--card:#1f1c19;--fg:#eee;--muted:#9a948c;--line:#38332d;--accent:#ff8a1f}}
+@media (prefers-color-scheme:dark){:root{--bg:#151311;--card:#1f1c19;--fg:#eee;--muted:#9a948c;--line:#38332d;--accent:#ff8a1f;color-scheme:dark}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 -apple-system,system-ui,sans-serif;padding:16px 16px 90px}
 main{max-width:760px;margin:0 auto}
@@ -24,7 +24,7 @@ h2{font-size:17px;margin:0 0 10px}
 section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
 .hint{color:var(--muted);font-size:13px;margin:4px 0 10px}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
-.row:first-child{border-top:0}
+.row:first-child,h2+.row{border-top:0}
 .row.paused input{opacity:.5}
 label{display:inline-flex;align-items:center;gap:6px}
 input,select,button{font:inherit;color:inherit}
@@ -47,7 +47,10 @@ canvas.icon{background:var(--panel);border-radius:4px;image-rendering:pixelated;
 .days{display:inline-flex;gap:3px}
 .days button{padding:3px 0;width:30px;font-size:13px}
 .days button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.grp{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .sub{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%;padding-left:26px}
+/* narrow: times and ⏸ ✕ on top, the slider below at full width */
+@media (max-width:560px){#dim .row>button:first-of-type{margin-left:auto}#dim .row>input[type=range],#dim .val{order:1}#dim .sub{order:2}}
 footer{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 16px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:center}
 footer button{background:var(--accent);border-color:var(--accent);color:#fff;padding:8px 22px;font-weight:600}
 #stale{width:100%;text-align:center;font-size:14px}
@@ -65,7 +68,7 @@ footer button{background:var(--accent);border-color:var(--accent);color:#fff;pad
 <h2>Ruhezeit</h2>
 <div class="hint">In dieser Zeit ist das Panel komplett aus und es werden keine Abfahrten abgerufen.</div>
 <label><input type="checkbox" id="offOn"> Panel ausschalten von</label>
-<input type="time" id="offFrom"> bis <input type="time" id="offTo">
+<span class="grp"><input type="time" id="offFrom"> bis <input type="time" id="offTo"></span>
 </section>
 
 <section>
@@ -174,8 +177,8 @@ function renderDim(){
     const r=el('input',{type:'range',min:1,max:100,value:d.pct,oninput:e=>{d.pct=+e.target.value;val.textContent=d.pct+' %'}});
     const paused=!!d.skip&&d.from!==d.to&&d.skip===nextStart(d);
     box.append(el('div',{className:'row'+(paused?' paused':'')},
-      el('input',{type:'time',value:time(d.from),onchange:e=>d.from=e.target.value}),'bis',
-      el('input',{type:'time',value:time(d.to),onchange:e=>d.to=e.target.value}),r,val,
+      el('span',{className:'grp'},el('input',{type:'time',value:time(d.from),onchange:e=>d.from=e.target.value}),'bis',
+        el('input',{type:'time',value:time(d.to),onchange:e=>d.to=e.target.value})),r,val,
       el('button',{textContent:paused?'▶':'⏸',title:paused?'wieder aktivieren':'einmal aussetzen (heute bzw. das nächste Mal)',
         onclick:()=>{if(paused)delete d.skip;else d.skip=nextStart(d);save()}}),
       el('button',{className:'del',textContent:'✕',onclick:()=>{S.dim.splice(i,1);renderDim()}}),
@@ -206,9 +209,9 @@ function renderPromos(){
       prev,
       el('input',{type:'text',value:p.text,maxLength:60,placeholder:'Text',...dis,oninput:e=>p.text=e.target.value}),
       pre?el('button',{textContent:'↺',title:'Vorgabe wiederherstellen',onclick:()=>{Object.assign(p,{icon:'',text:'',right:'',win:null,days:ALL_DAYS},JSON.parse(JSON.stringify(p.def)));renderPromos()}}):el('button',{className:'del',textContent:'✕',onclick:()=>{S.promos.splice(i,1);renderPromos()}}),
-      el('div',{className:'sub'},'Icon',sel,'Rechts',
-        el('input',{type:'text',value:p.right,maxLength:15,placeholder:'leer',style:'flex:0 1 90px;min-width:60px',...dis,oninput:e=>p.right=e.target.value}),
-        'nur von',from,'bis',to,days)));
+      el('div',{className:'sub'},el('span',{className:'grp'},'Icon',sel),el('span',{className:'grp'},'Rechts',
+        el('input',{type:'text',value:p.right,maxLength:15,placeholder:'leer',style:'width:90px',...dis,oninput:e=>p.right=e.target.value})),
+        el('span',{className:'grp'},'nur von',from,'bis',to),days)));
   });
   $('addPromo').disabled=S.promos.length>=MAX_PROMOS;
 }
