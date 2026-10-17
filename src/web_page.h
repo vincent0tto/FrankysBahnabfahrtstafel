@@ -44,6 +44,9 @@ canvas.icon{background:var(--panel);border-radius:4px;image-rendering:pixelated;
 .editor{display:grid;grid-template-columns:repeat(12,22px);gap:2px;background:var(--panel);padding:6px;border-radius:6px;width:max-content;touch-action:none;user-select:none}
 .editor div{width:22px;height:22px;border-radius:50%;background:var(--ledoff)}
 .editor div.on{background:var(--led)}
+.days{display:inline-flex;gap:3px}
+.days button{padding:3px 0;width:30px;font-size:13px}
+.days button.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .sub{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%;padding-left:26px}
 footer{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 16px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:center}
 footer button{background:var(--accent);border-color:var(--accent);color:#fff;padding:8px 22px;font-weight:600}
@@ -75,7 +78,7 @@ footer button{background:var(--accent);border-color:var(--accent);color:#fff;pad
 
 <section>
 <h2>Promo-Texte</h2>
-<div class="hint">Erscheinen ab und zu statt der 4. Zeile. „Rechts“ leer: Text mittig mit Icon davor. „Rechts“ gesetzt (z. B. „sofort“): wie eine Abfahrt, Icon als Linie.</div>
+<div class="hint">Erscheinen ab und zu statt der 4. Zeile. „Rechts“ leer: Text mittig mit Icon davor. „Rechts“ gesetzt (z. B. „sofort“): wie eine Abfahrt, Icon als Linie. Ein Zeitfenster über Mitternacht zählt zu dem Wochentag, an dem es beginnt.</div>
 <label>Anzeigedauer <input type="number" min="3" max="600" id="show"> s</label>
 &nbsp; <label>Pause dazwischen ca. <input type="number" min="0" max="3600" id="interval"> s</label>
 <div class="hint">Pause 0 = keine Promos.</div>
@@ -123,6 +126,7 @@ footer button{background:var(--accent);border-color:var(--accent);color:#fff;pad
 
 <script>
 const $=id=>document.getElementById(id);
+const DAYS=['Mo','Di','Mi','Do','Fr','Sa','So'],ALL_DAYS=127;
 const MAX_PROMOS=20,MAX_DIM=4,MAX_ICONS=8,IW=12,IH=9;
 let S=null,editing=null;
 // base: collect() as loaded, to tell unsaved changes; srv: the loaded
@@ -189,14 +193,22 @@ function renderPromos(){
     const win=p.win||{from:'',to:''};
     const from=el('input',{type:'time',value:win.from?time(win.from):'',...dis,onchange:e=>{win.from=e.target.value;p.win=win}});
     const to=el('input',{type:'time',value:win.to?time(win.to):'',...dis,onchange:e=>{win.to=e.target.value;p.win=win}});
+    // weekday toggles; the last one left can't be switched off
+    const days=el('span',{className:'days'});
+    DAYS.forEach((n,d)=>{
+      const b=el('button',{textContent:n,title:'an diesem Wochentag anzeigen'});
+      const show=()=>b.classList.toggle('on',!!((p.days??ALL_DAYS)&1<<d));show();
+      b.onclick=()=>{const v=(p.days??ALL_DAYS)^1<<d;if(v){p.days=v;show()}};
+      days.append(b);
+    });
     box.append(el('div',{className:'row'},
       el('input',{type:'checkbox',checked:p.on,title:'anzeigen',onchange:e=>p.on=e.target.checked}),
       prev,
       el('input',{type:'text',value:p.text,maxLength:60,placeholder:'Text',...dis,oninput:e=>p.text=e.target.value}),
-      pre?el('button',{textContent:'↺',title:'Vorgabe wiederherstellen',onclick:()=>{Object.assign(p,{icon:'',text:'',right:'',win:null},JSON.parse(JSON.stringify(p.def)));renderPromos()}}):el('button',{className:'del',textContent:'✕',onclick:()=>{S.promos.splice(i,1);renderPromos()}}),
+      pre?el('button',{textContent:'↺',title:'Vorgabe wiederherstellen',onclick:()=>{Object.assign(p,{icon:'',text:'',right:'',win:null,days:ALL_DAYS},JSON.parse(JSON.stringify(p.def)));renderPromos()}}):el('button',{className:'del',textContent:'✕',onclick:()=>{S.promos.splice(i,1);renderPromos()}}),
       el('div',{className:'sub'},'Icon',sel,'Rechts',
         el('input',{type:'text',value:p.right,maxLength:15,placeholder:'leer',style:'flex:0 1 90px;min-width:60px',...dis,oninput:e=>p.right=e.target.value}),
-        'nur von',from,'bis',to)));
+        'nur von',from,'bis',to,days)));
   });
   $('addPromo').disabled=S.promos.length>=MAX_PROMOS;
 }
@@ -265,6 +277,7 @@ function collect(){
     const o={on:p.on,icon:p.icon||'',text:p.text,right:p.right};
     if(p.preset)o.preset=p.preset;
     if(p.win&&p.win.from&&p.win.to&&p.win.from!==p.win.to)o.win={from:p.win.from,to:p.win.to};
+    if((p.days??ALL_DAYS)!==ALL_DAYS)o.days=p.days;
     return o;
   }).filter(p=>p.preset||p.text||p.icon);
   return {off:{on:$('offOn').checked,from:$('offFrom').value||'02:00',to:$('offTo').value||'06:00'},

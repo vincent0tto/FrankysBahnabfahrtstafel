@@ -11,6 +11,7 @@
 #define MAX_PROMOS        20   // built-in (PROMO_TEXTS) + own ones
 #define MAX_DIM_WINDOWS    4
 #define MAX_CUSTOM_ICONS   8   // tags "[c0]" .. "[c7]"
+#define ALL_DAYS        0x7F   // Promo::days: bit 0 = Monday .. bit 6 = Sunday
 
 // Local time span in minutes since midnight; from > to runs over midnight,
 // from == to is empty, to = 1440 means "until midnight".
@@ -26,6 +27,7 @@ struct Promo {
   char right[16] = "";           // set: shown like a departure ("sofort" in the time column)
   bool hasWin = false;           // only shown within `win`
   TimeWindow win;
+  uint8_t days = ALL_DAYS;       // only shown on these weekdays (never 0)
 };
 
 struct CustomIcon {
@@ -66,6 +68,13 @@ int32_t localDay(time_t now);  // local date as days since 1970-01-01
 // localDay() on which the occurrence of `w` that covers `minuteOfDay` of
 // `day` started (the day before for the part after midnight)
 int32_t windowStartDay(const TimeWindow& w, int minuteOfDay, int32_t day);
+
+// 0 = Monday .. 6 = Sunday for a localDay()
+int weekday(int32_t day);
+
+// Whether `p` may be shown at `minuteOfDay` (-1: time unknown) of `day`. A
+// time window over midnight counts for the weekday it starts on.
+bool promoOpen(const Promo& p, int minuteOfDay, int32_t day);
 
 bool isOffTime(const Settings& s, int minuteOfDay);
 // percent; dim windows skipped for the occurrence that started on `day`

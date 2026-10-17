@@ -117,6 +117,17 @@ int32_t windowStartDay(const TimeWindow& w, int m, int32_t day) {
   return w.from > w.to && m < w.to ? day - 1 : day;
 }
 
+int weekday(int32_t day) { return (int)(((day + 3) % 7 + 7) % 7); }  // 1970-01-01 was a Thursday
+
+bool promoOpen(const Promo& p, int m, int32_t day) {
+  if (!p.on) return false;
+  if (!p.hasWin && p.days == ALL_DAYS) return true;
+  if (m < 0) return false;
+  if (p.hasWin && !inWindow(p.win, m)) return false;
+  int32_t start = p.hasWin ? windowStartDay(p.win, m, day) : day;
+  return p.days & (1 << weekday(start));
+}
+
 bool isOffTime(const Settings& s, int m) { return s.offEnabled && inWindow(s.off, m); }
 
 uint8_t brightnessAt(const Settings& s, int m, int32_t day) {
@@ -190,6 +201,7 @@ static void promoFieldsToJson(const Promo& p, JsonObject o) {
   o["text"] = (const char*)p.text;
   o["right"] = (const char*)p.right;
   if (p.hasWin) windowToJson(p.win, o["win"].to<JsonObject>());
+  if (p.days != ALL_DAYS) o["days"] = p.days;
 }
 
 // Takes icon, text, right and window of `o`, keeps `on` and `preset` of `p`.
@@ -201,11 +213,14 @@ static void promoFieldsFromJson(JsonVariantConst o, Promo& p) {
   if (findPresetIcon(icon) || customIconIndex(icon) >= 0) snprintf(p.icon, sizeof(p.icon), "%s", icon);
   p.hasWin = o["win"].is<JsonObjectConst>() && windowFromJson(o["win"], p.win);
   if (!p.hasWin) p.win = TimeWindow();
+  uint8_t days = (uint8_t)(clampU(o["days"], 0, ALL_DAYS, ALL_DAYS) & ALL_DAYS);
+  p.days = days ? days : ALL_DAYS;  // none at all: rather every day than never
 }
 
 static bool sameContent(const Promo& a, const Promo& b) {
   return strcmp(a.icon, b.icon) == 0 && strcmp(a.text, b.text) == 0 && strcmp(a.right, b.right) == 0 &&
-         a.hasWin == b.hasWin && (!a.hasWin || (a.win.from == b.win.from && a.win.to == b.win.to));
+         a.hasWin == b.hasWin && (!a.hasWin || (a.win.from == b.win.from && a.win.to == b.win.to)) &&
+         a.days == b.days;
 }
 
 void settingsToJson(const Settings& s, JsonObject out, bool forWeb) {

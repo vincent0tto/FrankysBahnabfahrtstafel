@@ -213,6 +213,51 @@ void test_edited_preset() {
   TEST_ASSERT_EQUAL_STRING("Cappuccino", t.promos[t.nPromos - 1].text);
 }
 
+void test_promo_days() {
+  const int32_t FRI = 20742;  // 2026-10-16
+  TEST_ASSERT_EQUAL(3, weekday(0));  // 1970-01-01, a Thursday
+  TEST_ASSERT_EQUAL(4, weekday(FRI));
+  TEST_ASSERT_EQUAL(5, weekday(FRI + 1));
+  TEST_ASSERT_EQUAL(0, weekday(FRI + 3));
+
+  Promo p;
+  TEST_ASSERT_TRUE(promoOpen(p, -1, 0));  // every day, no window: also without time
+  p.days = 1 << 4 | 1 << 5;               // Fri, Sat
+  TEST_ASSERT_FALSE(promoOpen(p, -1, 0));
+  TEST_ASSERT_TRUE(promoOpen(p, 600, FRI));
+  TEST_ASSERT_TRUE(promoOpen(p, 600, FRI + 1));
+  TEST_ASSERT_FALSE(promoOpen(p, 600, FRI + 2));
+  TEST_ASSERT_FALSE(promoOpen(p, 600, FRI - 1));
+
+  // Fri and Sat 22:00-02:00: Sun 01:00 still belongs to Saturday's
+  p.hasWin = true;
+  p.win = win(22 * 60, 2 * 60);
+  TEST_ASSERT_TRUE(promoOpen(p, 23 * 60, FRI));
+  TEST_ASSERT_FALSE(promoOpen(p, 21 * 60, FRI));
+  TEST_ASSERT_TRUE(promoOpen(p, 60, FRI + 2));
+  TEST_ASSERT_FALSE(promoOpen(p, 60, FRI));  // Thursday's
+  TEST_ASSERT_FALSE(promoOpen(p, 23 * 60, FRI + 2));
+  p.on = false;
+  TEST_ASSERT_FALSE(promoOpen(p, 23 * 60, FRI));
+
+  // JSON: stored only if not every day, nothing at all counts as every day
+  settingsDefaults(s);
+  s.promos[0].days = 0x1F;  // Mon-Fri
+  JsonDocument doc;
+  settingsToJson(s, doc.to<JsonObject>(), false);
+  TEST_ASSERT_EQUAL(0x1F, doc["promos"][0]["days"]);
+  TEST_ASSERT_FALSE(doc["promos"][1]["days"].is<int>());
+  TEST_ASSERT_TRUE(settingsFromJson(doc.as<JsonVariantConst>(), t));
+  TEST_ASSERT_EQUAL(0x1F, t.promos[0].days);
+  TEST_ASSERT_EQUAL(ALL_DAYS, t.promos[1].days);
+  doc["promos"][0]["days"] = 0;
+  TEST_ASSERT_TRUE(settingsFromJson(doc.as<JsonVariantConst>(), t));
+  TEST_ASSERT_EQUAL(ALL_DAYS, t.promos[0].days);
+  doc["promos"][0]["days"] = 0x1FF;
+  TEST_ASSERT_TRUE(settingsFromJson(doc.as<JsonVariantConst>(), t));
+  TEST_ASSERT_EQUAL(ALL_DAYS, t.promos[0].days);
+}
+
 // build 10 stored 0..255 under other keys: back to the defaults
 void test_old_brightness_dropped() {
   JsonDocument doc;
@@ -239,6 +284,7 @@ int main() {
   RUN_TEST(test_dim_skip);
   RUN_TEST(test_json_clamps_and_rejects);
   RUN_TEST(test_edited_preset);
+  RUN_TEST(test_promo_days);
   RUN_TEST(test_old_brightness_dropped);
   RUN_TEST(test_custom_icon_tag);
   return UNITY_END();

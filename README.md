@@ -157,7 +157,8 @@ selben WLAN öffnen. Es gibt kein Login. Auf der Seite lässt sich einstellen:
 - **Promo-Texte**: Anzeigedauer, Pause und welche Texte erscheinen. Die eingebauten Texte
   (`PROMO_TEXTS`) lassen sich an- und ausschalten und bearbeiten; ↺ stellt die Version der
   Firmware wieder her. Dazu kommen bis zu 20 eigene Texte, jeweils mit Symbol, optionaler
-  rechter Spalte und optionalem Zeitfenster.
+  rechter Spalte und optionalem Zeitfenster. Jeder Text lässt sich außerdem auf bestimmte
+  Wochentage beschränken; ein Zeitfenster über Mitternacht zählt zum Tag, an dem es beginnt.
 - **Icons**: die eingebauten Symbole (Instagram, Grilled Cheese, Flat White, Kuchen, Bier) und
   bis zu 8 eigene, gezeichnet in einem 12×9-Pixel-Editor.
 - **WLAN**: Name und Passwort des WLANs, gilt nach einem Neustart (siehe oben).
