@@ -236,3 +236,4 @@ vorher einmal `sudo xcodebuild -license` aus.
 | `src/display.cpp` | Panel-Einrichtung, Dimmen |
 | `src/main.cpp` | Netzwerk-Task (Core 0) und Render-Schleife (Core 1, ~30 fps) |
 | `.github/workflows/firmware.yml` | CI: Tests, Build, Release |
+# vincent0tto.github.io
