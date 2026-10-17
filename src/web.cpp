@@ -21,6 +21,7 @@ static WebServer server(80);
 static bool started = false;
 static time_t lastFetch = 0;
 static uint32_t restartAtMs = 0;  // 0: no restart requested
+static uint32_t bootTag = 0;      // random per start, set in webBegin()
 
 void webNoteFetch(time_t fetchedAt) { lastFetch = fetchedAt; }
 
@@ -33,13 +34,20 @@ static void sendJson(JsonDocument& doc) {
     return;
   }
   serializeJson(doc, buf, n + 1);
+  server.sendHeader("Cache-Control", "no-store");
   server.send_P(200, "application/json", buf, n);
   heap_caps_free(buf);
 }
 
+// Changes with every save and every start. The page compares it (via
+// /api/status) to notice changes made on another device, and sends it along
+// when saving, so it cannot overwrite those unseen.
+static String settingsRev() { return String(bootTag, HEX) + "." + String(settingsVersion()); }
+
 static void sendSettings() {
   JsonDocument doc(&spiRam);
   settingsToJson(settingsNet(), doc.to<JsonObject>(), true);
+  doc["rev"] = settingsRev();
   sendJson(doc);
 }
 
@@ -47,6 +55,11 @@ static void handleSave() {
   const String& body = server.arg("plain");
   if (body.length() == 0 || body.length() > MAX_BODY) {
     server.send(400, "text/plain", "leere oder zu große Anfrage");
+    return;
+  }
+  // without ?rev= (a page from older firmware, or "save anyway") it just saves
+  if (server.hasArg("rev") && server.arg("rev") != settingsRev()) {
+    server.send(409, "text/plain", "inzwischen auf einem anderen Gerät geändert");
     return;
   }
   JsonDocument doc(&spiRam);
@@ -69,6 +82,7 @@ static void handleStatus() {
   doc["build"] = firmwareBuild();
   doc["uptimeS"] = millis() / 1000;
   doc["dataAgeS"] = lastFetch && timeValid() ? (long)(now - lastFetch) : -1;
+  doc["rev"] = settingsRev();
   doc["off"] = timeValid() && isOffTime(settingsNet(), minuteOfDay(now));
   doc["rssi"] = WiFi.RSSI();
   doc["ssid"] = WiFi.SSID();
@@ -135,7 +149,11 @@ static void sendIcon() {
 
 void webBegin() {
   if (started) return;
-  server.on("/", HTTP_GET, [] { server.send_P(200, "text/html; charset=utf-8", WEB_PAGE); });
+  bootTag = esp_random();  // WiFi is up, so this is truly random
+  server.on("/", HTTP_GET, [] {
+    server.sendHeader("Cache-Control", "no-store");  // always the page of the running firmware
+    server.send_P(200, "text/html; charset=utf-8", WEB_PAGE);
+  });
   for (const char* path : {"/favicon.png", "/favicon.ico", "/apple-touch-icon.png", "/apple-touch-icon-precomposed.png"}) {
     server.on(path, HTTP_GET, sendIcon);
   }

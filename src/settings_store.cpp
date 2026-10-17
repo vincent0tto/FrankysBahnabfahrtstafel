@@ -47,6 +47,8 @@ void settingsBegin() {
 
 const Settings& settingsNet() { return current; }
 
+uint32_t settingsVersion() { return currentVersion; }
+
 bool settingsSave(const Settings& s) {
   xSemaphoreTake(mutex, portMAX_DELAY);
   current = s;

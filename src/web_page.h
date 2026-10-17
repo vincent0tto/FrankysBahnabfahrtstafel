@@ -45,8 +45,10 @@ canvas.icon{background:var(--panel);border-radius:4px;image-rendering:pixelated;
 .editor div{width:22px;height:22px;border-radius:50%;background:var(--ledoff)}
 .editor div.on{background:var(--led)}
 .sub{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%;padding-left:26px}
-footer{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 16px;display:flex;gap:12px;align-items:center;justify-content:center}
+footer{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 16px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:center}
 footer button{background:var(--accent);border-color:var(--accent);color:#fff;padding:8px 22px;font-weight:600}
+#stale{width:100%;text-align:center;font-size:14px}
+#stale button{background:var(--bg);border-color:var(--line);color:inherit;padding:5px 10px;font-weight:400;margin:2px}
 #msg{font-size:14px;color:var(--muted)}
 #log{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;margin:0 0 8px;max-height:60vh;overflow:auto;font:12px/1.35 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-all}
 </style>
@@ -115,12 +117,17 @@ footer button{background:var(--accent);border-color:var(--accent);color:#fff;pad
 <button id="restart">Neu starten</button> <span id="restartMsg" class="hint"></span>
 </section>
 </main>
-<footer><button id="save">Speichern</button><span id="msg"></span></footer>
+<footer><div id="stale" hidden>Die Einstellungen wurden inzwischen auf einem anderen Gerät geändert.
+<button id="reload">Neu laden</button><button id="force" title="die Änderungen vom anderen Gerät gehen verloren">Trotzdem meine speichern</button></div>
+<button id="save">Speichern</button><span id="msg"></span></footer>
 
 <script>
 const $=id=>document.getElementById(id);
 const MAX_PROMOS=20,MAX_DIM=4,MAX_ICONS=8,IW=12,IH=9;
 let S=null,editing=null;
+// base: collect() as loaded, to tell unsaved changes; srv: the loaded
+// settings as sent by the board, to tell real changes from a new rev alone
+let base='',srv='',staleRev='';
 
 function el(tag,props={},...kids){const e=document.createElement(tag);Object.assign(e,props);for(const k of kids)e.append(k);return e}
 function time(v){return v==='24:00'?'00:00':v}
@@ -265,30 +272,65 @@ function collect(){
     promoShowS:+$('show').value,promoIntervalS:+$('interval').value,promos,icons:S.icons};
 }
 
-async function load(){
-  const r=await fetch('/api/settings');S=await r.json();render();
+const dirty=()=>JSON.stringify(collect())!==base;
+const content=s=>JSON.stringify({...s,rev:''});
+function apply(s){
+  S=s;srv=content(s);staleRev='';
+  if(editing){$('editBox').hidden=true;editing=null}
+  render();base=JSON.stringify(collect());$('stale').hidden=true;
+}
+async function getSettings(){
+  const r=await fetch('/api/settings',{cache:'no-store'});
+  if(!r.ok)throw new Error(await r.text());
+  return r.json();
+}
+async function load(){apply(await getSettings())}
+// The board reports a different rev (saved on another device, or restarted):
+// take over its settings, but ask first if that would discard changes here.
+let syncing=false;
+async function sync(rev){
+  if(!S||!rev||rev===S.rev||rev===staleRev||syncing)return;
+  syncing=true;
+  try{
+    const s=await getSettings();
+    // still the same settings (e.g. only restarted): keep any changes here
+    if(content(s)===srv)S.rev=s.rev;
+    // a time field being typed in only reports its value when done
+    else if(!dirty()&&!document.activeElement?.matches('input[type=time]'))apply(s);
+    else{staleRev=s.rev;$('stale').hidden=false}
+  }catch(e){}
+  syncing=false;
 }
 let msgTimer=0;
-async function save(){
+// force: without ?rev=, so it also overwrites changes from another device
+async function save(force){
   clearTimeout(msgTimer);
   $('msg').textContent='Speichere ...';
   try{
-    const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(collect())});
+    const r=await fetch('/api/settings'+(force?'':'?rev='+encodeURIComponent(S.rev)),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(collect())});
+    if(r.status===409){$('msg').textContent='Nicht gespeichert';$('stale').hidden=false;renderDim();return}
     if(!r.ok)throw new Error(await r.text());
-    S=await r.json();render();
+    apply(await r.json());
     $('msg').textContent='Gespeichert ✓';
     msgTimer=setTimeout(()=>$('msg').textContent='',3000);
   }catch(e){$('msg').textContent='Fehler: '+e.message;renderDim()}
 }
-$('save').onclick=save;
+$('save').onclick=()=>save();
+$('force').onclick=()=>save(true);
+$('reload').onclick=()=>{
+  if(dirty()&&!confirm('Deine nicht gespeicherten Änderungen gehen verloren.'))return;
+  $('msg').textContent='';
+  load().catch(e=>$('msg').textContent='Laden fehlgeschlagen: '+e.message);
+};
 
 async function status(){
   try{
-    const s=await (await fetch('/api/status')).json();
+    const s=await (await fetch('/api/status',{cache:'no-store'})).json();
     const age=s.dataAgeS<0?'noch keine Daten':'Daten von vor '+(s.dataAgeS<120?s.dataAgeS+' s':Math.round(s.dataAgeS/60)+' min');
     const up=s.uptimeS<7200?Math.round(s.uptimeS/60)+' min':Math.round(s.uptimeS/3600)+' h';
     $('ssidNow').textContent=s.ssid;
     $('status').textContent=`Firmware ${s.build} · läuft seit ${up} · ${age} · ${s.off?'Ruhezeit':'Panel an'} · WLAN ${s.rssi} dBm`;
+    sync(s.rev);
   }catch(e){$('status').textContent='Tafel nicht erreichbar'}
 }
 // waits for the board to come back after a restart, then reloads the page
@@ -347,7 +389,10 @@ $('logToggle').onclick=()=>{
   clearTimeout(logTimer);logGen++;if(logOn)pollLog();
 };
 load().catch(e=>$('msg').textContent='Laden fehlgeschlagen: '+e.message);
-status();setInterval(status,15000);
+// back in the foreground (also from the back/forward cache): update at once
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)status()});
+window.addEventListener('pageshow',e=>{if(e.persisted)status()});
+status();setInterval(()=>{if(!document.hidden)status()},15000);
 </script>
 </body>
 </html>

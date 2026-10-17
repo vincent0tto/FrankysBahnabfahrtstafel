@@ -15,6 +15,9 @@ const Settings& settingsNet();
 // it. false if storing failed; `s` is used anyway until the next restart.
 bool settingsSave(const Settings& s);
 
+// Counts up with every settingsSave() since the start. Network task only.
+uint32_t settingsVersion();
+
 // A Settings in PSRAM for parsing into before settingsSave(). Network task
 // only, one at a time.
 Settings& settingsScratch();

@@ -165,6 +165,13 @@ selben WLAN öffnen. Es gibt kein Login. Auf der Seite lässt sich einstellen:
   alle 10 Sekunden ergänzt, solange es angezeigt wird und der Tab im Vordergrund ist. Die Tafel hält etwa 32 KB davon im PSRAM
   (`LOG_BUFFER_BYTES`); nach einem Neustart beginnt es von vorn.
 
+Ändert jemand die Einstellungen auf einem anderen Gerät, übernimmt eine offene Seite das von
+selbst: alle 15 Sekunden und sobald der Tab wieder im Vordergrund ist. Hat man auf der Seite
+selbst noch ungespeicherte Änderungen, erscheint stattdessen ein Hinweis mit **Neu laden** und
+**Trotzdem meine speichern**. Eine veraltete Seite kann so nicht still überschreiben, was
+inzwischen jemand anderes gespeichert hat (die Tafel lehnt das ab, technisch über eine
+Versionsnummer `rev`).
+
 Die Tafel speichert die Einstellungen im Flash (NVS), in einer Partition, die Firmware-Updates
 (von GitHub, per OTA oder ein normaler USB-Upload) nicht anrühren. So überstehen sie Neustarts
 und Updates. Nur das Löschen des ganzen Flashs (`pio run -t erase`) setzt sie zurück. Die Werte
