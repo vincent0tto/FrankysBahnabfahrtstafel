@@ -8,6 +8,10 @@ trotzdem seine Bahn.
 - 🌐 Website: <https://frankys-schriesheim.de>
 - 📸 Instagram: [@frankys_by_coffeetoego](https://www.instagram.com/frankys_by_coffeetoego/)
 
+<p align="center">
+  <img src="docs/img/tafel-tag.jpg" alt="Die Abfahrtstafel im Holzrahmen an der Wand im Franky's" width="700">
+</p>
+
 ## Was die Tafel kann
 
 Die Tafel sieht aus wie die orangefarbenen LED-Anzeigen an den rnv-Haltestellen und zeigt die
@@ -21,6 +25,10 @@ Schriesheim Bahnhof                     10:42
 628 Wilhelmsfeld Autohalle              8 min
  5  Weinheim Alter OEG-Bahnhof          12 min
 ```
+
+| Abfahrten mit Echtzeit | Promo-Zeile vom Café |
+|---|---|
+| <img src="docs/img/tafel-nah.jpg" alt="Nahaufnahme der Tafel mit vier Abfahrten" width="400"> | <img src="docs/img/promo.jpg" alt="Tafel mit der Promo-Zeile FRANKY FRIDAY und Cocktail-Symbol" width="400"> |
 
 - **Echtzeit:** Verspätungen sind schon eingerechnet, ausfallende Fahrten zeigen `fällt aus`,
   und Störungsmeldungen laufen in der untersten Zeile durch.
@@ -148,6 +156,10 @@ CI nur Builds, die die Tests bestehen.
 
 `http://abfahrtstafel.local` (oder die IP aus dem seriellen Log) von einem beliebigen Gerät im
 selben WLAN öffnen. Es gibt kein Login. Auf der Seite lässt sich einstellen:
+
+<p align="center">
+  <img src="docs/img/einstellungen.jpg" alt="Screenshot der Einstellungsseite mit Ruhezeit, Helligkeit, Promo-Texten, Icons und WLAN" width="450">
+</p>
 
 - **Ruhezeit** (Standard 02:00–06:00): Das Panel ist komplett dunkel, und die Tafel ruft keine
   Daten ab. 2 Minuten bevor das Panel wieder angeht, holt sie neue Daten (`WAKE_FETCH_LEAD_S`).
