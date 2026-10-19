@@ -243,15 +243,31 @@ wieder mit der ersten Szene.
 
 **Bilder** sind Pixelgrafiken über die ganze Tafel (192 × 64), die eine Szene unter ihren Texten
 zeigt; schwarze Pixel sind durchsichtig, dort scheint die Hintergrundfarbe durch. Unter
-„Bilder“ auf `/event` zeichnet man sie selbst (Stift, Radierer, Füllen, Pipette; Zoom bis 8×,
-*Verschieben* scrollt auf dem Handy im vergrößerten Bild; Rückgängig) oder lädt eine Datei
-(PNG, JPG, GIF), die auf die Tafel verkleinert wird: *Einpassen* zeigt das ganze Bild,
-*Ausfüllen* füllt die Tafel und schneidet ab; kleine Pixelgrafiken werden in ganzen Schritten
-und ohne Unschärfe vergrößert. Ein Bild kann aus bis zu 8 Einzelbildern bestehen, die mit
-einstellbarem Bildwechsel als Animation laufen; ein animiertes GIF wird dabei (in Browsern mit
+„Bilder“ auf `/event` zeichnet man sie selbst:
+
+- *Stift* und *Radierer* mit Stärke 1–4, *Füllen*, *Pipette*,
+- *Linie* (rastet waagerecht, senkrecht und diagonal ein), *Rechteck* und *Kreis*, auch gefüllt,
+- *Text* in den Schriften der Tafel (die Tafel zeichnet ihn selbst, er sieht also genau so aus
+  wie in einer Textzeile) und *Symbol* (die Promo-Icons, auch die eigenen, 1× bis 4×),
+- Zoom bis 8× (auf dem Handy startet der Editor bei 4×), verschoben wird mit zwei Fingern,
+  Rückgängig.
+
+Oder man lädt eine Datei (PNG, JPG, GIF), die auf die Tafel verkleinert wird: *Einpassen*
+zeigt das ganze Bild, *Ausfüllen* füllt die Tafel und schneidet ab; kleine Pixelgrafiken werden
+in ganzen Schritten und ohne Unschärfe vergrößert. *Kräftig* setzt jedes Pixel auf die nächste
+der 16 Farben des Editors (oder aus), das passt zu Logos und Grafiken; *Foto* rastert feine
+Abstufungen. Ein Bild kann aus bis zu 8 Einzelbildern bestehen, die mit einstellbarem
+Bildwechsel als Animation laufen; ein animiertes GIF wird dabei (in Browsern mit
 `ImageDecoder`, z. B. Chrome) zu Einzelbildern. Bis zu 16 Bilder; jedes Einzelbild belegt 24 KB,
 in die 1,5 MB passen also etwa 55. Wird ein Bild gelöscht, fällt es auch aus den Szenen weg,
 die es zeigen.
+
+**Farben auf dem Panel:** Mit `PIXEL_COLOR_DEPTH_BITS=4` hat jede Grundfarbe nur 16 Stufen, und die
+Bibliothek legt sie über eine Helligkeitskurve (CIE 1931, `cie_luts.h`): Ein Kanal unter 55 von 255
+bleibt ganz aus, darüber kommen die Stufen grob (z. B. 120 und 96 sind dieselbe). Dunkle Töne
+und weiche Verläufe gehen dabei verloren. Alle Vorschauen auf `/event` (Szene, Editor, Bilder)
+rechnen genau so und zeigen deshalb, was das Panel zeigt; die Hintergrundfarben zur Auswahl
+sind die dunkelsten, die noch leuchten.
 
 Das Event liegt als `/event.json`, jedes Bild als `/img<N>.bin` in einem eigenen Dateisystem
 (LittleFS auf der Partition `spiffs`, 1,5 MB), das Firmware-Updates nicht anrühren. Beim

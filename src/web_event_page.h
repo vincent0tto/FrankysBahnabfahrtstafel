@@ -93,7 +93,7 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 .thumb small{display:block;color:var(--muted);font-size:12px}
 #editor{border-top:1px solid var(--line);margin-top:14px;padding-top:4px}
 .zoomwrap{overflow:auto;background:var(--panel);border-radius:6px;margin:8px 0;max-height:70vh}
-#edCanvas{display:block;width:100%;image-rendering:pixelated;cursor:crosshair}
+#edCanvas{display:block;width:100%;image-rendering:pixelated;cursor:crosshair;touch-action:none}
 .frames{display:flex;flex-wrap:wrap;gap:8px}
 .frames canvas{width:96px;aspect-ratio:3/1;background:var(--panel);border-radius:4px;cursor:pointer;image-rendering:pixelated}
 .frames canvas.on{outline:2px solid var(--accent);outline-offset:1px}
@@ -139,7 +139,9 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff;fo
 <h3 id="edTitle"></h3>
 <div class="field"><span class="flabel">Name</span><div class="fctl"><input type="text" id="edName" maxlength="22" placeholder="z. B. Cocktail"></div></div>
 <div id="edTools"></div>
+<div class="row" id="edOpts" style="margin-top:8px"></div>
 <div class="zoomwrap" id="edWrap"><canvas id="edCanvas" width="1152" height="384"></canvas></div>
+<div class="hint" id="edHint" style="margin-top:0"></div>
 <div class="row"><div id="edZoom" style="flex:1;min-width:220px"></div><button id="edUndo">↶ Rückgängig</button><button id="edClear">Leeren</button></div>
 <div class="field"><span class="flabel">Farbe</span><div class="fctl"><div class="pal" id="edPal"></div></div></div>
 <h3>Einzelbilder</h3>
@@ -147,8 +149,9 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff;fo
 <div class="row" style="margin-top:8px"><button id="edAddFrame">+ Kopie</button><button id="edDelFrame" class="del">Einzelbild entfernen</button><button id="edPlay">▶ Abspielen</button></div>
 <div class="row" style="margin-top:8px"><span class="flabel">Bildwechsel</span><input type="range" id="edDelay" min="50" max="2000" step="50" aria-label="Bildwechsel"><span class="val" id="edDelayVal" style="width:70px"></span></div>
 <h3>Aus einer Datei</h3>
-<div class="hint">PNG, JPG oder GIF, wird auf 192 × 64 verkleinert und ersetzt das Bild oben. Aus einem animierten GIF werden (in Chrome) bis zu 8 Einzelbilder.</div>
-<div class="row"><div id="edFit" style="flex:1;min-width:200px"></div><label class="filebtn">Datei wählen …<input type="file" id="edFile" accept="image/*" hidden></label></div>
+<div class="hint">PNG, JPG oder GIF, wird auf 192 × 64 verkleinert und ersetzt das Bild oben. Aus einem animierten GIF werden (in Chrome) bis zu 8 Einzelbilder. <b>Kräftig</b> nimmt die gut sichtbaren Farben oben, das passt zu Logos und Grafiken; <b>Foto</b> rastert feine Abstufungen.</div>
+<div class="row"><div id="edFit" style="flex:1;min-width:200px"></div><div id="edLook" style="flex:1;min-width:200px"></div></div>
+<div class="row" style="margin-top:8px"><label class="filebtn">Datei wählen …<input type="file" id="edFile" accept="image/*" hidden></label></div>
 <div class="row" style="margin-top:14px"><button id="edSave" class="primary">Bild speichern</button><button id="edClose">Schließen</button><button id="edDelete" class="del">Bild löschen</button><span class="hint" id="edMsg" style="margin:0"></span></div>
 </div>
 </section>
@@ -168,7 +171,21 @@ const $=id=>document.getElementById(id);
 const MAX_SCENES=8,MAX_LINES=4,W=192,H=64,DOT=4;
 const COLORS=[['#ff7800','Amber'],['#ffd400','Gelb'],['#ff3030','Rot'],['#ff3bd0','Pink'],['#8a5bff','Lila'],
   ['#2f7bff','Blau'],['#29c6ff','Cyan'],['#4be04b','Grün'],['#ffffff','Weiß']];
-const BGS=[['#000000','Schwarz'],['#1a0b2e','Dunkellila'],['#2a0a0a','Dunkelrot'],['#06213a','Nachtblau'],['#0a2a12','Dunkelgrün'],['#2a1a05','Dunkelbraun']];
+// the panel's darkest visible level, each channel 64 of 255 (darker stays black)
+const BGS=[['#000000','Schwarz'],['#400040','Dunkellila'],['#400000','Dunkelrot'],['#000040','Nachtblau'],['#004000','Dunkelgrün'],['#004040','Dunkeltürkis']];
+// How the panel shows a colour: the library maps each channel (from RGB565)
+// through a CIE lightness table onto 16 levels (cie_luts.h, PIXEL_COLOR_DEPTH_BITS=4);
+// LEVEL_AT holds the first input value of each level, below 55 it stays off.
+// ledRGB gives that on screen (null = off), so all previews here match the board.
+const LEVEL_AT=[0,55,97,122,142,158,171,184,194,204,214,222,230,238,245,252];
+const lvl=v=>{let l=0;while(l<15&&v>=LEVEL_AT[l+1])l++;return l};
+const SHOW=LEVEL_AT.map((_,l)=>Math.round(255*Math.pow(l/15,1/2.2)));
+function ledRGB(c){
+  if(!c)return null;
+  let r=c>>8&0xF8,g=c>>3&0xFC,b=c<<3&0xF8;r|=r>>5;g|=g>>6;b|=b>>5;
+  const L=[lvl(r),lvl(g),lvl(b)];
+  return L[0]||L[1]||L[2]?L.map(l=>SHOW[l]):null;
+}
 const SIZES=[['small','Klein'],['normal','Normal'],['large','Groß'],['huge','Riesig']];
 const ANIMS=[['none','Keine'],['scroll','Laufschrift'],['blink','Blinken'],['pulse','Pulsieren'],['type','Schreibmaschine'],['wave','Welle']];
 const TRANS=[['cut','Schnitt'],['slide','Schieben'],['wipe','Wischen']];
@@ -227,7 +244,8 @@ async function drawPreview(){
   g.fillStyle='#000';g.fillRect(0,0,W*DOT,H*DOT);
   for(let y=0;y<H;y++)for(let x=0;x<W;x++){
     const c=px[y*W+x];
-    g.fillStyle=c?`rgb(${(c>>11)*255/31|0},${(c>>5&63)*255/63|0},${(c&31)*255/31|0})`:'#1c1814';
+    const led=ledRGB(c);
+    g.fillStyle=led?`rgb(${led})`:'#1c1814';
     g.beginPath();g.arc(x*DOT+DOT/2,y*DOT+DOT/2,DOT*.42,0,7);g.fill();
   }
   if(pvAgain){pvAgain=false;drawPreview()}
@@ -279,7 +297,7 @@ function sceneBody(sc,i){
     field('Name',el('input',{type:'text',value:sc.name,maxLength:22,placeholder:'z. B. Happy Hour',oninput:e=>{sc.name=e.target.value;renderScenes(false);preview()}})),
     field('Anzeigedauer',el('input',{type:'number',min:2,max:600,value:sc.durS,oninput:e=>{sc.durS=+e.target.value;renderScenes(false)}}),'Sekunden'),
     field('Hintergrund',swatches(BGS,sc.bg,(c,typing)=>{sc.bg=c;typing?preview():(renderScenes(),preview())})),
-    el('div',{className:'hint',textContent:'Dunkle Töne wirken am besten. Ein heller Hintergrund lässt alle LEDs leuchten und macht die Tafel sehr hell.'}),
+    el('div',{className:'hint',textContent:'Dunkle Töne wirken am besten, ein heller Hintergrund macht die Tafel sehr hell. Noch dunklere Farben als diese zeigt die Tafel nicht, sie bleiben schwarz.'}),
     field('Bild',imageSelect(sc)),
     field('Übergang',seg(TRANS,sc.trans,v=>{sc.trans=v;renderScenes()}),
       el('span',{className:'hint',style:'margin:0',textContent:'zur nächsten Szene'})));
@@ -347,19 +365,28 @@ $('brightReset').onclick=()=>setBright(S.brightnessDefaultPct);
 // ---- pixel images: list and editor ----
 const PAL=['#ff7800','#ffb000','#ffd400','#ff3030','#ff2a4a','#ff3bd0','#ff5fae','#8a5bff',
   '#2f7bff','#29c6ff','#cfefff','#4be04b','#7ee04a','#ffe9a8','#ffffff','#6b4a2a'];
-const TOOLS=[['pen','Stift'],['erase','Radierer'],['fill','Füllen'],['pick','Pipette'],['move','Verschieben']];
+const TOOLS=[['pen','Stift'],['line','Linie'],['rect','Rechteck'],['circle','Kreis'],['fill','Füllen'],
+  ['text','Text'],['icon','Symbol'],['erase','Radierer'],['pick','Pipette']];
+const TOOL_HINTS={pen:'Malen mit dem Finger oder der Maus.',
+  line:'Ziehen von Anfang bis Ende. Rastet waagerecht, senkrecht und diagonal ein.',
+  rect:'Ziehen von einer Ecke zur anderen.',circle:'Ziehen von der Mitte nach außen.',
+  fill:'Tippen füllt die zusammenhängende Fläche gleicher Farbe.',
+  text:'Tippen oder ziehen setzt den Text, so wie die Tafel ihn schreibt.',
+  icon:'Tippen oder ziehen setzt das Symbol.',erase:'Wischen macht Pixel aus (schwarz = durchsichtig).',
+  pick:'Tippen übernimmt die Farbe eines Pixels.'};
 const ZOOMS=[[1,'Ganz'],[2,'2×'],[4,'4×'],[8,'8×']];
 const FITS=[['contain','Einpassen'],['cover','Ausfüllen']];
+const LOOKS=[['vivid','Kräftig'],['photo','Foto']];
 const CELL=6;  // editor canvas pixels per LED
-let IM={images:[],freeBytes:0,totalBytes:0,frameBytes:W*H*2,maxFrames:8,maxImages:16},thumbs={},ED=null;
+let IM={images:[],freeBytes:0,totalBytes:0,frameBytes:W*H*2,maxFrames:8,maxImages:16},thumbs={},ED=null,ICONS=null;
 const to565=hex=>{const v=parseInt(hex.slice(1),16),r=v>>16,g=v>>8&255,b=v&255;return (r&0xF8)<<8|(g&0xFC)<<3|b>>3};
 const rgbOf=c=>[(c>>11)*255/31|0,(c>>5&63)*255/63|0,(c&31)*255/31|0];
 const hexOf=c=>'#'+rgbOf(c).map(v=>v.toString(16).padStart(2,'0')).join('');
-// a frame into a 192 x 64 canvas, 1:1
+// a frame into a 192 x 64 canvas, 1:1, as the panel shows it
 function drawSmall(cv,px){
   cv.width=W;cv.height=H;
   const g=cv.getContext('2d'),d=g.createImageData(W,H);
-  for(let i=0;i<W*H;i++){const [r,gg,b]=px[i]?rgbOf(px[i]):[11,9,8];d.data.set([r,gg,b,255],i*4)}
+  for(let i=0;i<W*H;i++)d.data.set(ledRGB(px[i])||[11,9,8],i*4),d.data[i*4+3]=255;
   g.putImageData(d,0,0);
 }
 async function loadImages(){
@@ -396,26 +423,30 @@ async function openEditor(id){
       frames=[];for(let i=0;i<info.frames;i++)frames.push(all.slice(i*W*H,(i+1)*W*H));
     }catch(e){alert('Bild laden fehlgeschlagen: '+e.message);return}
   }
-  ED={id:info?id:-1,name:info?info.name:'',delay:info?info.delayMs:300,frames,cur:0,tool:'pen',color:'#ff7800',zoom:ED?ED.zoom:1,fit:'contain',undo:[],dirty:false,play:0};
+  const narrow=innerWidth<600;  // on a phone the whole board is too small to draw on
+  ED={id:info?id:-1,name:info?info.name:'',delay:info?info.delayMs:300,frames,cur:0,tool:'pen',color:'#ff7800',
+    size:1,filled:false,text:'Text',textSize:'normal',icon:'',iconScale:2,stamp:null,
+    zoom:ED?ED.zoom:narrow?4:1,fit:'contain',look:'vivid',undo:[],dirty:false,play:0};
   $('editor').hidden=false;$('edMsg').textContent='';
   renderEditor();renderThumbs();
   $('editor').scrollIntoView({behavior:'smooth',block:'start'});
 }
+function setTool(t){ED.tool=t;renderEditor();if(t==='text')textStamp();if(t==='icon')loadIcons()}
 function renderEditor(){
   $('edTitle').textContent=ED.id<0?'Neues Bild':'Bild bearbeiten';
   $('edName').value=ED.name;
-  $('edTools').replaceChildren(seg(TOOLS,ED.tool,v=>{ED.tool=v;renderEditor()}));
+  $('edTools').replaceChildren(chips(TOOLS,ED.tool,setTool));
+  renderOpts();
+  $('edHint').textContent=TOOL_HINTS[ED.tool]+(ED.zoom>1?' Mit zwei Fingern verschieben.':'');
   $('edZoom').replaceChildren(seg(ZOOMS,ED.zoom,v=>{ED.zoom=v;renderEditor()}));
   $('edFit').replaceChildren(seg(FITS,ED.fit,v=>{ED.fit=v;renderEditor()}));
-  const cv=$('edCanvas');
-  cv.style.width=ED.zoom*100+'%';
-  cv.style.touchAction=ED.tool==='move'?'auto':'none';
-  cv.style.cursor=ED.tool==='move'?'grab':'crosshair';
+  $('edLook').replaceChildren(seg(LOOKS,ED.look,v=>{ED.look=v;renderEditor()}));
+  $('edCanvas').style.width=ED.zoom*100+'%';
   const pal=$('edPal');pal.replaceChildren();
-  for(const c of PAL)pal.append(el('button',{type:'button',className:'sw'+(c===ED.color?' on':''),style:'background:'+c,ariaLabel:c,
-    onclick:()=>{ED.color=c;if(ED.tool==='erase'||ED.tool==='pick')ED.tool='pen';renderEditor()}}));
+  const pick=c=>{ED.color=c;if(ED.tool==='erase'||ED.tool==='pick')ED.tool='pen';renderEditor();if(ED.tool==='text')textStamp();if(ED.tool==='icon')iconStamp()};
+  for(const c of PAL)pal.append(el('button',{type:'button',className:'sw'+(c===ED.color?' on':''),style:'background:'+c,ariaLabel:c,onclick:()=>pick(c)}));
   pal.append(el('input',{type:'color',value:ED.color,title:'eigene Farbe',ariaLabel:'eigene Farbe',className:PAL.includes(ED.color)?'':'sw on',
-    onchange:e=>{ED.color=e.target.value;if(ED.tool==='erase'||ED.tool==='pick')ED.tool='pen';renderEditor()}}));
+    onchange:e=>pick(e.target.value)}));
   renderFrames();
   $('edDelay').value=ED.delay;$('edDelayVal').textContent=ED.delay+' ms';
   $('edDelay').disabled=$('edPlay').disabled=ED.frames.length<2;
@@ -426,6 +457,25 @@ function renderEditor(){
   $('edSave').disabled=!ED.dirty;
   drawEditor();
 }
+// the current tool's settings
+function renderOpts(){
+  const box=$('edOpts'),t=ED.tool;box.replaceChildren();
+  const sizes=[[1,'1'],[2,'2'],[3,'3'],[4,'4']];
+  if(['pen','line','rect','circle','erase'].includes(t))box.append(el('span',{className:'flabel',textContent:'Stärke'}),seg(sizes,ED.size,v=>{ED.size=v;renderOpts()}));
+  if(t==='rect'||t==='circle')box.append(el('label',{},el('input',{type:'checkbox',checked:ED.filled,onchange:e=>ED.filled=e.target.checked}),' gefüllt'));
+  if(t==='text'){
+    box.append(el('input',{type:'text',value:ED.text,maxLength:40,placeholder:'Text',ariaLabel:'Text',oninput:e=>{ED.text=e.target.value;textStamp()}}),
+      seg(SIZES,ED.textSize,v=>{ED.textSize=v;renderOpts();textStamp()}));
+  }
+  if(t==='icon'){
+    const sel=el('select',{ariaLabel:'Symbol',onchange:e=>{ED.icon=e.target.value;iconStamp()}});
+    for(const ic of ICONS||[])sel.append(el('option',{value:ic.key,textContent:ic.name}));
+    if(ICONS&&!ICONS.some(ic=>ic.key===ED.icon))ED.icon=ICONS[0]?ICONS[0].key:'';
+    sel.value=ED.icon;
+    box.append(sel,el('span',{className:'flabel',textContent:'Größe'}),seg([[1,'1×'],[2,'2×'],[3,'3×'],[4,'4×']],ED.iconScale,v=>{ED.iconScale=v;renderOpts();iconStamp()}));
+    if(!ICONS)box.append(el('span',{className:'hint',style:'margin:0',textContent:'Lade Symbole ...'}));
+  }
+}
 function renderFrames(){
   const box=$('edFrames');box.replaceChildren();
   ED.frames.forEach((f,i)=>{
@@ -433,54 +483,168 @@ function renderFrames(){
     drawSmall(cv,f);box.append(cv);
   });
 }
+// the frame 1:1 into a small canvas, scaled up without smoothing, with a grid between the LEDs
+const edSmall=el('canvas');
 function drawEditor(px=ED.frames[ED.cur]){
+  drawSmall(edSmall,px);
   const g=$('edCanvas').getContext('2d');
-  g.fillStyle='#000';g.fillRect(0,0,W*CELL,H*CELL);
-  for(let i=0;i<W*H;i++)paintCell(g,i%W,i/W|0,px[i]);
+  g.imageSmoothingEnabled=false;
+  g.drawImage(edSmall,0,0,W*CELL,H*CELL);
+  g.fillStyle='#000';
+  for(let x=1;x<=W;x++)g.fillRect(x*CELL-1,0,1,H*CELL);
+  for(let y=1;y<=H;y++)g.fillRect(0,y*CELL-1,W*CELL,1);
 }
-function paintCell(g,x,y,c){g.fillStyle=c?hexOf(c):'#241f1b';g.fillRect(x*CELL,y*CELL,CELL-1,CELL-1)}
 function markDirty(){ED.dirty=true;$('edSave').disabled=false;$('edUndo').disabled=!ED.undo.length}
 function pushUndo(){ED.undo.push({cur:ED.cur,frames:ED.frames.map(f=>f.slice())});if(ED.undo.length>20)ED.undo.shift()}
 $('edUndo').onclick=()=>{const u=ED.undo.pop();if(!u)return;stopPlay();ED.frames=u.frames;ED.cur=Math.min(u.cur,u.frames.length-1);markDirty();renderEditor()};
 $('edClear').onclick=()=>{stopPlay();pushUndo();ED.frames[ED.cur].fill(0);markDirty();renderEditor()};
 $('edName').oninput=e=>{ED.name=e.target.value;markDirty()};
-// drawing: pen and eraser along the pointer (lines between the events), fill, colour picker
-let drawing=false,last=null;
-function cellAt(e){
-  const r=$('edCanvas').getBoundingClientRect();
-  return {x:Math.min(W-1,Math.max(0,Math.floor((e.clientX-r.left)/r.width*W))),y:Math.min(H-1,Math.max(0,Math.floor((e.clientY-r.top)/r.height*H)))};
+
+// ---- shapes on a frame `f` (value v = RGB565, 0 = off) ----
+function dot(f,x,y,v,size=1){
+  const o=Math.floor((size-1)/2);
+  for(let dy=0;dy<size;dy++)for(let dx=0;dx<size;dx++){
+    const px=x-o+dx,py=y-o+dy;
+    if(px>=0&&px<W&&py>=0&&py<H)f[py*W+px]=v;
+  }
 }
-function plot(p){
-  const v=ED.tool==='erase'?0:to565(ED.color);
-  ED.frames[ED.cur][p.y*W+p.x]=v;paintCell($('edCanvas').getContext('2d'),p.x,p.y,v);
+function line(f,a,b,v,size){
+  const n=Math.max(Math.abs(b.x-a.x),Math.abs(b.y-a.y))||1;
+  for(let k=0;k<=n;k++)dot(f,Math.round(a.x+(b.x-a.x)*k/n),Math.round(a.y+(b.y-a.y)*k/n),v,size);
 }
-function fill(p){
-  const f=ED.frames[ED.cur],from=f[p.y*W+p.x],to=to565(ED.color);
-  if(from===to)return;
+// horizontal, vertical or diagonal if the direction is close to it
+function snap(a,b){
+  const dx=b.x-a.x,dy=b.y-a.y,ang=Math.atan2(dy,dx),s=Math.round(ang/(Math.PI/4))*(Math.PI/4);
+  if(Math.abs(ang-s)>0.16)return b;
+  const k=Math.round(s/(Math.PI/4))&3;  // 0: horizontal, 2: vertical, 1/3: diagonal
+  if(k===0)return {x:b.x,y:a.y};
+  if(k===2)return {x:a.x,y:b.y};
+  const d=Math.round((Math.abs(dx)+Math.abs(dy))/2);
+  return {x:a.x+Math.sign(dx)*d,y:a.y+Math.sign(dy)*d};
+}
+function rect(f,a,b,v,size,filled){
+  const x0=Math.min(a.x,b.x),x1=Math.max(a.x,b.x),y0=Math.min(a.y,b.y),y1=Math.max(a.y,b.y);
+  if(filled){for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)dot(f,x,y,v);return}
+  line(f,{x:x0,y:y0},{x:x1,y:y0},v,size);line(f,{x:x1,y:y0},{x:x1,y:y1},v,size);
+  line(f,{x:x1,y:y1},{x:x0,y:y1},v,size);line(f,{x:x0,y:y1},{x:x0,y:y0},v,size);
+}
+function circle(f,c,p,v,size,filled){
+  const r=Math.round(Math.hypot(p.x-c.x,p.y-c.y));
+  for(let y=-r-1;y<=r+1;y++)for(let x=-r-1;x<=r+1;x++){
+    const d=Math.hypot(x,y);
+    if(filled?d<=r+.3:Math.abs(d-r)<.5)dot(f,c.x+x,c.y+y,v,filled?1:size);
+  }
+}
+function fill(f,p,v){
+  const from=f[p.y*W+p.x];if(from===v)return;
   const stack=[p.y*W+p.x];
   while(stack.length){
-    const i=stack.pop();if(f[i]!==from)continue;f[i]=to;
+    const i=stack.pop();if(f[i]!==from)continue;f[i]=v;
     const x=i%W;
     if(x>0)stack.push(i-1);if(x<W-1)stack.push(i+1);if(i>=W)stack.push(i-W);if(i<W*(H-1))stack.push(i+W);
   }
 }
-const cv=$('edCanvas');
+// a stamp (text or symbol) centred on p; its 0 pixels leave the picture as it is
+function stamp(f,s,p){
+  const x0=p.x-(s.w>>1),y0=p.y-(s.h>>1);
+  for(let y=0;y<s.h;y++)for(let x=0;x<s.w;x++){
+    const v=s.px[y*s.w+x],X=x0+x,Y=y0+y;
+    if(v&&X>=0&&X<W&&Y>=0&&Y<H)f[Y*W+X]=v;
+  }
+}
+// The text as the board writes it: it draws it itself (/api/event/preview),
+// then only the part with pixels is kept.
+let stampSeq=0;
+async function textStamp(){
+  const seq=++stampSeq;ED.stamp=null;
+  if(!ED.text.trim())return;
+  await new Promise(r=>setTimeout(r,200));
+  if(seq!==stampSeq)return;
+  try{
+    const sc={name:'',durS:8,bg:'#000000',lines:[{text:ED.text,color:ED.color,size:ED.textSize,v:'top',h:'left',anim:'none',speed:5}]};
+    const r=await fetch('/api/event/preview?ms=0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(sc)});
+    if(!r.ok||seq!==stampSeq)return;
+    const runs=new Uint16Array(await r.arrayBuffer()),px=new Uint16Array(W*H);
+    for(let i=0,p=0;i+1<runs.length&&p<px.length;i+=2){px.fill(runs[i+1],p,p+runs[i]);p+=runs[i]}
+    let x0=W,y0=H,x1=-1,y1=-1;
+    for(let i=0;i<W*H;i++)if(px[i]){const x=i%W,y=i/W|0;x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)}
+    if(x1<0)return;
+    const w=x1-x0+1,h=y1-y0+1,s=new Uint16Array(w*h);
+    for(let y=0;y<h;y++)s.set(px.subarray((y0+y)*W+x0,(y0+y)*W+x0+w),y*w);
+    ED.stamp={w,h,px:s};
+  }catch(e){}
+}
+// the promo icons (built-in and own ones) as symbols
+async function loadIcons(){
+  if(ICONS)return iconStamp();
+  try{
+    const s=await (await fetch('/api/settings',{cache:'no-store'})).json();
+    ICONS=s.presetIcons.map(i=>({key:i.tag,name:i.name,rows:i.rows.map(r=>[...r].map(c=>c==='#'))}))
+      .concat(s.icons.map(i=>({key:'c'+i.id,name:(i.name||'Icon '+(i.id+1))+' (eigenes)',rows:i.rows.map(r=>[...Array(12)].map((_,x)=>!!(r>>(11-x)&1)))})));
+  }catch(e){ICONS=[]}
+  if(ED&&ED.tool==='icon')renderOpts();
+  iconStamp();
+}
+function iconStamp(){
+  const ic=ICONS&&ICONS.find(i=>i.key===ED.icon);ED.stamp=null;
+  if(!ic)return;
+  const k=ED.iconScale,h=ic.rows.length,w=ic.rows[0].length,v=to565(ED.color),s=new Uint16Array(w*k*h*k);
+  for(let y=0;y<h*k;y++)for(let x=0;x<w*k;x++)if(ic.rows[y/k|0][x/k|0])s[y*w*k+x]=v;
+  ED.stamp={w:w*k,h:h*k,px:s};
+}
+
+// ---- pointer: one finger (or the mouse) draws, two fingers move the zoomed picture ----
+const cv=$('edCanvas'),pointers=new Map();
+let stroke=null,panning=false,lastMid=null;
+function cellAt(e){
+  const r=cv.getBoundingClientRect();
+  return {x:Math.min(W-1,Math.max(0,Math.floor((e.clientX-r.left)/r.width*W))),y:Math.min(H-1,Math.max(0,Math.floor((e.clientY-r.top)/r.height*H)))};
+}
+function mid(){const p=[...pointers.values()];return {x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2}}
+function cancelStroke(){if(!stroke)return;ED.frames[ED.cur].set(stroke.snap);ED.undo.pop();stroke=null;drawEditor()}
+// draws the stroke's shape from its start to p onto the picture as it was before it
+function strokeTo(p){
+  const f=ED.frames[ED.cur],t=stroke.tool,v=t==='erase'?0:to565(ED.color);
+  if(t==='pen'||t==='erase'){line(f,stroke.last,p,v,ED.size);stroke.last=p;drawEditor();return}
+  f.set(stroke.snap);
+  if(t==='line')line(f,stroke.start,snap(stroke.start,p),v,ED.size);
+  else if(t==='rect')rect(f,stroke.start,p,v,ED.size,ED.filled);
+  else if(t==='circle')circle(f,stroke.start,p,v,ED.size,ED.filled);
+  else if((t==='text'||t==='icon')&&ED.stamp)stamp(f,ED.stamp,p);
+  drawEditor();
+}
 cv.onpointerdown=e=>{
-  if(!ED||ED.tool==='move')return;
-  e.preventDefault();stopPlay();try{cv.setPointerCapture(e.pointerId)}catch(err){}
-  const p=cellAt(e),c=ED.frames[ED.cur][p.y*W+p.x];
+  if(!ED)return;
+  e.preventDefault();stopPlay();
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pointers.size===2){cancelStroke();panning=true;lastMid=mid();return}
+  if(pointers.size>2||panning)return;
+  try{cv.setPointerCapture(e.pointerId)}catch(err){}
+  const p=cellAt(e),f=ED.frames[ED.cur],c=f[p.y*W+p.x];
   if(ED.tool==='pick'){if(c){ED.color=hexOf(c);ED.tool='pen';renderEditor()}return}
+  if((ED.tool==='text'||ED.tool==='icon')&&!ED.stamp){$('edMsg').textContent=ED.tool==='text'?'Erst einen Text eingeben.':'Erst ein Symbol wählen.';return}
   pushUndo();
-  if(ED.tool==='fill'){fill(p);markDirty();renderEditor();return}
-  drawing=true;last=p;plot(p);
+  if(ED.tool==='fill'){fill(f,p,to565(ED.color));markDirty();renderEditor();return}
+  stroke={tool:ED.tool,start:p,last:p,snap:f.slice()};
+  strokeTo(p);
 };
 cv.onpointermove=e=>{
-  if(!drawing)return;
-  const p=cellAt(e),n=Math.max(Math.abs(p.x-last.x),Math.abs(p.y-last.y));
-  for(let k=1;k<=n;k++)plot({x:Math.round(last.x+(p.x-last.x)*k/n),y:Math.round(last.y+(p.y-last.y)*k/n)});
-  last=p;
+  if(!pointers.has(e.pointerId))return;
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(panning){
+    if(pointers.size<2)return;
+    const m=mid(),w=$('edWrap');
+    w.scrollLeft-=m.x-lastMid.x;w.scrollTop-=m.y-lastMid.y;lastMid=m;
+    return;
+  }
+  if(stroke)strokeTo(cellAt(e));
 };
-cv.onpointerup=cv.onpointercancel=()=>{if(drawing){drawing=false;markDirty();renderFrames();$('edUndo').disabled=false}};
+cv.onpointerup=cv.onpointercancel=e=>{
+  pointers.delete(e.pointerId);
+  if(panning){if(!pointers.size)panning=false;return}
+  if(stroke){stroke=null;markDirty();renderFrames()}
+};
+
 // frames
 $('edAddFrame').onclick=()=>{stopPlay();pushUndo();ED.frames.splice(ED.cur+1,0,ED.frames[ED.cur].slice());ED.cur++;markDirty();renderEditor()};
 $('edDelFrame').onclick=()=>{stopPlay();pushUndo();ED.frames.splice(ED.cur,1);ED.cur=Math.min(ED.cur,ED.frames.length-1);markDirty();renderEditor()};
@@ -492,7 +656,29 @@ function startEdPlay(){
 }
 function stopPlay(){if(ED&&ED.play){clearInterval(ED.play);ED.play=0;$('edPlay').textContent='▶ Abspielen';drawEditor()}}
 $('edPlay').onclick=()=>{if(ED.play)stopPlay();else startEdPlay()};
-// import: scaled to the board (pixel art by whole steps, without blurring), transparent stays dark
+
+// ---- import: scaled to the board, then made fit for its 16 levels per colour ----
+// Kräftig: every pixel becomes the nearest colour of the palette (or off), flat
+// areas as on the board's own graphics. Foto: each colour channel dithered
+// between the levels the panel can show, so shades come out as a fine pattern.
+const BAYER=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
+// per channel (5 or 6 bits): the codes that reach the panel's levels, darkest first
+function levelCodes(bits){
+  const out=[],max=(1<<bits)-1;
+  for(let c=0;c<=max;c++){
+    const e=bits===5?c<<3|c>>2:c<<2|c>>4,l=lvl(e);
+    if(!out.length||out[out.length-1].l<l)out.push({l,c,v:LEVEL_AT[l]});
+  }
+  return out;
+}
+const CODES5=levelCodes(5),CODES6=levelCodes(6);
+function dither(v,codes,t){
+  let i=0;while(i<codes.length-1&&codes[i+1].v<=v)i++;
+  if(i===codes.length-1)return codes[i].c;
+  const frac=(v-codes[i].v)/(codes[i+1].v-codes[i].v);
+  return codes[frac>t?i+1:i].c;
+}
+const PAL_RGB=PAL.map(h=>{const v=parseInt(h.slice(1),16);return [v>>16,v>>8&255,v&255]});
 function toPixels(src){
   const w=src.displayWidth||src.width,h=src.displayHeight||src.height;
   let s=ED.fit==='cover'?Math.max(W/w,H/h):Math.min(W/w,H/h);
@@ -500,7 +686,19 @@ function toPixels(src){
   if(s>=2){s=Math.floor(s);g.imageSmoothingEnabled=false}else g.imageSmoothingQuality='high';
   g.drawImage(src,Math.round((W-w*s)/2),Math.round((H-h*s)/2),w*s,h*s);
   const d=g.getImageData(0,0,W,H).data,px=new Uint16Array(W*H);
-  for(let i=0;i<W*H;i++)if(d[i*4+3]>=128)px[i]=(d[i*4]&0xF8)<<8|(d[i*4+1]&0xFC)<<3|d[i*4+2]>>3;
+  for(let i=0;i<W*H;i++){
+    if(d[i*4+3]<128)continue;
+    const r=d[i*4],gg=d[i*4+1],b=d[i*4+2];
+    if(ED.look==='photo'){
+      const t=(BAYER[(i/W&3)*4+(i%W&3)]+.5)/16;
+      px[i]=dither(r,CODES5,t)<<11|dither(gg,CODES6,t)<<5|dither(b,CODES5,t);
+      continue;
+    }
+    if(.299*r+.587*gg+.114*b<45)continue;  // too dark for the panel: off
+    let best=0,bd=1e9;
+    PAL_RGB.forEach(([pr,pg,pb],k)=>{const dd=2*(r-pr)**2+4*(gg-pg)**2+3*(b-pb)**2;if(dd<bd){bd=dd;best=k}});
+    px[i]=to565(PAL[best]);
+  }
   return px;
 }
 $('edFile').onchange=async e=>{
