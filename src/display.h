@@ -3,6 +3,7 @@
 #include <time.h>
 
 #include "departure.h"
+#include "event.h"
 #include "render.h"
 #include "settings.h"
 
@@ -13,4 +14,7 @@ bool displayBegin();
 // else is derived from `now`, so cached departures keep counting down while
 // the API is down. Within the off time the panel stays dark and nothing is
 // drawn; returns true then, so the caller can call less often.
-bool displayRender(const Board& b, const Settings& s, const DisplayStatus& st, time_t now, uint32_t ms);
+// While `ev` is on it shows the event instead, `eventMs` after its scenes
+// started, with its own brightness and no off time.
+bool displayRender(const Board& b, const Settings& s, const Event& ev, const DisplayStatus& st, time_t now,
+                   uint32_t ms, uint32_t eventMs);

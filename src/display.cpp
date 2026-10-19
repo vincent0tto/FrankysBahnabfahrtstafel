@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include "config.h"
+#include "event_render.h"
 #include "log.h"
 
 static MatrixPanel_I2S_DMA* matrix = nullptr;
@@ -40,20 +41,24 @@ bool displayBegin() {
 static bool asleep = false;
 
 // Brightness from the settings' dim windows; the default one while the time
-// isn't known.
-static void updateBrightness(const Settings& s, const DisplayStatus& st, time_t now) {
-  uint8_t want = brightnessToPanel(st.timeValid ? brightnessAt(s, minuteOfDay(now), localDay(now)) : s.brightness);
+// isn't known. The event has one of its own.
+static void updateBrightness(const Settings& s, const Event& ev, const DisplayStatus& st, time_t now) {
+  uint8_t want = brightnessToPanel(ev.on          ? ev.brightness
+                                   : st.timeValid ? brightnessAt(s, minuteOfDay(now), localDay(now))
+                                                  : s.brightness);
   if (want != currentBrightness) {
     currentBrightness = want;
     matrix->setBrightness8(want);
   }
 }
 
-bool displayRender(const Board& b, const Settings& s, const DisplayStatus& st, time_t now, uint32_t ms) {
+bool displayRender(const Board& b, const Settings& s, const Event& ev, const DisplayStatus& st, time_t now,
+                   uint32_t ms, uint32_t eventMs) {
   if (!matrix) return false;
   // Off time: blank both buffers once and switch the LEDs off (also while
-  // the nightly update installs). Never while the time is unknown.
-  bool off = st.timeValid && isOffTime(s, minuteOfDay(now));
+  // the nightly update installs). Never while the time is unknown, nor
+  // while the event is on.
+  bool off = !ev.on && st.timeValid && isOffTime(s, minuteOfDay(now));
   if (off) {
     if (!asleep) {
       Log.println("[display] off time, panel dark");
@@ -71,9 +76,10 @@ bool displayRender(const Board& b, const Settings& s, const DisplayStatus& st, t
     Log.println("[display] off time over");
     asleep = false;
   }
-  updateBrightness(s, st, now);
+  updateBrightness(s, ev, st, now);
   matrix->clearScreen();
-  renderFrame(*matrix, u8, amber, b, s, st, now, ms);
+  if (ev.on) renderEvent(*matrix, u8, ev, eventMs);
+  else renderFrame(*matrix, u8, amber, b, s, st, now, ms);
   matrix->flipDMABuffer();
   return false;
 }

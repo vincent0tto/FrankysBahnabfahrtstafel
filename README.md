@@ -37,6 +37,8 @@ Schriesheim Bahnhof                     10:42
 - **Kleine Bahnen:** hin und wieder fährt eine kleine Bahn oder ein Bus aus seiner Zeile,
   wenn er abfährt.
 - **Nachtruhe:** nachts schaltet sich die Tafel ab, am späten Abend wird sie dunkler.
+- **Event-Modus:** Für eine Party oder einen besonderen Abend übernimmt die Tafel auf Knopfdruck
+  ganz eigene Texte in Farbe, bis man sie wieder auf die Abfahrten zurückschaltet.
 - **Leicht zu ändern:** Nachrichten, Symbole, Helligkeit und Zeiten lassen sich von jedem
   Handy, Tablet oder Laptop im Mitarbeiter-WLAN des Cafés ändern, ganz ohne Kabel.
 - **Kümmert sich um sich selbst:** nach WLAN-Problemen verbindet sie sich neu, und Updates
@@ -57,8 +59,9 @@ die nebeneinander montiert sind. Das ergibt 192×64 Pixel.
 
 Lange Ziele laufen durch (Pause, bis zum Ende schieben, Pause, zurückspringen).
 Schriften und Layout stehen oben in `src/render.cpp`. Um ein Layout ohne Hardware anzusehen,
-`tools/preview/run.sh` ausführen; es schreibt `tools/preview/preview.png` und die Bilder der
-Abfahrtsanimation nach `tools/preview/preview_anim.png`.
+`tools/preview/run.sh` ausführen; es schreibt `tools/preview/preview.png`, die Bilder der
+Abfahrtsanimation nach `tools/preview/preview_anim.png` und Beispiele des Event-Modus nach
+`tools/preview/preview_event.png`.
 
 ## Datenquelle
 
@@ -184,6 +187,8 @@ selben WLAN öffnen. Es gibt kein Login. Auf der Seite lässt sich einstellen:
   hält etwa 32 KB davon im PSRAM, `LOG_BUFFER_BYTES`; nach einem Neustart beginnt es von vorn);
   **Neu starten**.
 
+Ganz oben steht der Schalter für den **Event-Modus** (siehe unten); er gilt sofort, ohne Speichern.
+
 Der Knopf unten zeigt, ob es ungespeicherte Änderungen gibt; verlässt man die Seite mit
 welchen, fragt der Browser nach.
 
@@ -200,6 +205,31 @@ und Updates. Nur das Löschen des ganzen Flashs (`pio run -t erase`) setzt sie z
 in `config.h` sind nur die Standardwerte: Ein eingebauter Text, der nicht bearbeitet wurde,
 folgt neuer Firmware; ein bearbeiteter behält deine Version, auch wenn die Firmware den Text
 entfernt oder ändert.
+
+### Event-Modus
+
+Der Schalter auf der Einstellungsseite (oder auf `http://abfahrtstafel.local/event`) übergibt die
+ganze Tafel an das Event, bis man ihn wieder ausschaltet. Solange:
+
+- zeigt die Tafel nur die Szenen des Events, keine Abfahrten, Promos oder Störmeldungen,
+- ruft sie keine Abfahrten ab und sucht nicht nach Firmware-Updates (das holt sie nach, sobald
+  der Event-Modus aus ist),
+- gilt die **Ruhezeit nicht**: Die Tafel bleibt auch nachts an, mit der eigenen Helligkeit des
+  Events statt der Zeitfenster aus dem Zeitplan.
+
+Ein- und Ausschalten überstehen Neustarts, auch den täglichen um 04:00.
+
+Auf `/event` bearbeitet man bis zu 8 **Szenen**, die der Reihe nach in einer Schleife laufen. Jede
+hat eine Anzeigedauer, einen Hintergrund (Schwarz oder eine Farbe) und bis zu 4 **Zeilen**: Text,
+Farbe, Schrift (*Klein* wie die Kopfzeile, *Normal* wie eine Abfahrt, *Groß* etwa zwei Zeilen hoch,
+*Riesig* fast die ganze Tafel), Höhe (oben, Mitte, unten) und Ausrichtung. Ein Text, der nicht
+auf die Tafel passt, läuft hin und her wie ein langes Ziel. Die Vorschau auf der Seite zeichnet
+die Tafel selbst (`/api/event/preview`), sie sieht also genau so aus wie auf dem Panel. Nach
+dem Speichern beginnt die Tafel wieder mit der ersten Szene.
+
+Das Event liegt als `/event.json` in einem eigenen Dateisystem (LittleFS auf der Partition
+`spiffs`, 1,5 MB), das Firmware-Updates nicht anrühren. Beim allerersten Start mit dieser
+Firmware formatiert die Tafel die Partition einmal. Format: `eventToJson` in `src/event.cpp`.
 
 ### Tests (Parser, laufen auf dem Mac)
 
@@ -250,6 +280,10 @@ vorher einmal `sudo xcodebuild -license` aus.
 | `src/settings.cpp` | Einstellungen zur Laufzeit: Standardwerte, Zeitfenster, JSON (auf dem Host getestet) |
 | `src/settings_store.cpp` | Einstellungen im Flash (NVS), Übergabe an die Render-Schleife |
 | `src/web.cpp`, `src/web_page.h` | Einstellungsseite und ihre JSON-API |
+| `src/event.cpp` | Event-Modus: Szenen und Zeilen, JSON (auf dem Host getestet) |
+| `src/event_store.cpp` | Event im Flash (LittleFS), Übergabe an die Render-Schleife |
+| `src/event_render.cpp` | zeichnet die Szenen, für das Panel und die Vorschau auf der Seite |
+| `src/web_event_page.h` | Event-Seite (`/event`) |
 | `src/updater.cpp` | Firmware-Update aus den GitHub-Releases |
 | `src/icons.cpp` | eingebaute Promo-Symbole |
 | `src/render.cpp` | rnv-Layout, Laufschrift, Statusbildschirme |

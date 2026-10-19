@@ -1,5 +1,6 @@
 // Host preview of the LED layout: renders a few scenarios with the real
-// render code into a PPM image (LED dots, 6x scale). Build/run: tools/preview/run.sh
+// render code into PPM images (LED dots, 6x scale): the departures, the
+// departure animation and the event mode. Build/run: tools/preview/run.sh
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,6 +11,7 @@
 #include <vector>
 
 #include "config.h"
+#include "event_render.h"
 #include "parse.h"
 #include "render.h"
 
@@ -48,6 +50,17 @@ static Frame render(const Board& b, DisplayStatus st, time_t now, uint32_t ms) {
   u8.begin(canvas);
   uint16_t amber = ((COLOR_R & 0xF8) << 8) | ((COLOR_G & 0xFC) << 3) | (COLOR_B >> 3);
   renderFrame(canvas, u8, amber, b, settings, st, now, ms);
+  Frame f;
+  f.px.assign(canvas.getBuffer(), canvas.getBuffer() + W * H);
+  return f;
+}
+
+static Frame renderEventFrame(const Event& e, uint32_t ms) {
+  GFXcanvas16 canvas(W, H);
+  canvas.fillScreen(0);
+  U8G2_FOR_ADAFRUIT_GFX u8;
+  u8.begin(canvas);
+  renderEvent(canvas, u8, e, ms);
   Frame f;
   f.px.assign(canvas.getBuffer(), canvas.getBuffer() + W * H);
   return f;
@@ -180,5 +193,36 @@ int main(int argc, char** argv) {
   departAnim(anim, normal, 5, now + 3600, {1000, 2000, 3000});
   departAnim(anim, normal, 4, now, {1000}, true);
   writePpm(argc > 2 ? argv[2] : "preview_anim.ppm", anim);
+
+  // event mode: the example scene, every text size and position, a coloured
+  // background, a text too long for the board (start and scrolled)
+  std::vector<Frame> event;
+  Event ev;
+  eventDefaults(ev);
+  event.push_back(renderEventFrame(ev, 0));
+  Scene sizes;
+  const char* sizeTexts[] = {"Klein oben links", "Normal Mitte", "Groß unten", "Riesig"};
+  for (int i = 0; i < 3; i++) {
+    EventLine& l = sizes.lines[sizes.nLines++];
+    strcpy(l.text, sizeTexts[i]);
+    l.size = (TextSize)i;
+    l.v = (VPos)i;
+    l.h = (HAlign)i;
+    l.color = i == 0 ? 0xFFD400 : i == 1 ? 0x29C6FF : 0xFF3BD0;
+  }
+  ev.scenes[0] = sizes;
+  event.push_back(renderEventFrame(ev, 0));
+  Scene huge;
+  huge.bg = 0x1A0B2E;
+  EventLine& h = huge.lines[huge.nLines++];
+  strcpy(h.text, "PARTY");
+  h.size = TextSize::Huge;
+  h.color = 0xFFB000;
+  ev.scenes[0] = huge;
+  event.push_back(renderEventFrame(ev, 0));
+  strcpy(h.text, "Ölige Äpfel für Jürgen");
+  ev.scenes[0] = huge;
+  for (uint32_t ms : {0u, 6000u}) event.push_back(renderEventFrame(ev, ms));
+  writePpm(argc > 3 ? argv[3] : "preview_event.ppm", event);
   return 0;
 }

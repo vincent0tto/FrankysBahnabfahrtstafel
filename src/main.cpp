@@ -4,7 +4,7 @@
 //
 // Core 0: netTask   – WiFi, NTP, OTA, settings web page, firmware update
 //                     check after start, API polling
-// Core 1: loop()    – renders ~30 fps from the last good data
+// Core 1: loop()    – renders ~30 fps from the last good data, or the event
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -14,6 +14,7 @@
 
 #include "config.h"
 #include "display.h"
+#include "event_store.h"
 #include "log.h"
 #include "net.h"
 #include "settings_store.h"
@@ -59,9 +60,13 @@ static void netTask(void*) {
     esp_task_wdt_reset();
     bool online = netMaintain();
 
+    // Event mode: no departures needed, and no update that would restart
+    // the board in the middle of it (checked once it is switched off)
+    bool event = eventNet().on;
+
     // once per start, before the first fetch (the daily reboot falls into
     // the off time, so the update usually happens while the panel is dark)
-    if (online && timeValid() && !updateChecked) {
+    if (online && timeValid() && !updateChecked && !event) {
       updateChecked = true;
       updateCheckAndInstall();  // restarts if it installed one
     }
@@ -73,7 +78,7 @@ static void netTask(void*) {
     bool sleeping = timeValid() && isOffTime(s, minuteOfDay(now)) &&
                     isOffTime(s, minuteOfDay(now + WAKE_FETCH_LEAD_S));
 
-    if (online && timeValid() && !sleeping && (int32_t)(millis() - nextFetchMs) >= 0) {
+    if (online && timeValid() && !sleeping && !event && (int32_t)(millis() - nextFetchMs) >= 0) {
       FetchResult r = fetchBoard(fresh);
       if (r == FetchResult::Ok) {
         xSemaphoreTake(boardMutex, portMAX_DELAY);
@@ -106,6 +111,7 @@ void setup() {
 
   boardMutex = xSemaphoreCreateMutex();
   settingsBegin();
+  eventBegin();
   esp_task_wdt_init(WDT_TIMEOUT_S, true);  // panic -> reboot on hang
   esp_task_wdt_add(nullptr);               // loop task
 
@@ -124,6 +130,9 @@ void loop() {
   static uint32_t localVersion = UINT32_MAX;
   static Settings settings;
   static uint32_t settingsVersion = 0;
+  static Event event;
+  static uint32_t evVersion = 0;
+  static uint32_t eventStartMs = 0;
 
   esp_task_wdt_reset();
   if (boardVersion != localVersion && xSemaphoreTake(boardMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
@@ -132,11 +141,13 @@ void loop() {
     xSemaphoreGive(boardMutex);
   }
   settingsFetch(settings, settingsVersion);
+  if (eventFetch(event, evVersion)) eventStartMs = millis();  // switched on or saved: from the first scene
 
   DisplayStatus st;
   st.wifi = WiFi.status() == WL_CONNECTED;
   st.timeValid = timeValid();
   st.updating = updateRunning();
-  bool dark = displayRender(local, settings, st, time(nullptr), millis());
+  uint32_t ms = millis();
+  bool dark = displayRender(local, settings, event, st, time(nullptr), ms, ms - eventStartMs);
   delay(dark ? 500 : 33);  // off time: nothing to draw
 }

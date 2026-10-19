@@ -1,6 +1,7 @@
 #pragma once
 // The settings page served by src/web.cpp at "/". Talks to /api/settings
-// /api/status, /api/restart, /api/wifi and /api/log (JSON, format: settingsToJson in src/settings.cpp).
+// /api/status, /api/restart, /api/wifi, /api/log and /api/event/on (JSON, format: settingsToJson in
+// src/settings.cpp). The event mode has a page of its own (src/web_event_page.h).
 #include <pgmspace.h>
 
 static const char WEB_PAGE[] PROGMEM = R"rawliteral(<!doctype html>
@@ -88,6 +89,14 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 #stale{width:100%;text-align:center;font-size:14px}
 #stale button{background:var(--bg);border-color:var(--line);color:inherit;padding:5px 10px;font-weight:400;margin:2px}
 #msg{font-size:14px;color:var(--muted)}
+section.evon{border:2px solid var(--accent)}
+.evhead{display:flex;align-items:center;gap:12px}
+.evhead>div{flex:1}
+.switch{width:60px;height:34px;border-radius:17px;border:0;padding:3px;background:#cfc9c1;flex:none;transition:background .2s}
+.switch span{display:block;width:28px;height:28px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s}
+.switch[aria-checked=true]{background:var(--accent)}
+.switch[aria-checked=true] span{transform:translateX(26px)}
+.evlink{display:inline-block;margin-top:2px;font-weight:600;color:var(--accent);text-decoration:none;padding:4px 0}
 #log{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;margin:0 0 8px;max-height:60vh;overflow:auto;font:12px/1.35 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-all}
 </style>
 </head>
@@ -95,6 +104,13 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 <main>
 <h1>Abfahrtstafel</h1>
 <div class="status" id="status">Lade ...</div>
+
+<section id="evCard">
+<div class="evhead"><div><h2 style="margin:0">Event-Modus</h2><div class="hint" id="evText" style="margin:2px 0 0">...</div></div>
+<button class="switch" id="evSwitch" role="switch" aria-checked="false" aria-label="Event-Modus an oder aus"><span></span></button></div>
+<div class="hint" id="evHint"></div>
+<a class="evlink" href="/event">Event bearbeiten ›</a>
+</section>
 
 <section>
 <h2>Promos</h2>
@@ -499,11 +515,32 @@ async function status(){
     const age=s.dataAgeS<0?'noch keine Daten':'Daten von vor '+(s.dataAgeS<120?s.dataAgeS+' s':Math.round(s.dataAgeS/60)+' min');
     const up=s.uptimeS<7200?Math.round(s.uptimeS/60)+' min':Math.round(s.uptimeS/3600)+' h';
     $('ssidNow').textContent=s.ssid;
-    $('status').textContent=`Firmware ${s.build} · läuft seit ${up} · ${age} · ${s.off?'Ruhezeit':'Panel an'} · WLAN ${s.rssi} dBm`;
+    $('status').textContent=`Firmware ${s.build} · läuft seit ${up} · ${age} · ${s.event?'Event läuft':s.off?'Ruhezeit':'Panel an'} · WLAN ${s.rssi} dBm`;
+    renderEvent(s.event);
     if(S)renderTimeline();
     sync(s.rev);
   }catch(e){$('status').textContent='Tafel nicht erreichbar'}
 }
+// Event mode: switched here at once (no save needed), edited on /event
+let eventOn=false;
+function renderEvent(on){
+  eventOn=!!on;
+  $('evSwitch').setAttribute('aria-checked',eventOn);
+  $('evCard').classList.toggle('evon',eventOn);
+  $('evText').textContent=eventOn?'An – die Tafel zeigt das Event':'Aus – die Tafel zeigt die Abfahrten';
+  $('evHint').textContent=eventOn
+    ?'Abfahrten, Promos und die Ruhezeit pausieren, bis du den Event-Modus wieder ausschaltest.'
+    :'Übernimmt die ganze Tafel mit eigenen Szenen in Farbe, bis du ihn wieder ausschaltest.';
+}
+$('evSwitch').onclick=async()=>{
+  $('evSwitch').disabled=true;
+  try{
+    const r=await fetch('/api/event/on',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({on:!eventOn})});
+    if(!r.ok)throw new Error(await r.text());
+    renderEvent((await r.json()).on);
+  }catch(e){$('msg').textContent='Fehler: '+e.message}
+  $('evSwitch').disabled=false;
+};
 // waits for the board to come back after a restart, then reloads the page
 async function afterRestart(msg){
   const t0=Date.now();

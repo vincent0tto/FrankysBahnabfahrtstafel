@@ -7,15 +7,18 @@
 
 #include "config.h"
 #include "credentials.h"
+#include "event_render.h"
+#include "event_store.h"
 #include "log.h"
 #include "net.h"
 #include "psram_alloc.h"
 #include "settings_store.h"
 #include "updater.h"
+#include "web_event_page.h"
 #include "web_icon.h"
 #include "web_page.h"
 
-static const size_t MAX_BODY = 16384;  // a full settings JSON is ~5 KB
+static const size_t MAX_BODY = 16384;  // a full settings JSON is ~5 KB, an event up to ~8 KB
 
 static WebServer server(80);
 static bool started = false;
@@ -76,6 +79,103 @@ static void handleSave() {
   sendSettings();  // the cleaned-up version, so the page shows what is in use
 }
 
+// ---- Event mode (src/event.h) -------------------------------------------------
+
+static String eventRev() { return String(bootTag, HEX) + "." + String(eventVersion()); }
+
+static void sendEvent() {
+  JsonDocument doc(&spiRam);
+  eventToJson(eventNet(), doc.to<JsonObject>());
+  doc["rev"] = eventRev();
+  doc["brightnessDefaultPct"] = BRIGHTNESS_DAY;
+  sendJson(doc);
+}
+
+// Parses the request body into `doc`; sends the error and returns false if it can't.
+static bool readBody(JsonDocument& doc) {
+  const String& body = server.arg("plain");
+  if (body.length() == 0 || body.length() > MAX_BODY) {
+    server.send(400, "text/plain", "leere oder zu große Anfrage");
+    return false;
+  }
+  DeserializationError err = deserializeJson(doc, body);
+  if (err) {
+    server.send(400, "text/plain", String("ungültige Daten: ") + err.c_str());
+    return false;
+  }
+  return true;
+}
+
+// The scenes and brightness from the event page, with ?rev= like
+// handleSave(). Whether it is on stays as it is (/api/event/on).
+static void handleEventSave() {
+  if (server.hasArg("rev") && server.arg("rev") != eventRev()) {
+    server.send(409, "text/plain", "inzwischen auf einem anderen Gerät geändert");
+    return;
+  }
+  JsonDocument doc(&spiRam);
+  if (!readBody(doc)) return;
+  Event& e = eventScratch();
+  if (!eventFromJson(doc.as<JsonVariantConst>(), e)) {
+    server.send(400, "text/plain", "ungültige Daten");
+    return;
+  }
+  e.on = eventNet().on;
+  if (!eventSave(e)) {
+    server.send(500, "text/plain", "Speichern im Flash fehlgeschlagen (gilt bis zum Neustart)");
+    return;
+  }
+  sendEvent();
+}
+
+// {"on": true|false}: switches the event mode, the scenes stay as they are.
+static void handleEventOn() {
+  JsonDocument doc(&spiRam);
+  if (!readBody(doc)) return;
+  if (!doc["on"].is<bool>()) {
+    server.send(400, "text/plain", "on fehlt");
+    return;
+  }
+  Event& e = eventScratch();
+  e = eventNet();
+  e.on = doc["on"];
+  if (!eventSave(e)) {
+    server.send(500, "text/plain", "Speichern im Flash fehlgeschlagen (gilt bis zum Neustart)");
+    return;
+  }
+  sendEvent();
+}
+
+// One scene (JSON as in the event) drawn as the board would show it ?ms=
+// after it came up: 192 x 64 RGB565 pixels, little-endian, row by row. The
+// page shows that, so its preview is exact without knowing the fonts.
+static void handleEventPreview() {
+  static GFXcanvas16* canvas = nullptr;  // 24 KB, in PSRAM (large mallocs go there)
+  static U8G2_FOR_ADAFRUIT_GFX u8;
+  if (!canvas) {
+    canvas = new GFXcanvas16(PANEL_RES_X * PANEL_CHAIN, PANEL_RES_Y);
+    if (!canvas->getBuffer()) {
+      delete canvas;
+      canvas = nullptr;
+      server.send(500, "text/plain", "out of memory");
+      return;
+    }
+    u8.begin(*canvas);
+  }
+  JsonDocument doc(&spiRam);
+  if (!readBody(doc)) return;
+  Scene sc;
+  if (!sceneFromJson(doc.as<JsonVariantConst>(), sc)) {
+    server.send(400, "text/plain", "ungültige Daten");
+    return;
+  }
+  canvas->fillScreen(0);
+  renderScene(*canvas, u8, sc, strtoul(server.arg("ms").c_str(), nullptr, 10));
+  server.sendHeader("Cache-Control", "no-store");
+  server.send_P(200, "application/octet-stream", (const char*)canvas->getBuffer(),
+                canvas->width() * canvas->height() * 2);
+}
+
 static void handleStatus() {
   time_t now = time(nullptr);
   JsonDocument doc(&spiRam);
@@ -83,7 +183,9 @@ static void handleStatus() {
   doc["uptimeS"] = millis() / 1000;
   doc["dataAgeS"] = lastFetch && timeValid() ? (long)(now - lastFetch) : -1;
   doc["rev"] = settingsRev();
-  doc["off"] = timeValid() && isOffTime(settingsNet(), minuteOfDay(now));
+  doc["event"] = eventNet().on;
+  doc["eventRev"] = eventRev();
+  doc["off"] = !eventNet().on && timeValid() && isOffTime(settingsNet(), minuteOfDay(now));
   doc["rssi"] = WiFi.RSSI();
   doc["ssid"] = WiFi.SSID();
   doc["heap"] = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
@@ -163,6 +265,14 @@ void webBegin() {
   server.on("/api/restart", HTTP_POST, handleRestart);
   server.on("/api/wifi", HTTP_POST, handleWifi);
   server.on("/api/log", HTTP_GET, handleLog);
+  server.on("/event", HTTP_GET, [] {
+    server.sendHeader("Cache-Control", "no-store");
+    server.send_P(200, "text/html; charset=utf-8", WEB_EVENT_PAGE);
+  });
+  server.on("/api/event", HTTP_GET, sendEvent);
+  server.on("/api/event", HTTP_POST, handleEventSave);
+  server.on("/api/event/on", HTTP_POST, handleEventOn);
+  server.on("/api/event/preview", HTTP_POST, handleEventPreview);
   server.onNotFound([] { server.send(404, "text/plain", "not found"); });
   server.begin();
   MDNS.addService("http", "tcp", 80);  // mDNS itself is started by ArduinoOTA
