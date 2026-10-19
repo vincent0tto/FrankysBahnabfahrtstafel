@@ -8,7 +8,7 @@
 
 #include "icons.h"
 
-#define MAX_PROMOS        20   // built-in (PROMO_TEXTS) + own ones
+#define MAX_PROMOS        20
 #define MAX_DIM_WINDOWS    4
 #define MAX_CUSTOM_ICONS   8   // tags "[c0]" .. "[c7]"
 #define ALL_DAYS        0x7F   // Promo::days: bit 0 = Monday .. bit 6 = Sunday
@@ -21,7 +21,6 @@ struct TimeWindow {
 
 struct Promo {
   bool on = true;
-  const char* preset = nullptr;  // its PROMO_TEXTS entry for a built-in one
   char icon[8] = "";             // "" or an icon tag ("[ig]", "[c3]"); with `right` also a line text
   char text[64] = "";
   char right[16] = "";           // set: shown like a departure ("sofort" in the time column)
@@ -59,11 +58,12 @@ struct Settings {
   CustomIcon icons[MAX_CUSTOM_ICONS];  // index = number in the tag
 };
 
-// config.h values; the built-in promos come first, in PROMO_TEXTS order.
+// config.h values, no promos.
 void settingsDefaults(Settings& s);
 
-// Fills `p` from a PROMO_TEXTS entry ("@12-18[gc]|Grilled Cheese|5 min").
-void promoFromConfig(const char* text, Promo& p);
+// Fills `p` from a text in the former PROMO_TEXTS form
+// ("@12-18[gc]|Grilled Cheese|5 min"), as older firmware stored built-in promos.
+void promoFromText(const char* text, Promo& p);
 
 bool inWindow(const TimeWindow& w, int minuteOfDay);
 int minuteOfDay(time_t now);  // local time
@@ -91,14 +91,11 @@ uint8_t brightnessToPanel(uint8_t percent);
 // Custom icon index for "[c3]", -1 if `tag` isn't one.
 int customIconIndex(const char* tag);
 
-// JSON as used by the web page and for storing. `forWeb` adds the firmware's
-// version of each built-in promo ("def") and the built-in icons; the stored
-// version keeps texts of built-in promos only if they were edited, so new
-// firmware can change the unedited ones.
+// JSON as used by the web page and for storing. `forWeb` adds the built-in
+// icons.
 void settingsToJson(const Settings& s, JsonObject out, bool forWeb);
 
 // Starts from the defaults, takes what `in` has, clamps numbers and cuts
-// texts. Missing built-in promos stay on; unknown ones are dropped, or kept
-// as own ones if they were edited.
+// texts. Built-in promos stored by older firmware become ordinary ones.
 // false only if `in` isn't an object.
 bool settingsFromJson(JsonVariantConst in, Settings& s);

@@ -98,7 +98,7 @@
 #define COLOR_G 120
 #define COLOR_B   0
 
-// Brightness, dimming, off time and promos below are only the defaults:
+// Brightness, dimming and off time below are only the defaults:
 // they can be changed on the web page (http://abfahrtstafel.local), which
 // stores them on the board.
 // Brightness in percent (1..100) of BRIGHTNESS_MAX, which caps the panel at
@@ -124,19 +124,8 @@
 #define DEPART_ANIM_CHANCE 10
 #define DEPART_ANIM_CHANCE_BUS 3   // same for buses (line 628 etc.)
 
-// Texts shown now and then instead of the 4th row, one picked at random.
-// They show up on the web page as built-in texts that can be edited and
-// switched off.
-// Prefix "[ig]" puts the Instagram logo in front. "line|destination|time"
-// shows it like a departure; as line, "[gc]" draws a grilled cheese, "[fw]" a
-// flat white, "[ku]" a slice of cake and "[bi]" a beer mug. A leading "@12"
-// shows the text only from 12:00 until midnight, "@12-18" from 12:00 to 18:00.
-// Icons: src/icons.cpp.
-#define PROMO_TEXTS { "[ig]@frankys_by_coffeetoego", \
-                      "[fw]|Flat White|sofort", \
-                      "[ku]|Selbstgemachter Kuchen|sofort", \
-                      "@12[gc]|Grilled Cheese|5 min", \
-                    }
+// Promo texts shown now and then instead of the 4th row are set up on the
+// web page; there are none built in. Icons: src/icons.cpp.
 #define PROMO_INTERVAL_S   75   // average pause between showings (+-50 %), 0 = off
 #define PROMO_SHOW_S         25   // how long one text stays
 #define PROMO_MIN_MINUTES   7   // only if the 4th row's departure is this far away

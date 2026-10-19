@@ -7,7 +7,7 @@
 #define ICON_H 9
 
 struct PresetIcon {
-  const char* tag;   // "[gc]", used in PROMO_TEXTS and the settings
+  const char* tag;   // "[gc]", used in the settings
   const char* name;  // shown on the web page
   const char* const* rows;
   int w, h;

@@ -47,20 +47,18 @@ void test_defaults() {
   TEST_ASSERT_EQUAL(151, brightnessToPanel(85));
   TEST_ASSERT_EQUAL(BRIGHTNESS_MAX, brightnessToPanel(200));
   TEST_ASSERT_EQUAL(0, brightnessToPanel(0));
-  static const char* const presets[] = PROMO_TEXTS;
-  TEST_ASSERT_EQUAL(sizeof(presets) / sizeof(presets[0]), s.nPromos);
-  for (int i = 0; i < s.nPromos; i++) TEST_ASSERT_EQUAL_STRING(presets[i], s.promos[i].preset);
+  TEST_ASSERT_EQUAL(0, s.nPromos);  // none built in
 }
 
-void test_promo_from_config() {
+void test_promo_from_text() {
   Promo p;
-  promoFromConfig("[ig]@frankys", p);
+  promoFromText("[ig]@frankys", p);
   TEST_ASSERT_EQUAL_STRING("[ig]", p.icon);
   TEST_ASSERT_EQUAL_STRING("@frankys", p.text);
   TEST_ASSERT_EQUAL_STRING("", p.right);
   TEST_ASSERT_FALSE(p.hasWin);
 
-  promoFromConfig("@12-18[gc]|Grilled Cheese|5 min", p);
+  promoFromText("@12-18[gc]|Grilled Cheese|5 min", p);
   TEST_ASSERT_EQUAL_STRING("[gc]", p.icon);
   TEST_ASSERT_EQUAL_STRING("Grilled Cheese", p.text);
   TEST_ASSERT_EQUAL_STRING("5 min", p.right);
@@ -68,7 +66,7 @@ void test_promo_from_config() {
   TEST_ASSERT_EQUAL(12 * 60, p.win.from);
   TEST_ASSERT_EQUAL(18 * 60, p.win.to);
 
-  promoFromConfig("@16Kaffee", p);
+  promoFromText("@16Kaffee", p);
   TEST_ASSERT_EQUAL(1440, p.win.to);
   TEST_ASSERT_EQUAL_STRING("Kaffee", p.text);
 }
@@ -85,7 +83,8 @@ void test_json_roundtrip() {
   s.promoFullRow = true;
   s.disruptOn = false;
   s.disruptPasses = 4;
-  s.promos[0].on = false;
+  promoFromText("[ig]@frankys", s.promos[s.nPromos]);
+  s.promos[s.nPromos++].on = false;
   Promo own;
   strcpy(own.icon, "[c2]");
   strcpy(own.text, "Waffeln");
@@ -99,7 +98,6 @@ void test_json_roundtrip() {
 
   JsonDocument doc;
   settingsToJson(s, doc.to<JsonObject>(), false);
-  TEST_ASSERT_FALSE(doc["promos"][0]["text"].is<const char*>());  // unedited preset: no texts stored
   TEST_ASSERT_TRUE(settingsFromJson(doc.as<JsonVariantConst>(), t));
 
   TEST_ASSERT_FALSE(t.offEnabled);
@@ -114,9 +112,9 @@ void test_json_roundtrip() {
   TEST_ASSERT_EQUAL(4, t.disruptPasses);
   TEST_ASSERT_EQUAL(s.nPromos, t.nPromos);
   TEST_ASSERT_FALSE(t.promos[0].on);
+  TEST_ASSERT_EQUAL_STRING("@frankys", t.promos[0].text);
   TEST_ASSERT_TRUE(t.promos[1].on);
   const Promo& o = t.promos[t.nPromos - 1];
-  TEST_ASSERT_NULL(o.preset);
   TEST_ASSERT_EQUAL_STRING("[c2]", o.icon);
   TEST_ASSERT_EQUAL_STRING("Waffeln", o.text);
   TEST_ASSERT_EQUAL_STRING("gleich", o.right);
@@ -177,7 +175,9 @@ void test_json_clamps_and_rejects() {
   TEST_ASSERT_EQUAL(s.off.from, t.off.from);  // malformed times keep the default
   TEST_ASSERT_EQUAL(1, t.nDim);
   TEST_ASSERT_EQUAL(1, t.dim[0].value);
-  TEST_ASSERT_EQUAL(s.nPromos + 1, t.nPromos);  // unknown preset and empty one dropped
+  TEST_ASSERT_EQUAL(2, t.nPromos);  // empty one dropped
+  TEST_ASSERT_FALSE(t.promos[0].on);
+  TEST_ASSERT_EQUAL_STRING("gibt es nicht", t.promos[0].text);
   const Promo& p = t.promos[t.nPromos - 1];
   TEST_ASSERT_EQUAL_STRING("", p.icon);
   TEST_ASSERT_EQUAL(sizeof(p.text) - 1, strlen(p.text));
@@ -187,42 +187,30 @@ void test_json_clamps_and_rejects() {
   TEST_ASSERT_FALSE(settingsFromJson(JsonVariantConst(), t));
 }
 
-// edited presets keep their texts, also when the firmware drops the preset
-void test_edited_preset() {
-  settingsDefaults(s);
-  strcpy(s.promos[1].text, "Cappuccino");
-  s.promos[1].hasWin = true;
-  s.promos[1].win = win(8 * 60, 11 * 60);
+// built-in promos stored by older firmware become ordinary ones
+void test_old_presets() {
   JsonDocument doc;
-  settingsToJson(s, doc.to<JsonObject>(), false);
-  TEST_ASSERT_TRUE(doc["promos"][1]["text"].is<const char*>());
-  TEST_ASSERT_FALSE(doc["promos"][2]["text"].is<const char*>());
+  deserializeJson(doc,
+                  "{\"promos\":[{\"on\":false,\"preset\":\"@12[gc]|Grilled Cheese|5 min\"},"
+                  "{\"on\":true,\"preset\":\"[fw]|Flat White|sofort\",\"icon\":\"[fw]\",\"text\":\"Cappuccino\",\"right\":\"sofort\"}]}");
   TEST_ASSERT_TRUE(settingsFromJson(doc.as<JsonVariantConst>(), t));
-  TEST_ASSERT_EQUAL(s.nPromos, t.nPromos);
-  TEST_ASSERT_EQUAL_STRING(s.promos[1].preset, t.promos[1].preset);
+  TEST_ASSERT_EQUAL(2, t.nPromos);
+  TEST_ASSERT_FALSE(t.promos[0].on);
+  TEST_ASSERT_EQUAL_STRING("[gc]", t.promos[0].icon);
+  TEST_ASSERT_EQUAL_STRING("Grilled Cheese", t.promos[0].text);
+  TEST_ASSERT_EQUAL_STRING("5 min", t.promos[0].right);
+  TEST_ASSERT_EQUAL(12 * 60, t.promos[0].win.from);
   TEST_ASSERT_EQUAL_STRING("Cappuccino", t.promos[1].text);
-  TEST_ASSERT_EQUAL_STRING("[fw]", t.promos[1].icon);
-  TEST_ASSERT_EQUAL(11 * 60, t.promos[1].win.to);
 
-  // the web page gets the firmware's version for "restore"
-  JsonDocument web;
-  settingsToJson(t, web.to<JsonObject>(), true);
-  TEST_ASSERT_EQUAL_STRING("Flat White", web["promos"][1]["def"]["text"]);
-  TEST_ASSERT_EQUAL_STRING("Cappuccino", web["promos"][1]["text"]);
-
-  // emptied: back to the firmware's text
-  doc["promos"][1]["text"] = "";
-  doc["promos"][1]["icon"] = "";
-  TEST_ASSERT_TRUE(settingsFromJson(doc.as<JsonVariantConst>(), t));
-  TEST_ASSERT_EQUAL_STRING("Flat White", t.promos[1].text);
-
-  // newer firmware without that preset: the edited one stays as own text
-  doc["promos"][1]["text"] = "Cappuccino";
-  doc["promos"][1]["preset"] = "alte Vorgabe";
-  TEST_ASSERT_TRUE(settingsFromJson(doc.as<JsonVariantConst>(), t));
-  TEST_ASSERT_EQUAL(s.nPromos + 1, t.nPromos);
-  TEST_ASSERT_NULL(t.promos[t.nPromos - 1].preset);
-  TEST_ASSERT_EQUAL_STRING("Cappuccino", t.promos[t.nPromos - 1].text);
+  // stored again without "preset", and gone once deleted
+  JsonDocument out;
+  settingsToJson(t, out.to<JsonObject>(), false);
+  TEST_ASSERT_FALSE(out["promos"][0]["preset"].is<const char*>());
+  TEST_ASSERT_EQUAL_STRING("Grilled Cheese", out["promos"][0]["text"]);
+  out["promos"].as<JsonArray>().remove(0);
+  TEST_ASSERT_TRUE(settingsFromJson(out.as<JsonVariantConst>(), t));
+  TEST_ASSERT_EQUAL(1, t.nPromos);
+  TEST_ASSERT_EQUAL_STRING("Cappuccino", t.promos[0].text);
 }
 
 void test_promo_days() {
@@ -254,6 +242,8 @@ void test_promo_days() {
 
   // JSON: stored only if not every day, nothing at all counts as every day
   settingsDefaults(s);
+  promoFromText("Kaffee", s.promos[s.nPromos++]);
+  promoFromText("Kuchen", s.promos[s.nPromos++]);
   s.promos[0].days = 0x1F;  // Mon-Fri
   JsonDocument doc;
   settingsToJson(s, doc.to<JsonObject>(), false);
@@ -291,11 +281,11 @@ int main() {
   UNITY_BEGIN();
   RUN_TEST(test_in_window);
   RUN_TEST(test_defaults);
-  RUN_TEST(test_promo_from_config);
+  RUN_TEST(test_promo_from_text);
   RUN_TEST(test_json_roundtrip);
   RUN_TEST(test_dim_skip);
   RUN_TEST(test_json_clamps_and_rejects);
-  RUN_TEST(test_edited_preset);
+  RUN_TEST(test_old_presets);
   RUN_TEST(test_promo_days);
   RUN_TEST(test_old_brightness_dropped);
   RUN_TEST(test_custom_icon_tag);

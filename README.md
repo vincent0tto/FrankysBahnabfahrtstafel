@@ -165,9 +165,8 @@ selben WLAN öffnen. Es gibt kein Login. Auf der Seite lässt sich einstellen:
 </p>
 
 - **Promos**: Jede Promo zeigt eine kleine Vorschau, wie sie auf der Tafel aussieht; antippen
-  klappt sie zum Bearbeiten auf. Die eingebauten Texte (`PROMO_TEXTS`) lassen sich an- und
-  ausschalten und bearbeiten; ↺ stellt die Version der Firmware wieder her. Dazu kommen bis zu
-  20 eigene, jeweils mit Symbol, Darstellung (*mittig* oder *wie eine Abfahrt*, dann mit einem
+  klappt sie zum Bearbeiten auf. Es gibt keine vorgegebenen Texte: bis zu 20 eigene, jede
+  an- und ausschaltbar und löschbar, jeweils mit Symbol, Darstellung (*mittig* oder *wie eine Abfahrt*, dann mit einem
   Text rechts statt der Minuten), Wochentagen und optionalem Zeitfenster. Ein Zeitfenster über
   Mitternacht zählt zum Tag, an dem es beginnt.
 - **Icons**: die eingebauten Symbole (Instagram, Grilled Cheese, Flat White, Kuchen, Bier) und
@@ -202,9 +201,8 @@ Versionsnummer `rev`).
 Die Tafel speichert die Einstellungen im Flash (NVS), in einer Partition, die Firmware-Updates
 (von GitHub, per OTA oder ein normaler USB-Upload) nicht anrühren. So überstehen sie Neustarts
 und Updates. Nur das Löschen des ganzen Flashs (`pio run -t erase`) setzt sie zurück. Die Werte
-in `config.h` sind nur die Standardwerte: Ein eingebauter Text, der nicht bearbeitet wurde,
-folgt neuer Firmware; ein bearbeiteter behält deine Version, auch wenn die Firmware den Text
-entfernt oder ändert.
+in `config.h` sind nur die Standardwerte. Die früher eingebauten Promo-Texte übernimmt neue
+Firmware als normale, löschbare Promos.
 
 ### Event-Modus
 

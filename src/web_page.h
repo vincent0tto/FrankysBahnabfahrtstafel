@@ -350,10 +350,8 @@ function promoBody(p,i,upd){
     if(mins(p.win.from)>mins(p.win.to))b.append(tf,el('div',{className:'hint',textContent:'Über Mitternacht: zählt zu dem Wochentag, an dem es beginnt.'}));
     else b.append(tf);
   }else b.append(tf);
-  b.append(el('div',{className:'field'},p.preset
-    ?el('button',{textContent:'↺ Vorgabe wiederherstellen',onclick:()=>{
-      Object.assign(p,{icon:'',text:'',right:'',win:null,days:ALL_DAYS},JSON.parse(JSON.stringify(p.def)));p._dep=!!p.right;renderPromos()}})
-    :el('button',{className:'del',textContent:'Promo löschen',onclick:()=>{S.promos.splice(i,1);renderPromos()}})));
+  b.append(el('div',{className:'field'},
+    el('button',{className:'del',textContent:'Promo löschen',onclick:()=>{S.promos.splice(i,1);renderPromos()}})));
   return b;
 }
 function renderPromos(){
@@ -436,11 +434,10 @@ function render(){
 function collect(){
   const promos=S.promos.map(p=>{
     const o={on:p.on,icon:p.icon||'',text:p.text,right:(p._dep??!!p.right)?p.right||'sofort':''};
-    if(p.preset)o.preset=p.preset;
     if(hasWin(p))o.win={from:p.win.from,to:p.win.to};
     if((p.days??ALL_DAYS)!==ALL_DAYS)o.days=p.days;
     return o;
-  }).filter(p=>p.preset||p.text||p.icon);
+  }).filter(p=>p.text||p.icon);
   return {off:{on:$('offOn').checked,from:$('offFrom').value||'02:00',to:$('offTo').value||'06:00'},
     brightnessPct:S.brightnessPct,dim:S.dim.filter(d=>d.from&&d.to),
     promoShowS:S.promoShowS,promoIntervalS:S.mode==='off'?0:S.interval,promoFullRow:S.mode==='scroll',

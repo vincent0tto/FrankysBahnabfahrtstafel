@@ -8,9 +8,6 @@
 #include "config.h"
 #include "parse.h"
 
-static const char* const PRESET_PROMOS[] = PROMO_TEXTS;
-static const int N_PRESET_PROMOS = sizeof(PRESET_PROMOS) / sizeof(PRESET_PROMOS[0]);
-
 static TimeWindow hours(int from, int to) {
   TimeWindow w;
   w.from = (uint16_t)(from * 60);
@@ -26,9 +23,8 @@ static void copyText(char* out, size_t outSize, const char* in, size_t n = (size
   sanitizeUtf8(tmp, out, outSize);
 }
 
-void promoFromConfig(const char* text, Promo& p) {
+void promoFromText(const char* text, Promo& p) {
   p = Promo();
-  p.preset = text;
   // optional "@HH" or "@HH-HH" prefix
   if (text[0] == '@' && isdigit((unsigned char)text[1])) {
     char* end;
@@ -71,8 +67,6 @@ void settingsDefaults(Settings& s) {
   s.promoShowS = PROMO_SHOW_S;
   s.promoIntervalS = PROMO_INTERVAL_S;
   s.disruptPasses = DISRUPTION_PASSES;
-  for (int i = 0; i < N_PRESET_PROMOS && s.nPromos < MAX_PROMOS; i++)
-    promoFromConfig(PRESET_PROMOS[i], s.promos[s.nPromos++]);
 }
 
 bool inWindow(const TimeWindow& w, int m) {
@@ -205,7 +199,7 @@ static void promoFieldsToJson(const Promo& p, JsonObject o) {
   if (p.days != ALL_DAYS) o["days"] = p.days;
 }
 
-// Takes icon, text, right and window of `o`, keeps `on` and `preset` of `p`.
+// Takes icon, text, right and window of `o`, keeps `on` of `p`.
 static void promoFieldsFromJson(JsonVariantConst o, Promo& p) {
   copyText(p.text, sizeof(p.text), o["text"] | "");
   copyText(p.right, sizeof(p.right), o["right"] | "");
@@ -216,12 +210,6 @@ static void promoFieldsFromJson(JsonVariantConst o, Promo& p) {
   if (!p.hasWin) p.win = TimeWindow();
   uint8_t days = (uint8_t)(clampU(o["days"], 0, ALL_DAYS, ALL_DAYS) & ALL_DAYS);
   p.days = days ? days : ALL_DAYS;  // none at all: rather every day than never
-}
-
-static bool sameContent(const Promo& a, const Promo& b) {
-  return strcmp(a.icon, b.icon) == 0 && strcmp(a.text, b.text) == 0 && strcmp(a.right, b.right) == 0 &&
-         a.hasWin == b.hasWin && (!a.hasWin || (a.win.from == b.win.from && a.win.to == b.win.to)) &&
-         a.days == b.days;
 }
 
 void settingsToJson(const Settings& s, JsonObject out, bool forWeb) {
@@ -253,14 +241,6 @@ void settingsToJson(const Settings& s, JsonObject out, bool forWeb) {
     const Promo& p = s.promos[i];
     JsonObject o = promos.add<JsonObject>();
     o["on"] = p.on;
-    if (p.preset) {
-      o["preset"] = p.preset;  // its PROMO_TEXTS entry identifies it
-      Promo def;
-      promoFromConfig(p.preset, def);
-      // stored only if edited, so an unchanged one follows new firmware
-      if (forWeb) promoFieldsToJson(def, o["def"].to<JsonObject>());
-      else if (sameContent(p, def)) continue;
-    }
     promoFieldsToJson(p, o);
   }
 
@@ -317,31 +297,14 @@ bool settingsFromJson(JsonVariantConst in, Settings& s) {
   s.disruptPasses = (uint8_t)clampU(in["disruptPasses"], 1, 10, s.disruptPasses);
 
   if (in["promos"].is<JsonArrayConst>()) {
-    // built-in ones keep their place; without texts (not edited) they keep
-    // the firmware's. An edited one whose firmware text is gone stays as own one.
-    int nPreset = s.nPromos;
     for (JsonVariantConst o : in["promos"].as<JsonArrayConst>()) {
-      const char* preset = o["preset"];
-      bool edited = o["text"].is<const char*>();
-      if (preset) {
-        int i = 0;
-        while (i < nPreset && strcmp(s.promos[i].preset, preset) != 0) i++;
-        if (i < nPreset) {
-          Promo& p = s.promos[i];
-          p.on = o["on"] | true;
-          if (edited) {
-            Promo e = p;
-            promoFieldsFromJson(o, e);
-            if (e.text[0] || e.icon[0]) p = e;  // emptied: back to the firmware's
-          }
-          continue;
-        }
-        if (!edited) continue;
-      }
-      if (s.nPromos >= MAX_PROMOS) continue;
+      if (s.nPromos >= MAX_PROMOS) break;
       Promo p;
+      // stored by older firmware: a built-in promo, unedited only its text
+      const char* preset = o["preset"];
+      if (preset && !o["text"].is<const char*>()) promoFromText(preset, p);
+      else promoFieldsFromJson(o, p);
       p.on = o["on"] | true;
-      promoFieldsFromJson(o, p);
       if (!p.text[0] && !p.icon[0]) continue;
       s.promos[s.nPromos++] = p;
     }
