@@ -247,8 +247,8 @@ zeigt; schwarze Pixel sind durchsichtig, dort scheint die Hintergrundfarbe durch
 - *Linie* (rastet waagerecht, senkrecht und diagonal ein), *Rechteck* und *Kreis*, auch gefüllt,
 - *Text* in den Schriften der Tafel (die Tafel zeichnet ihn selbst, er sieht also genau so aus
   wie in einer Textzeile) und *Symbol* (die Promo-Icons, auch die eigenen, 1× bis 4×),
-- *Vorlage*: das FRANKY'S-Logo, quadratisch (64 × 64) oder breit über die ganze Tafel, in der
-  gewählten Farbe; Text, Symbol und Vorlage setzt *In die Mitte* auch mittig,
+- *Vorlage*: der FRANKY'S-Schriftzug ohne Rahmen, zweizeilig wie im Logo oder einzeilig über die
+  ganze Tafel, in der gewählten Farbe; Text, Symbol und Vorlage setzt *In die Mitte* auch mittig,
 - *Spiegeln* malt auf der anderen Tafelhälfte spiegelbildlich mit, *Verschieben* rückt das
   Einzelbild um ein Pixel, *Umdrehen* spiegelt es; beim Zeichnen einer Animation scheint auf
   Wunsch das vorherige Einzelbild schwach durch,
