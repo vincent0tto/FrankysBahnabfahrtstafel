@@ -68,6 +68,7 @@ void test_json_roundtrip() {
   sc.durS = 12;
   sc.bg = 0x1a0b2e;
   sc.trans = Transition::Wipe;
+  sc.img = 3;
   sc.nLines = 2;
   strcpy(sc.lines[0].text, "Cocktails für alle");
   sc.lines[0].color = 0xff3bd0;
@@ -101,6 +102,9 @@ void test_json_roundtrip() {
   TEST_ASSERT_EQUAL(12, u.durS);
   TEST_ASSERT_EQUAL_HEX32(0x1a0b2e, u.bg);
   TEST_ASSERT_TRUE(u.trans == Transition::Wipe);
+  TEST_ASSERT_EQUAL(3, u.img);
+  TEST_ASSERT_EQUAL(-1, t.scenes[0].img);
+  TEST_ASSERT_FALSE(doc["scenes"][0]["img"].is<int>());  // none: left out
   TEST_ASSERT_TRUE(t.scenes[0].trans == Transition::Cut);
   TEST_ASSERT_EQUAL(2, u.nLines);
   TEST_ASSERT_EQUAL_STRING("Cocktails für alle", u.lines[0].text);
@@ -124,7 +128,7 @@ void test_json_clamps_and_rejects() {
 
   JsonDocument doc;
   deserializeJson(doc, R"({"brightnessPct":500,"scenes":[
-    {"name":"A very long scene name that is cut","durS":1,"bg":"red","trans":"fade",
+    {"name":"A very long scene name that is cut","durS":1,"bg":"red","trans":"fade","img":16,
      "lines":[{"text":"x","color":"#12345","size":"giant","v":"up","h":7,"anim":"spin","speed":0},
               {"speed":99},{},{},{"text":"fifth"}]},
     "not a scene",{"durS":9999}]})");
@@ -145,6 +149,7 @@ void test_json_clamps_and_rejects() {
   TEST_ASSERT_EQUAL(1, a.lines[0].speed);
   TEST_ASSERT_EQUAL(10, a.lines[1].speed);
   TEST_ASSERT_TRUE(a.trans == Transition::Cut);
+  TEST_ASSERT_EQUAL(-1, a.img);
   TEST_ASSERT_EQUAL(600, t.scenes[1].durS);
   TEST_ASSERT_EQUAL(0, t.scenes[1].nLines);
 

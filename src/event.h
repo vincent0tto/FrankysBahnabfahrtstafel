@@ -8,6 +8,8 @@
 
 #define MAX_SCENES       8
 #define MAX_EVENT_LINES  4
+#define MAX_IMAGES      16  // pixel images (src/image_store.h), ids 0..15
+#define MAX_IMAGE_FRAMES 8  // frames of an animated one
 
 enum class TextSize : uint8_t { Small, Normal, Large, Huge };
 enum class VPos : uint8_t { Top, Middle, Bottom };
@@ -35,6 +37,7 @@ struct Scene {
   char name[24] = "";
   uint16_t durS = 8;  // how long it stays before the next one
   uint32_t bg = 0;    // 0xRRGGBB, 0 = black
+  int8_t img = -1;    // pixel image over the background, -1 = none
   Transition trans = Transition::Cut;  // to the next scene
   EventLine lines[MAX_EVENT_LINES];
   uint8_t nLines = 0;

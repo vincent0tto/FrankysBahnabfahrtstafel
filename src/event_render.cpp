@@ -99,8 +99,22 @@ static void drawLine(U8G2_FOR_ADAFRUIT_GFX& u8, const EventLine& l, uint32_t ms)
   }
 }
 
+static ImageDrawer imageDrawer = nullptr;
+void setImageDrawer(ImageDrawer d) { imageDrawer = d; }
+
+void drawPixels(Adafruit_GFX& g, const uint16_t* px) {
+  for (int y = 0; y < H; y++, px += W)
+    for (int x = 0; x < W;) {  // in runs of one colour, pixel art has long ones
+      int e = x + 1;
+      while (e < W && px[e] == px[x]) e++;
+      if (px[x]) g.drawFastHLine(x, y, e - x, px[x]);
+      x = e;
+    }
+}
+
 void renderScene(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Scene& sc, uint32_t ms) {
   if (sc.bg) g.fillScreen(rgb565(sc.bg));
+  if (sc.img >= 0 && imageDrawer) imageDrawer(g, sc.img, ms);
   for (int i = 0; i < sc.nLines; i++) drawLine(u8, sc.lines[i], ms);
 }
 

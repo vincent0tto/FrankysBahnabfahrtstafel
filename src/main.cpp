@@ -15,6 +15,7 @@
 #include "config.h"
 #include "display.h"
 #include "event_store.h"
+#include "image_store.h"
 #include "log.h"
 #include "net.h"
 #include "settings_store.h"
@@ -112,6 +113,7 @@ void setup() {
   boardMutex = xSemaphoreCreateMutex();
   settingsBegin();
   eventBegin();
+  imageBegin();
   esp_task_wdt_init(WDT_TIMEOUT_S, true);  // panic -> reboot on hang
   esp_task_wdt_add(nullptr);               // loop task
 

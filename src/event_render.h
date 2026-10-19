@@ -14,3 +14,11 @@ void renderEvent(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Event& e, uin
 
 // One scene, `ms` after it came up.
 void renderScene(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Scene& sc, uint32_t ms);
+
+// Draws pixel image `id` as it is `ms` after its scene came up (on the board:
+// src/image_store.cpp). Without one, scenes leave their images out.
+typedef void (*ImageDrawer)(Adafruit_GFX& g, int id, uint32_t ms);
+void setImageDrawer(ImageDrawer d);
+
+// Draws a whole-board image (192 x 64 RGB565, row by row); 0 is transparent.
+void drawPixels(Adafruit_GFX& g, const uint16_t* px);

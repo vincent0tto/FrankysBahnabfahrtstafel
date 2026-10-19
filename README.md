@@ -38,7 +38,7 @@ Schriesheim Bahnhof                     10:42
   wenn er abfährt.
 - **Nachtruhe:** nachts schaltet sich die Tafel ab, am späten Abend wird sie dunkler.
 - **Event-Modus:** Für eine Party oder einen besonderen Abend übernimmt die Tafel auf Knopfdruck
-  ganz eigene Texte in Farbe, bis man sie wieder auf die Abfahrten zurückschaltet.
+  ganz eigene Texte und Bilder in Farbe, bis man sie wieder auf die Abfahrten zurückschaltet.
 - **Leicht zu ändern:** Nachrichten, Symbole, Helligkeit und Zeiten lassen sich von jedem
   Handy, Tablet oder Laptop im Mitarbeiter-WLAN des Cafés ändern, ganz ohne Kabel.
 - **Kümmert sich um sich selbst:** nach WLAN-Problemen verbindet sie sich neu, und Updates
@@ -220,7 +220,8 @@ ganze Tafel an das Event, bis man ihn wieder ausschaltet. Solange:
 Ein- und Ausschalten überstehen Neustarts, auch den täglichen um 04:00.
 
 Auf `/event` bearbeitet man bis zu 8 **Szenen**, die der Reihe nach in einer Schleife laufen. Jede
-hat eine Anzeigedauer, einen Hintergrund (Schwarz oder eine Farbe), einen **Übergang** zur
+hat eine Anzeigedauer, einen Hintergrund (Schwarz oder eine Farbe, darauf optional ein **Bild**,
+siehe unten), einen **Übergang** zur
 nächsten Szene (*Schnitt*, *Schieben* oder *Wischen*, je 0,6 s, `TRANSITION_MS`) und bis zu 4
 **Zeilen**:
 
@@ -239,9 +240,23 @@ erneut. **Auf der Tafel testen** zeigt die Szene 30 Sekunden auf dem Panel (`EVE
 ohne zu speichern, auch wenn der Event-Modus aus ist. Nach dem Speichern beginnt die Tafel
 wieder mit der ersten Szene.
 
-Das Event liegt als `/event.json` in einem eigenen Dateisystem (LittleFS auf der Partition
-`spiffs`, 1,5 MB), das Firmware-Updates nicht anrühren. Beim allerersten Start mit dieser
-Firmware formatiert die Tafel die Partition einmal. Format: `eventToJson` in `src/event.cpp`.
+**Bilder** sind Pixelgrafiken über die ganze Tafel (192 × 64), die eine Szene unter ihren Texten
+zeigt; schwarze Pixel sind durchsichtig, dort scheint die Hintergrundfarbe durch. Unter
+„Bilder“ auf `/event` zeichnet man sie selbst (Stift, Radierer, Füllen, Pipette; Zoom bis 8×,
+*Verschieben* scrollt auf dem Handy im vergrößerten Bild; Rückgängig) oder lädt eine Datei
+(PNG, JPG, GIF), die auf die Tafel verkleinert wird: *Einpassen* zeigt das ganze Bild,
+*Ausfüllen* füllt die Tafel und schneidet ab; kleine Pixelgrafiken werden in ganzen Schritten
+und ohne Unschärfe vergrößert. Ein Bild kann aus bis zu 8 Einzelbildern bestehen, die mit
+einstellbarem Bildwechsel als Animation laufen; ein animiertes GIF wird dabei (in Browsern mit
+`ImageDecoder`, z. B. Chrome) zu Einzelbildern. Bis zu 16 Bilder; jedes Einzelbild belegt 24 KB,
+in die 1,5 MB passen also etwa 55. Wird ein Bild gelöscht, fällt es auch aus den Szenen weg,
+die es zeigen.
+
+Das Event liegt als `/event.json`, jedes Bild als `/img<N>.bin` in einem eigenen Dateisystem
+(LittleFS auf der Partition `spiffs`, 1,5 MB), das Firmware-Updates nicht anrühren. Beim
+allerersten Start mit dieser Firmware formatiert die Tafel die Partition einmal. Formate:
+`eventToJson` in `src/event.cpp`, `FileHeader` in `src/image_store.cpp`. Beim Start lädt die
+Tafel alle Bilder ins PSRAM.
 
 ### Tests (Parser, laufen auf dem Mac)
 
@@ -295,6 +310,7 @@ vorher einmal `sudo xcodebuild -license` aus.
 | `src/event.cpp` | Event-Modus: Szenen und Zeilen, JSON (auf dem Host getestet) |
 | `src/event_store.cpp` | Event im Flash (LittleFS), Übergabe an die Render-Schleife |
 | `src/event_render.cpp` | zeichnet die Szenen, für das Panel und die Vorschau auf der Seite |
+| `src/image_store.cpp` | Pixelbilder des Events im Flash (LittleFS) und PSRAM |
 | `src/web_event_page.h` | Event-Seite (`/event`) |
 | `src/updater.cpp` | Firmware-Update aus den GitHub-Releases |
 | `src/icons.cpp` | eingebaute Promo-Symbole |

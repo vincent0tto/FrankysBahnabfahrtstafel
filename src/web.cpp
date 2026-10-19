@@ -9,8 +9,10 @@
 #include "credentials.h"
 #include "event_render.h"
 #include "event_store.h"
+#include "image_store.h"
 #include "log.h"
 #include "net.h"
+#include "parse.h"
 #include "psram_alloc.h"
 #include "settings_store.h"
 #include "updater.h"
@@ -203,6 +205,121 @@ static void handleEventTest() {
   server.send(200, "text/plain", "ok");
 }
 
+// ---- Pixel images (src/image_store.h) -------------------------------------------
+
+// The list of images and the space left; `id`: the one just stored.
+static void sendImages(int id = -1) {
+  JsonDocument doc(&spiRam);
+  JsonArray list = doc["images"].to<JsonArray>();
+  for (int i = 0; i < MAX_IMAGES; i++) {
+    ImageInfo info = imageInfo(i);
+    if (!info.used) continue;
+    JsonObject o = list.add<JsonObject>();
+    o["id"] = i;
+    o["name"] = (const char*)info.name;
+    o["frames"] = info.frames;
+    o["delayMs"] = info.delayMs;
+  }
+  doc["freeBytes"] = imageFreeBytes();
+  doc["totalBytes"] = imageTotalBytes();
+  doc["frameBytes"] = IMAGE_FRAME_BYTES;
+  doc["maxFrames"] = MAX_IMAGE_FRAMES;
+  doc["maxImages"] = MAX_IMAGES;
+  if (id >= 0) doc["id"] = id;
+  sendJson(doc);
+}
+
+// ?id= (&frame=: only that one): the frames as stored, RGB565 little-endian
+static void handleImageGet() {
+  int id = server.arg("id").toInt();
+  ImageInfo info = imageInfo(id);
+  const uint16_t* px = imagePixels(id);
+  if (!info.used || !px) {
+    server.send(404, "text/plain", "kein Bild");
+    return;
+  }
+  int from = 0, n = info.frames;
+  if (server.hasArg("frame")) {
+    from = server.arg("frame").toInt();
+    n = 1;
+    if (from < 0 || from >= info.frames) {
+      server.send(404, "text/plain", "kein solches Einzelbild");
+      return;
+    }
+  }
+  server.sendHeader("Cache-Control", "no-store");
+  server.send_P(200, "application/octet-stream", (const char*)(px + (size_t)from * IMAGE_W * IMAGE_H),
+                (size_t)n * IMAGE_FRAME_BYTES);
+}
+
+// Upload as a multipart file "px" (the frames, as handleImageGet sends them)
+// with ?id= (-1: a new one) &frames= &delay= &name=. The pieces go straight
+// into PSRAM: a String of the body would take internal RAM and stops at the
+// first 0 byte.
+static uint16_t* upBuf = nullptr;
+static size_t upLen = 0, upCap = 0;
+static bool upFailed = false;
+
+static void handleImageUpload() {
+  HTTPUpload& u = server.upload();
+  if (u.status == UPLOAD_FILE_START) {
+    heap_caps_free(upBuf);
+    long frames = server.arg("frames").toInt();
+    upCap = frames >= 1 && frames <= MAX_IMAGE_FRAMES ? (size_t)frames * IMAGE_FRAME_BYTES : 0;
+    upBuf = upCap ? (uint16_t*)heap_caps_malloc(upCap, MALLOC_CAP_SPIRAM) : nullptr;
+    upLen = 0;
+    upFailed = !upBuf;
+  } else if (u.status == UPLOAD_FILE_WRITE && !upFailed) {
+    if (upLen + u.currentSize > upCap) upFailed = true;
+    else memcpy((uint8_t*)upBuf + upLen, u.buf, u.currentSize), upLen += u.currentSize;
+  } else if (u.status == UPLOAD_FILE_ABORTED) {
+    upFailed = true;
+  }
+}
+
+static void handleImageSave() {
+  uint16_t* px = upBuf;
+  upBuf = nullptr;
+  if (upFailed || !px || upLen != upCap) {
+    heap_caps_free(px);
+    server.send(400, "text/plain", "Bild unvollständig oder zu groß");
+    return;
+  }
+  int id = server.hasArg("id") ? server.arg("id").toInt() : -1;
+  if (id < 0)
+    for (int i = 0; i < MAX_IMAGES && id < 0; i++)
+      if (!imageInfo(i).used) id = i;
+  if (id < 0 || id >= MAX_IMAGES) {
+    heap_caps_free(px);
+    server.send(400, "text/plain", "alle Plätze für Bilder belegt, bitte erst eines löschen");
+    return;
+  }
+  char name[IMAGE_NAME_LEN];
+  sanitizeUtf8(server.arg("name").c_str(), name, sizeof(name));
+  long delay = server.arg("delay").toInt();
+  const char* err;
+  if (!imageStore(id, name, (uint8_t)(upCap / IMAGE_FRAME_BYTES), (uint16_t)(delay < 50 ? 50 : delay > 5000 ? 5000 : delay),
+                  px, err)) {
+    server.send(500, "text/plain", err);
+    return;
+  }
+  sendImages(id);
+}
+
+// Also takes it out of the scenes that show it, so a new image that gets
+// its number later doesn't turn up there.
+static void handleImageDelete() {
+  int id = server.arg("id").toInt();
+  imageDelete(id);
+  Event& e = eventScratch();
+  e = eventNet();
+  bool used = false;
+  for (int i = 0; i < e.nScenes; i++)
+    if (e.scenes[i].img == id) e.scenes[i].img = -1, used = true;
+  if (used) eventSave(e);
+  sendImages();
+}
+
 static void handleStatus() {
   time_t now = time(nullptr);
   JsonDocument doc(&spiRam);
@@ -301,6 +418,10 @@ void webBegin() {
   server.on("/api/event/on", HTTP_POST, handleEventOn);
   server.on("/api/event/preview", HTTP_POST, handleEventPreview);
   server.on("/api/event/test", HTTP_POST, handleEventTest);
+  server.on("/api/images", HTTP_GET, [] { sendImages(); });
+  server.on("/api/image", HTTP_GET, handleImageGet);
+  server.on("/api/image", HTTP_POST, handleImageSave, handleImageUpload);
+  server.on("/api/image/delete", HTTP_POST, handleImageDelete);
   server.onNotFound([] { server.send(404, "text/plain", "not found"); });
   server.begin();
   MDNS.addService("http", "tcp", 80);  // mDNS itself is started by ArduinoOTA

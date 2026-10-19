@@ -1,8 +1,9 @@
 #pragma once
 // The event page served by src/web.cpp at "/event": switches the event mode
-// and edits its scenes. Talks to /api/event, /api/event/on,
-// /api/event/preview, /api/event/test and /api/status (JSON, format:
-// eventToJson in src/event.cpp).
+// and edits its scenes and pixel images. Talks to /api/event, /api/event/on,
+// /api/event/preview, /api/event/test, /api/images, /api/image and
+// /api/status (JSON, format: eventToJson in src/event.cpp; images:
+// src/web.cpp).
 #include <pgmspace.h>
 
 static const char WEB_EVENT_PAGE[] PROGMEM = R"rawliteral(<!doctype html>
@@ -83,6 +84,23 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 #stale{width:100%;text-align:center;font-size:14px}
 #stale button{background:var(--bg);border-color:var(--line);color:inherit;padding:5px 10px;font-weight:400;margin:2px}
 #msg{font-size:14px;color:var(--muted)}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.thumb{background:none;border:0;padding:0;text-align:left;cursor:pointer;font-size:14px}
+.thumb canvas,.thumb .new{display:block;width:100%;aspect-ratio:3/1;border-radius:6px}
+.thumb canvas{background:var(--panel);image-rendering:pixelated}
+.thumb.on canvas{outline:2px solid var(--accent);outline-offset:2px}
+.thumb .new{border:1.5px dashed var(--line);display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--muted)}
+.thumb small{display:block;color:var(--muted);font-size:12px}
+#editor{border-top:1px solid var(--line);margin-top:14px;padding-top:4px}
+.zoomwrap{overflow:auto;background:var(--panel);border-radius:6px;margin:8px 0;max-height:70vh}
+#edCanvas{display:block;width:100%;image-rendering:pixelated;cursor:crosshair}
+.frames{display:flex;flex-wrap:wrap;gap:8px}
+.frames canvas{width:96px;aspect-ratio:3/1;background:var(--panel);border-radius:4px;cursor:pointer;image-rendering:pixelated}
+.frames canvas.on{outline:2px solid var(--accent);outline-offset:1px}
+.pal{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.pal .sw{width:30px;height:30px;border-radius:6px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.filebtn{display:inline-flex;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -110,6 +128,29 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 <div class="hint">Laufen der Reihe nach in einer Schleife. Auf eine Szene tippen, um sie zu bearbeiten; die Vorschau oben zeigt sie dann.</div>
 <div id="scenes"></div>
 <button class="add" id="addScene">+ Szene</button> <span class="hint" id="sceneCount"></span>
+</section>
+
+<section>
+<h2>Bilder</h2>
+<div class="hint">Pixelgrafiken über die ganze Tafel (192 × 64) für den Hintergrund einer Szene, unter ihren Texten. Selbst zeichnen oder ein Bild laden; mehrere Einzelbilder laufen als Animation.</div>
+<div class="thumbs" id="thumbs"></div>
+<div class="hint" id="space" style="margin-top:10px"></div>
+<div id="editor" hidden>
+<h3 id="edTitle"></h3>
+<div class="field"><span class="flabel">Name</span><div class="fctl"><input type="text" id="edName" maxlength="22" placeholder="z. B. Cocktail"></div></div>
+<div id="edTools"></div>
+<div class="zoomwrap" id="edWrap"><canvas id="edCanvas" width="1152" height="384"></canvas></div>
+<div class="row"><div id="edZoom" style="flex:1;min-width:220px"></div><button id="edUndo">↶ Rückgängig</button><button id="edClear">Leeren</button></div>
+<div class="field"><span class="flabel">Farbe</span><div class="fctl"><div class="pal" id="edPal"></div></div></div>
+<h3>Einzelbilder</h3>
+<div class="frames" id="edFrames"></div>
+<div class="row" style="margin-top:8px"><button id="edAddFrame">+ Kopie</button><button id="edDelFrame" class="del">Einzelbild entfernen</button><button id="edPlay">▶ Abspielen</button></div>
+<div class="row" style="margin-top:8px"><span class="flabel">Bildwechsel</span><input type="range" id="edDelay" min="50" max="2000" step="50" aria-label="Bildwechsel"><span class="val" id="edDelayVal" style="width:70px"></span></div>
+<h3>Aus einer Datei</h3>
+<div class="hint">PNG, JPG oder GIF, wird auf 192 × 64 verkleinert und ersetzt das Bild oben. Aus einem animierten GIF werden (in Chrome) bis zu 8 Einzelbilder.</div>
+<div class="row"><div id="edFit" style="flex:1;min-width:200px"></div><label class="filebtn">Datei wählen …<input type="file" id="edFile" accept="image/*" hidden></label></div>
+<div class="row" style="margin-top:14px"><button id="edSave" class="primary">Bild speichern</button><button id="edClose">Schließen</button><button id="edDelete" class="del">Bild löschen</button><span class="hint" id="edMsg" style="margin:0"></span></div>
+</div>
 </section>
 
 <section>
@@ -223,6 +264,7 @@ function sceneBody(sc,i){
     field('Anzeigedauer',el('input',{type:'number',min:2,max:600,value:sc.durS,oninput:e=>{sc.durS=+e.target.value;renderScenes(false)}}),'Sekunden'),
     field('Hintergrund',swatches(BGS,sc.bg,(c,typing)=>{sc.bg=c;typing?preview():(renderScenes(),preview())})),
     el('div',{className:'hint',textContent:'Dunkle Töne wirken am besten. Ein heller Hintergrund lässt alle LEDs leuchten und macht die Tafel sehr hell.'}),
+    field('Bild',imageSelect(sc)),
     field('Übergang',seg(TRANS,sc.trans,v=>{sc.trans=v;renderScenes()}),
       el('span',{className:'hint',style:'margin:0',textContent:'zur nächsten Szene'})));
   sc.lines.forEach((l,j)=>b.append(lineBody(sc,l,j)));
@@ -236,6 +278,16 @@ function sceneBody(sc,i){
       if(!confirm('Szene „'+(sc.name||i+1)+'“ löschen?'))return;
       S.scenes.splice(i,1);open=Math.min(open,S.scenes.length-1);renderScenes();preview()}})));
   return b;
+}
+function imageSelect(sc){
+  const sel=el('select',{onchange:e=>{sc.img=+e.target.value;renderScenes();preview()}});
+  sel.append(el('option',{value:-1,textContent:'kein Bild'}));
+  for(const im of IM.images)sel.append(el('option',{value:im.id,textContent:im.name||'Bild '+(im.id+1)}));
+  const cur=sc.img??-1;
+  if(cur>=0&&!IM.images.some(im=>im.id===cur))sel.append(el('option',{value:cur,textContent:'(gelöscht)'}));
+  sel.value=cur;
+  return el('span',{},sel,' ',el('a',{href:'#editor',textContent:'Bilder bearbeiten',onclick:e=>{e.preventDefault();
+    if(cur>=0&&IM.images.some(im=>im.id===cur))openEditor(cur);else $('thumbs').scrollIntoView({behavior:'smooth'})}}));
 }
 // full: also the open scene's editor (not while typing in it, keeps the focus)
 function renderScenes(full=true){
@@ -276,6 +328,228 @@ function setBright(v){S.brightnessPct=v;$('bright').value=v;$('brightVal').textC
 $('bright').oninput=e=>setBright(+e.target.value);
 $('brightReset').onclick=()=>setBright(S.brightnessDefaultPct);
 
+// ---- pixel images: list and editor ----
+const PAL=['#ff7800','#ffb000','#ffd400','#ff3030','#ff2a4a','#ff3bd0','#ff5fae','#8a5bff',
+  '#2f7bff','#29c6ff','#cfefff','#4be04b','#7ee04a','#ffe9a8','#ffffff','#6b4a2a'];
+const TOOLS=[['pen','Stift'],['erase','Radierer'],['fill','Füllen'],['pick','Pipette'],['move','Verschieben']];
+const ZOOMS=[[1,'Ganz'],[2,'2×'],[4,'4×'],[8,'8×']];
+const FITS=[['contain','Einpassen'],['cover','Ausfüllen']];
+const CELL=6;  // editor canvas pixels per LED
+let IM={images:[],freeBytes:0,totalBytes:0,frameBytes:W*H*2,maxFrames:8,maxImages:16},thumbs={},ED=null;
+const to565=hex=>{const v=parseInt(hex.slice(1),16),r=v>>16,g=v>>8&255,b=v&255;return (r&0xF8)<<8|(g&0xFC)<<3|b>>3};
+const rgbOf=c=>[(c>>11)*255/31|0,(c>>5&63)*255/63|0,(c&31)*255/31|0];
+const hexOf=c=>'#'+rgbOf(c).map(v=>v.toString(16).padStart(2,'0')).join('');
+// a frame into a 192 x 64 canvas, 1:1
+function drawSmall(cv,px){
+  cv.width=W;cv.height=H;
+  const g=cv.getContext('2d'),d=g.createImageData(W,H);
+  for(let i=0;i<W*H;i++){const [r,gg,b]=px[i]?rgbOf(px[i]):[11,9,8];d.data.set([r,gg,b,255],i*4)}
+  g.putImageData(d,0,0);
+}
+async function loadImages(){
+  IM=await (await fetch('/api/images',{cache:'no-store'})).json();
+  renderThumbs();if(S)renderScenes();
+  for(const im of IM.images){  // one after the other, the board serves one request at a time
+    if(thumbs[im.id])continue;
+    try{const r=await fetch(`/api/image?id=${im.id}&frame=0`,{cache:'no-store'});if(r.ok)thumbs[im.id]=new Uint16Array(await r.arrayBuffer())}catch(e){}
+    renderThumbs();
+  }
+}
+function renderThumbs(){
+  const box=$('thumbs');box.replaceChildren();
+  for(const im of IM.images){
+    const cv=el('canvas');drawSmall(cv,thumbs[im.id]||new Uint16Array(W*H));
+    box.append(el('button',{type:'button',className:'thumb'+(ED&&ED.id===im.id?' on':''),onclick:()=>openEditor(im.id)},cv,
+      el('b',{textContent:im.name||'Bild '+(im.id+1)}),el('small',{textContent:im.frames>1?im.frames+' Einzelbilder, animiert':'1 Einzelbild'})));
+  }
+  if(IM.images.length<IM.maxImages)box.append(el('button',{type:'button',className:'thumb',onclick:()=>openEditor(null)},
+    el('span',{className:'new',textContent:'+'}),el('b',{textContent:'Neues Bild'})));
+  const left=Math.max(0,Math.floor((IM.freeBytes-16384)/(IM.frameBytes+512)));
+  $('space').textContent=`${IM.images.length} von ${IM.maxImages} Bildern · ${Math.round((IM.totalBytes-IM.freeBytes)/1024)} von ${Math.round(IM.totalBytes/1024)} KB belegt · Platz für etwa ${left} weitere Einzelbilder`;
+}
+async function openEditor(id){
+  if(ED&&ED.dirty&&!confirm('Das Bild hat ungespeicherte Änderungen. Verwerfen?'))return;
+  stopPlay();
+  const info=IM.images.find(i=>i.id===id);
+  let frames=[new Uint16Array(W*H)];
+  if(info){
+    try{
+      const r=await fetch('/api/image?id='+id,{cache:'no-store'});
+      if(!r.ok)throw new Error(await r.text());
+      const all=new Uint16Array(await r.arrayBuffer());
+      frames=[];for(let i=0;i<info.frames;i++)frames.push(all.slice(i*W*H,(i+1)*W*H));
+    }catch(e){alert('Bild laden fehlgeschlagen: '+e.message);return}
+  }
+  ED={id:info?id:-1,name:info?info.name:'',delay:info?info.delayMs:300,frames,cur:0,tool:'pen',color:'#ff7800',zoom:ED?ED.zoom:1,fit:'contain',undo:[],dirty:false,play:0};
+  $('editor').hidden=false;$('edMsg').textContent='';
+  renderEditor();renderThumbs();
+  $('editor').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function renderEditor(){
+  $('edTitle').textContent=ED.id<0?'Neues Bild':'Bild bearbeiten';
+  $('edName').value=ED.name;
+  $('edTools').replaceChildren(seg(TOOLS,ED.tool,v=>{ED.tool=v;renderEditor()}));
+  $('edZoom').replaceChildren(seg(ZOOMS,ED.zoom,v=>{ED.zoom=v;renderEditor()}));
+  $('edFit').replaceChildren(seg(FITS,ED.fit,v=>{ED.fit=v;renderEditor()}));
+  const cv=$('edCanvas');
+  cv.style.width=ED.zoom*100+'%';
+  cv.style.touchAction=ED.tool==='move'?'auto':'none';
+  cv.style.cursor=ED.tool==='move'?'grab':'crosshair';
+  const pal=$('edPal');pal.replaceChildren();
+  for(const c of PAL)pal.append(el('button',{type:'button',className:'sw'+(c===ED.color?' on':''),style:'background:'+c,ariaLabel:c,
+    onclick:()=>{ED.color=c;if(ED.tool==='erase'||ED.tool==='pick')ED.tool='pen';renderEditor()}}));
+  pal.append(el('input',{type:'color',value:ED.color,title:'eigene Farbe',ariaLabel:'eigene Farbe',className:PAL.includes(ED.color)?'':'sw on',
+    onchange:e=>{ED.color=e.target.value;if(ED.tool==='erase'||ED.tool==='pick')ED.tool='pen';renderEditor()}}));
+  renderFrames();
+  $('edDelay').value=ED.delay;$('edDelayVal').textContent=ED.delay+' ms';
+  $('edDelay').disabled=$('edPlay').disabled=ED.frames.length<2;
+  $('edAddFrame').disabled=ED.frames.length>=IM.maxFrames;
+  $('edDelFrame').disabled=ED.frames.length<2;
+  $('edUndo').disabled=!ED.undo.length;
+  $('edDelete').hidden=ED.id<0;
+  $('edSave').disabled=!ED.dirty;
+  drawEditor();
+}
+function renderFrames(){
+  const box=$('edFrames');box.replaceChildren();
+  ED.frames.forEach((f,i)=>{
+    const cv=el('canvas',{className:i===ED.cur?'on':'',title:'Einzelbild '+(i+1),onclick:()=>{stopPlay();ED.cur=i;renderEditor()}});
+    drawSmall(cv,f);box.append(cv);
+  });
+}
+function drawEditor(px=ED.frames[ED.cur]){
+  const g=$('edCanvas').getContext('2d');
+  g.fillStyle='#000';g.fillRect(0,0,W*CELL,H*CELL);
+  for(let i=0;i<W*H;i++)paintCell(g,i%W,i/W|0,px[i]);
+}
+function paintCell(g,x,y,c){g.fillStyle=c?hexOf(c):'#241f1b';g.fillRect(x*CELL,y*CELL,CELL-1,CELL-1)}
+function markDirty(){ED.dirty=true;$('edSave').disabled=false;$('edUndo').disabled=!ED.undo.length}
+function pushUndo(){ED.undo.push({cur:ED.cur,frames:ED.frames.map(f=>f.slice())});if(ED.undo.length>20)ED.undo.shift()}
+$('edUndo').onclick=()=>{const u=ED.undo.pop();if(!u)return;stopPlay();ED.frames=u.frames;ED.cur=Math.min(u.cur,u.frames.length-1);markDirty();renderEditor()};
+$('edClear').onclick=()=>{stopPlay();pushUndo();ED.frames[ED.cur].fill(0);markDirty();renderEditor()};
+$('edName').oninput=e=>{ED.name=e.target.value;markDirty()};
+// drawing: pen and eraser along the pointer (lines between the events), fill, colour picker
+let drawing=false,last=null;
+function cellAt(e){
+  const r=$('edCanvas').getBoundingClientRect();
+  return {x:Math.min(W-1,Math.max(0,Math.floor((e.clientX-r.left)/r.width*W))),y:Math.min(H-1,Math.max(0,Math.floor((e.clientY-r.top)/r.height*H)))};
+}
+function plot(p){
+  const v=ED.tool==='erase'?0:to565(ED.color);
+  ED.frames[ED.cur][p.y*W+p.x]=v;paintCell($('edCanvas').getContext('2d'),p.x,p.y,v);
+}
+function fill(p){
+  const f=ED.frames[ED.cur],from=f[p.y*W+p.x],to=to565(ED.color);
+  if(from===to)return;
+  const stack=[p.y*W+p.x];
+  while(stack.length){
+    const i=stack.pop();if(f[i]!==from)continue;f[i]=to;
+    const x=i%W;
+    if(x>0)stack.push(i-1);if(x<W-1)stack.push(i+1);if(i>=W)stack.push(i-W);if(i<W*(H-1))stack.push(i+W);
+  }
+}
+const cv=$('edCanvas');
+cv.onpointerdown=e=>{
+  if(!ED||ED.tool==='move')return;
+  e.preventDefault();stopPlay();try{cv.setPointerCapture(e.pointerId)}catch(err){}
+  const p=cellAt(e),c=ED.frames[ED.cur][p.y*W+p.x];
+  if(ED.tool==='pick'){if(c){ED.color=hexOf(c);ED.tool='pen';renderEditor()}return}
+  pushUndo();
+  if(ED.tool==='fill'){fill(p);markDirty();renderEditor();return}
+  drawing=true;last=p;plot(p);
+};
+cv.onpointermove=e=>{
+  if(!drawing)return;
+  const p=cellAt(e),n=Math.max(Math.abs(p.x-last.x),Math.abs(p.y-last.y));
+  for(let k=1;k<=n;k++)plot({x:Math.round(last.x+(p.x-last.x)*k/n),y:Math.round(last.y+(p.y-last.y)*k/n)});
+  last=p;
+};
+cv.onpointerup=cv.onpointercancel=()=>{if(drawing){drawing=false;markDirty();renderFrames();$('edUndo').disabled=false}};
+// frames
+$('edAddFrame').onclick=()=>{stopPlay();pushUndo();ED.frames.splice(ED.cur+1,0,ED.frames[ED.cur].slice());ED.cur++;markDirty();renderEditor()};
+$('edDelFrame').onclick=()=>{stopPlay();pushUndo();ED.frames.splice(ED.cur,1);ED.cur=Math.min(ED.cur,ED.frames.length-1);markDirty();renderEditor()};
+$('edDelay').oninput=e=>{ED.delay=+e.target.value;$('edDelayVal').textContent=ED.delay+' ms';markDirty();if(ED.play){stopPlay();startEdPlay()}};
+function startEdPlay(){
+  let k=0;
+  ED.play=setInterval(()=>{k=(k+1)%ED.frames.length;drawEditor(ED.frames[k])},ED.delay);
+  $('edPlay').textContent='⏸ Anhalten';
+}
+function stopPlay(){if(ED&&ED.play){clearInterval(ED.play);ED.play=0;$('edPlay').textContent='▶ Abspielen';drawEditor()}}
+$('edPlay').onclick=()=>{if(ED.play)stopPlay();else startEdPlay()};
+// import: scaled to the board (pixel art by whole steps, without blurring), transparent stays dark
+function toPixels(src){
+  const w=src.displayWidth||src.width,h=src.displayHeight||src.height;
+  let s=ED.fit==='cover'?Math.max(W/w,H/h):Math.min(W/w,H/h);
+  const c=el('canvas',{width:W,height:H}),g=c.getContext('2d');
+  if(s>=2){s=Math.floor(s);g.imageSmoothingEnabled=false}else g.imageSmoothingQuality='high';
+  g.drawImage(src,Math.round((W-w*s)/2),Math.round((H-h*s)/2),w*s,h*s);
+  const d=g.getImageData(0,0,W,H).data,px=new Uint16Array(W*H);
+  for(let i=0;i<W*H;i++)if(d[i*4+3]>=128)px[i]=(d[i*4]&0xF8)<<8|(d[i*4+1]&0xFC)<<3|d[i*4+2]>>3;
+  return px;
+}
+$('edFile').onchange=async e=>{
+  const file=e.target.files[0];e.target.value='';
+  if(!file)return;
+  if(ED.frames.some(f=>f.some(v=>v))&&!confirm('Das ersetzt das Bild oben. Weiter?'))return;
+  stopPlay();
+  let frames=[],delay=null;
+  try{
+    if(window.ImageDecoder&&file.type!=='image/jpeg'){
+      const dec=new ImageDecoder({data:await file.arrayBuffer(),type:file.type});
+      await dec.tracks.ready;
+      const n=Math.min(dec.tracks.selectedTrack.frameCount,IM.maxFrames);
+      for(let i=0;i<n;i++){
+        const {image}=await dec.decode({frameIndex:i});
+        frames.push(toPixels(image));
+        if(i===0&&image.duration)delay=Math.round(image.duration/1000);
+        image.close();
+      }
+    }
+  }catch(err){frames=[]}
+  try{
+    if(!frames.length){const bmp=await createImageBitmap(file);frames.push(toPixels(bmp));bmp.close()}
+  }catch(err){alert('Das Bild lässt sich nicht lesen.');return}
+  pushUndo();
+  ED.frames=frames;ED.cur=0;
+  if(delay)ED.delay=Math.min(2000,Math.max(50,Math.round(delay/50)*50));
+  if(!ED.name)ED.name=file.name.replace(/\.[^.]*$/,'').slice(0,22);
+  markDirty();renderEditor();
+};
+$('edSave').onclick=async()=>{
+  stopPlay();
+  $('edMsg').textContent='Speichere ...';$('edSave').disabled=true;
+  const fd=new FormData();
+  fd.append('px',new Blob(ED.frames),'px.bin');
+  try{
+    const r=await fetch(`/api/image?id=${ED.id}&frames=${ED.frames.length}&delay=${ED.delay}&name=${encodeURIComponent(ED.name)}`,{method:'POST',body:fd});
+    if(!r.ok)throw new Error(await r.text());
+    IM=await r.json();
+    ED.id=IM.id;ED.dirty=false;thumbs[ED.id]=ED.frames[0].slice();
+    $('edMsg').textContent='Gespeichert ✓';
+    renderEditor();renderThumbs();if(S)renderScenes();preview();
+  }catch(e){$('edMsg').textContent='Fehler: '+e.message;$('edSave').disabled=false}
+};
+$('edClose').onclick=()=>{
+  if(ED.dirty&&!confirm('Das Bild hat ungespeicherte Änderungen. Verwerfen?'))return;
+  stopPlay();ED=null;$('editor').hidden=true;renderThumbs();
+};
+// The board also takes the image out of the scenes that show it (and saves
+// the event). Unsaved changes here stay, with that applied to them too.
+$('edDelete').onclick=async()=>{
+  const used=S.scenes.filter(sc=>sc.img===ED.id).length;
+  if(!confirm('Bild „'+(ED.name||'ohne Namen')+'“ löschen?'+(used?` ${used===1?'Eine Szene zeigt':used+' Szenen zeigen'} es, dort fällt es weg.`:'')))return;
+  stopPlay();
+  try{
+    const id=ED.id,r=await fetch('/api/image/delete?id='+id,{method:'POST'});
+    if(!r.ok)throw new Error(await r.text());
+    IM=await r.json();delete thumbs[id];
+    const s=await getEvent();
+    if(!dirty())apply(s);
+    else{S.rev=s.rev;srv=content(s);S.scenes.forEach(sc=>{if(sc.img===id)sc.img=-1})}
+    ED=null;$('editor').hidden=true;renderThumbs();renderScenes();preview();
+  }catch(e){$('edMsg').textContent='Fehler: '+e.message}
+};
+
 // ---- on / off ----
 function renderMode(){
   const on=!!S.on;
@@ -299,7 +573,7 @@ $('modeSwitch').onclick=async()=>{
 
 // ---- load, save, keep in sync (as on the main page) ----
 function collect(){
-  return {brightnessPct:S.brightnessPct,scenes:S.scenes.map(sc=>({name:sc.name,durS:Math.min(600,Math.max(2,+sc.durS||8)),bg:sc.bg,trans:sc.trans,
+  return {brightnessPct:S.brightnessPct,scenes:S.scenes.map(sc=>({name:sc.name,durS:Math.min(600,Math.max(2,+sc.durS||8)),bg:sc.bg,img:sc.img??-1,trans:sc.trans,
     lines:sc.lines.map(l=>({text:l.text,color:l.color,size:l.size,v:l.v,h:l.h,anim:l.anim,speed:l.speed}))}))};
 }
 const dirty=()=>!!S&&JSON.stringify(collect())!==base;
@@ -309,7 +583,7 @@ function updateSave(){
   $('save').disabled=!d;$('save').textContent=d?'Änderungen speichern':'Alles gespeichert';
 }
 for(const ev of ['input','change','click'])document.addEventListener(ev,updateSave);
-window.addEventListener('beforeunload',e=>{if(!leaving&&dirty())e.preventDefault()});
+window.addEventListener('beforeunload',e=>{if(!leaving&&(dirty()||ED&&ED.dirty))e.preventDefault()});
 const content=s=>JSON.stringify({...s,rev:'',on:false});
 function apply(s){
   srv=content(s);S=s;staleRev='';
@@ -363,7 +637,7 @@ async function status(){
     sync(s.eventRev);
   }catch(e){$('status').textContent='Tafel nicht erreichbar'}
 }
-load().catch(e=>$('msg').textContent='Laden fehlgeschlagen: '+e.message);
+load().then(loadImages).catch(e=>$('msg').textContent='Laden fehlgeschlagen: '+e.message);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)status()});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)setPlaying(false)});
 window.addEventListener('pageshow',e=>{if(e.persisted)status()});

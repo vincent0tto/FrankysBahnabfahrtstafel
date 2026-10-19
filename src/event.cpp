@@ -109,6 +109,7 @@ void sceneToJson(const Scene& sc, JsonObject out) {
   out["name"] = (const char*)sc.name;
   out["durS"] = sc.durS;
   colorToJson(sc.bg, out, "bg");
+  if (sc.img >= 0) out["img"] = sc.img;
   out["trans"] = TRANS_NAMES[(int)sc.trans];
   JsonArray lines = out["lines"].to<JsonArray>();
   for (int i = 0; i < sc.nLines; i++) {
@@ -138,6 +139,8 @@ bool sceneFromJson(JsonVariantConst in, Scene& sc) {
   copyText(sc.name, sizeof(sc.name), in["name"]);
   sc.durS = (uint16_t)clampU(in["durS"], 2, 600, sc.durS);
   sc.bg = colorFromJson(in["bg"], sc.bg);
+  int img = in["img"] | -1;
+  sc.img = (int8_t)(img >= 0 && img < MAX_IMAGES ? img : -1);
   sc.trans = (Transition)nameIndex(in["trans"], TRANS_NAMES, 3, (uint8_t)sc.trans);
   for (JsonVariantConst o : in["lines"].as<JsonArrayConst>()) {
     if (sc.nLines >= MAX_EVENT_LINES) break;

@@ -55,6 +55,23 @@ static Frame render(const Board& b, DisplayStatus st, time_t now, uint32_t ms) {
   return f;
 }
 
+// A pixel image for the event preview: a cocktail glass at double size on
+// the left, as one would draw it on the event page.
+static uint16_t cocktail[W * H];
+static void makeCocktail() {
+  auto set = [](int x, int y, uint32_t rgb) {
+    for (int dy = 0; dy < 2; dy++)
+      for (int dx = 0; dx < 2; dx++) cocktail[(8 + 2 * y + dy) * W + 10 + 2 * x + dx] = rgb565(rgb);
+  };
+  for (int y = 3; y <= 12; y++)
+    for (int x = 2 + (y - 3); x <= 21 - (y - 3); x++)
+      set(x, y, y == 3 || x == 2 + (y - 3) || x == 21 - (y - 3) ? 0xCFEFFF : y <= 6 ? 0xFFB000 : 0xFF6A00);
+  for (int y = 13; y <= 17; y++) set(11, y, 0xCFEFFF), set(12, y, 0xCFEFFF);
+  for (int x = 7; x <= 16; x++) set(x, 18, 0xCFEFFF);
+  for (int i = 0; i < 6; i++) set(18 - i, i, 0xFF5FAE);
+  set(5, 1, 0xFF2A3A), set(6, 1, 0xFF2A3A), set(5, 2, 0xFF2A3A), set(6, 2, 0xFF2A3A);
+}
+
 static Frame renderEventFrame(const Event& e, uint32_t ms) {
   GFXcanvas16 canvas(W, H);
   canvas.fillScreen(0);
@@ -196,7 +213,7 @@ int main(int argc, char** argv) {
 
   // event mode: the example scene, every text size and position, a coloured
   // background, a text too long for the board (start and scrolled), the
-  // animations and the transitions
+  // animations, the transitions and a pixel image
   std::vector<Frame> event;
   Event ev;
   eventDefaults(ev);
@@ -248,6 +265,24 @@ int main(int argc, char** argv) {
     ev.scenes[0].trans = tr;
     event.push_back(renderEventFrame(ev, ev.scenes[0].durS * 1000 + TRANSITION_MS / 2));
   }
+  // a pixel image under text on a coloured background
+  makeCocktail();
+  setImageDrawer([](Adafruit_GFX& g, int, uint32_t) { drawPixels(g, cocktail); });
+  Scene pic;
+  pic.bg = 0x1A0B2E;
+  pic.img = 0;
+  const char* picTexts[] = {"HAPPY", "HOUR"};
+  for (int i = 0; i < 2; i++) {
+    EventLine& l = pic.lines[pic.nLines++];
+    strcpy(l.text, picTexts[i]);
+    l.size = TextSize::Large;
+    l.v = i ? VPos::Bottom : VPos::Top;
+    l.h = HAlign::Right;
+    l.color = i ? 0x29C6FF : 0xFF3BD0;
+  }
+  eventDefaults(ev);
+  ev.scenes[0] = pic;
+  event.push_back(renderEventFrame(ev, 0));
   writePpm(argc > 3 ? argv[3] : "preview_event.ppm", event);
   return 0;
 }
