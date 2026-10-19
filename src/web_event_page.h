@@ -1,7 +1,7 @@
 #pragma once
 // The event page served by src/web.cpp at "/event": switches the event mode
 // and edits its scenes and pixel images. Talks to /api/event, /api/event/on,
-// /api/event/preview, /api/event/test, /api/images, /api/image and
+// /api/event/preview, /api/event/test(/stop), /api/images, /api/image and
 // /api/status (JSON, format: eventToJson in src/event.cpp; images:
 // src/web.cpp).
 #include <pgmspace.h>
@@ -208,7 +208,7 @@ async function drawPreview(){
   if(pvBusy){pvAgain=true;return}
   const sc=S&&S.scenes[open];
   $('boardCap').textContent=sc?`Szene ${open+1}: ${sc.name||'ohne Namen'} · so zeigt sie die Tafel`:'Keine Szene';
-  $('test').disabled=!sc;
+  $('test').disabled=!sc&&!testEnd;
   const t0=performance.now(),ms=Math.round(t0-playFrom);
   if(ms>=PLAY_MS||document.hidden)setPlaying(false);
   let px=new Uint16Array(W*H);
@@ -233,12 +233,28 @@ async function drawPreview(){
   if(pvAgain){pvAgain=false;drawPreview()}
   else if(playing&&sc)nextFrame=setTimeout(drawPreview,Math.max(0,FRAME_MS-(performance.now()-t0)));
 }
+// While a test runs (TEST_S on the board) the button ends it instead.
+const TEST_S=30;
+let testEnd=0,testTimer=0;
+function showTest(){
+  const left=Math.ceil((testEnd-Date.now())/1000);
+  if(left<=0){clearInterval(testTimer);testEnd=0;$('test').textContent='Auf der Tafel testen';$('testMsg').textContent='';return}
+  $('test').textContent=`■ Test beenden (${left} s)`;
+}
 $('test').onclick=async()=>{
-  const sc=S&&S.scenes[open];if(!sc)return;
+  const sc=S&&S.scenes[open];
   try{
+    if(testEnd){
+      const r=await fetch('/api/event/test/stop',{method:'POST'});
+      if(!r.ok)throw new Error(await r.text());
+      testEnd=Date.now();showTest();
+      return;
+    }
+    if(!sc)return;
     const r=await fetch('/api/event/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(sc)});
     if(!r.ok)throw new Error(await r.text());
-    $('testMsg').textContent='Die Tafel zeigt die Szene jetzt 30 Sekunden lang, danach wieder wie vorher.';
+    $('testMsg').textContent='Die Tafel zeigt die Szene, danach wieder wie vorher.';
+    testEnd=Date.now()+TEST_S*1000;clearInterval(testTimer);testTimer=setInterval(showTest,1000);showTest();
   }catch(e){$('testMsg').textContent='Fehler: '+e.message}
 };
 

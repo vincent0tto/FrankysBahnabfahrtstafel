@@ -33,6 +33,9 @@ bool eventFetch(Event& out, uint32_t& version);
 // event is on or not), without storing it. For "Auf der Tafel testen".
 void eventTest(const Scene& sc);
 
-// Render loop: copies the scene to test into `out` if there is a new one
-// since `version`, which is updated. true if copied.
-bool eventTestFetch(Scene& out, uint32_t& version);
+// Network task: ends such a test at once.
+void eventTestStop();
+
+// Render loop: if a test started or stopped since `version` (updated),
+// `active` tells which and `out` gets the scene to test. true if changed.
+bool eventTestFetch(Scene& out, bool& active, uint32_t& version);

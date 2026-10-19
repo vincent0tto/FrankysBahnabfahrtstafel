@@ -151,10 +151,7 @@ void loop() {
     eventStartMs = millis();
     testing = false;
   }
-  if (eventTestFetch(test.scenes[0], testVersion)) {
-    testStartMs = millis();
-    testing = true;
-  }
+  if (eventTestFetch(test.scenes[0], testing, testVersion)) testStartMs = millis();
   if (testing && millis() - testStartMs >= EVENT_TEST_S * 1000UL) testing = false;
   if (testing) {
     test.on = true;

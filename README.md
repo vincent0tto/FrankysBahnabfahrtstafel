@@ -237,7 +237,8 @@ Ein Text, der nicht auf die Tafel passt, läuft hin und her wie ein langes Ziel.
 der Seite zeichnet die Tafel selbst (`/api/event/preview`), sie sieht also genau so aus wie auf
 dem Panel; nach jeder Änderung spielt sie die Animation 20 Sekunden lang ab, ▶ startet sie
 erneut. **Auf der Tafel testen** zeigt die Szene 30 Sekunden auf dem Panel (`EVENT_TEST_S`),
-ohne zu speichern, auch wenn der Event-Modus aus ist. Nach dem Speichern beginnt die Tafel
+ohne zu speichern, auch wenn der Event-Modus aus ist; währenddessen beendet derselbe Knopf
+(**Test beenden**) den Test sofort. Nach dem Speichern beginnt die Tafel
 wieder mit der ersten Szene.
 
 **Bilder** sind Pixelgrafiken über die ganze Tafel (192 × 64), die eine Szene unter ihren Texten

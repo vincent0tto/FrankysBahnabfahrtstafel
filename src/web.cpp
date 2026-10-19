@@ -205,6 +205,11 @@ static void handleEventTest() {
   server.send(200, "text/plain", "ok");
 }
 
+static void handleEventTestStop() {
+  eventTestStop();
+  server.send(200, "text/plain", "ok");
+}
+
 // ---- Pixel images (src/image_store.h) -------------------------------------------
 
 // The list of images and the space left; `id`: the one just stored.
@@ -418,6 +423,7 @@ void webBegin() {
   server.on("/api/event/on", HTTP_POST, handleEventOn);
   server.on("/api/event/preview", HTTP_POST, handleEventPreview);
   server.on("/api/event/test", HTTP_POST, handleEventTest);
+  server.on("/api/event/test/stop", HTTP_POST, handleEventTestStop);
   server.on("/api/images", HTTP_GET, [] { sendImages(); });
   server.on("/api/image", HTTP_GET, handleImageGet);
   server.on("/api/image", HTTP_POST, handleImageSave, handleImageUpload);
