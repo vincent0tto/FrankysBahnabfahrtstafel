@@ -28,3 +28,11 @@ Event& eventScratch();
 // Render loop: copies the event into `out` if it changed since `version`,
 // which is updated. true if copied.
 bool eventFetch(Event& out, uint32_t& version);
+
+// Network task: shows `sc` on the board for EVENT_TEST_S seconds (whether the
+// event is on or not), without storing it. For "Auf der Tafel testen".
+void eventTest(const Scene& sc);
+
+// Render loop: copies the scene to test into `out` if there is a new one
+// since `version`, which is updated. true if copied.
+bool eventTestFetch(Scene& out, uint32_t& version);

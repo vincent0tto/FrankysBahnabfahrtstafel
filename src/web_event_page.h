@@ -1,7 +1,8 @@
 #pragma once
 // The event page served by src/web.cpp at "/event": switches the event mode
 // and edits its scenes. Talks to /api/event, /api/event/on,
-// /api/event/preview and /api/status (JSON, format: eventToJson in src/event.cpp).
+// /api/event/preview, /api/event/test and /api/status (JSON, format:
+// eventToJson in src/event.cpp).
 #include <pgmspace.h>
 
 static const char WEB_EVENT_PAGE[] PROGMEM = R"rawliteral(<!doctype html>
@@ -65,6 +66,12 @@ canvas.board{display:block;width:100%;aspect-ratio:3/1;background:var(--panel);b
 .swatches{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .sw{width:34px;height:34px;border-radius:50%;padding:0;border:1px solid rgba(0,0,0,.2)}
 .sw.on{box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--accent)}
+.sw.rainbow{background:conic-gradient(#ff4040,#ffb000,#ffe600,#4be04b,#29c6ff,#8a5bff,#ff3bd0,#ff4040)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{border-radius:16px;padding:5px 12px}
+.chips button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.pvbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+.pvbar .cap{flex:1;margin:0;min-width:180px}
 .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:100%;max-width:420px}
 .seg button{flex:1;border:0;border-radius:0;border-left:1px solid var(--line);padding:7px 4px;font-size:14px}
 .seg button:first-child{border-left:0}
@@ -93,7 +100,9 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 <section>
 <h2>Vorschau</h2>
 <canvas class="board" id="board" width="768" height="256"></canvas>
-<div class="cap" id="boardCap"></div>
+<div class="pvbar"><div class="cap" id="boardCap"></div>
+<button id="play">▶ Abspielen</button><button id="test" title="zeigt die Szene 30 Sekunden auf der Tafel, ohne zu speichern">Auf der Tafel testen</button></div>
+<div class="hint" id="testMsg" style="margin:6px 0 0"></div>
 </section>
 
 <section>
@@ -120,6 +129,8 @@ const COLORS=[['#ff7800','Amber'],['#ffd400','Gelb'],['#ff3030','Rot'],['#ff3bd0
   ['#2f7bff','Blau'],['#29c6ff','Cyan'],['#4be04b','Grün'],['#ffffff','Weiß']];
 const BGS=[['#000000','Schwarz'],['#1a0b2e','Dunkellila'],['#2a0a0a','Dunkelrot'],['#06213a','Nachtblau'],['#0a2a12','Dunkelgrün'],['#2a1a05','Dunkelbraun']];
 const SIZES=[['small','Klein'],['normal','Normal'],['large','Groß'],['huge','Riesig']];
+const ANIMS=[['none','Keine'],['scroll','Laufschrift'],['blink','Blinken'],['pulse','Pulsieren'],['type','Schreibmaschine'],['wave','Welle']];
+const TRANS=[['cut','Schnitt'],['slide','Schieben'],['wipe','Wischen']];
 const VPOS=[['top','Oben'],['middle','Mitte'],['bottom','Unten']];
 const HALIGN=[['left','Links'],['center','Mitte'],['right','Rechts']];
 let S=null,open=0,leaving=false,base='',srv='',staleRev='';
@@ -129,32 +140,49 @@ function seg(opts,cur,pick){
   return el('div',{className:'seg'},...opts.map(([v,t])=>el('button',{type:'button',textContent:t,className:v===cur?'on':'',onclick:()=>pick(v)})));
 }
 function field(label,...kids){return el('div',{className:'field'},el('span',{className:'flabel',textContent:label}),el('div',{className:'fctl'},...kids))}
-// preset colours plus a picker for any other one
-function swatches(list,cur,pick){
+// preset colours (and the rainbow) plus a picker for any other one
+function swatches(list,cur,pick,rainbow){
   const box=el('div',{className:'swatches'});
   for(const [c,name] of list)box.append(el('button',{type:'button',className:'sw'+(c===cur?' on':''),title:name,ariaLabel:name,style:'background:'+c,onclick:()=>pick(c)}));
-  const own=!list.some(([c])=>c===cur);
-  box.append(el('input',{type:'color',value:cur,title:'eigene Farbe',ariaLabel:'eigene Farbe',className:own?'sw on':'',oninput:e=>pick(e.target.value,true)}));
+  if(rainbow)box.append(el('button',{type:'button',className:'sw rainbow'+(cur==='rainbow'?' on':''),title:'Regenbogen',ariaLabel:'Regenbogen',onclick:()=>pick('rainbow')}));
+  const own=cur!=='rainbow'&&!list.some(([c])=>c===cur);
+  box.append(el('input',{type:'color',value:cur==='rainbow'?'#ff7800':cur,title:'eigene Farbe',ariaLabel:'eigene Farbe',className:own?'sw on':'',oninput:e=>pick(e.target.value,true)}));
   return box;
+}
+function chips(opts,cur,pick){
+  return el('div',{className:'chips'},...opts.map(([v,t])=>el('button',{type:'button',textContent:t,className:v===cur?'on':'',onclick:()=>pick(v)})));
 }
 
 // ---- preview: the board draws the scene itself (/api/event/preview) ----
-let pvTimer=0,pvBusy=false,pvAgain=false;
-function preview(){clearTimeout(pvTimer);pvTimer=setTimeout(drawPreview,250)}
+// After a change it plays for PLAY_MS (frames as fast as the board answers,
+// at most every FRAME_MS), then stops to spare the board; ▶ plays again.
+const PLAY_MS=20000,FRAME_MS=150;
+let pvTimer=0,pvBusy=false,pvAgain=false,playFrom=0,playing=false,nextFrame=0;
+function preview(){clearTimeout(pvTimer);pvTimer=setTimeout(()=>{startPlay();drawPreview()},250)}
+function startPlay(){playFrom=performance.now();setPlaying(true)}
+function setPlaying(on){playing=on;$('play').textContent=on?'⏸ Anhalten':'▶ Abspielen'}
+$('play').onclick=()=>{if(playing)setPlaying(false);else{startPlay();drawPreview()}};
 async function drawPreview(){
+  clearTimeout(nextFrame);  // one chain of frames only
   if(pvBusy){pvAgain=true;return}
   const sc=S&&S.scenes[open];
   $('boardCap').textContent=sc?`Szene ${open+1}: ${sc.name||'ohne Namen'} · so zeigt sie die Tafel`:'Keine Szene';
-  const g=$('board').getContext('2d');
+  $('test').disabled=!sc;
+  const t0=performance.now(),ms=Math.round(t0-playFrom);
+  if(ms>=PLAY_MS||document.hidden)setPlaying(false);
   let px=new Uint16Array(W*H);
   if(sc){
     pvBusy=true;
     try{
-      const r=await fetch('/api/event/preview?ms=0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(sc)});
-      if(r.ok)px=new Uint16Array(await r.arrayBuffer());
+      const r=await fetch('/api/event/preview?ms='+(playing?ms:0),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(sc)});
+      if(r.ok){
+        const runs=new Uint16Array(await r.arrayBuffer());
+        for(let i=0,p=0;i+1<runs.length&&p<px.length;i+=2){px.fill(runs[i+1],p,p+runs[i]);p+=runs[i]}
+      }
     }catch(e){}
     pvBusy=false;
   }
+  const g=$('board').getContext('2d');
   g.fillStyle='#000';g.fillRect(0,0,W*DOT,H*DOT);
   for(let y=0;y<H;y++)for(let x=0;x<W;x++){
     const c=px[y*W+x];
@@ -162,26 +190,41 @@ async function drawPreview(){
     g.beginPath();g.arc(x*DOT+DOT/2,y*DOT+DOT/2,DOT*.42,0,7);g.fill();
   }
   if(pvAgain){pvAgain=false;drawPreview()}
+  else if(playing&&sc)nextFrame=setTimeout(drawPreview,Math.max(0,FRAME_MS-(performance.now()-t0)));
 }
+$('test').onclick=async()=>{
+  const sc=S&&S.scenes[open];if(!sc)return;
+  try{
+    const r=await fetch('/api/event/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(sc)});
+    if(!r.ok)throw new Error(await r.text());
+    $('testMsg').textContent='Die Tafel zeigt die Szene jetzt 30 Sekunden lang, danach wieder wie vorher.';
+  }catch(e){$('testMsg').textContent='Fehler: '+e.message}
+};
 
 // ---- scenes ----
-function newLine(){return {text:'Neue Zeile',color:'#ff7800',size:'normal',v:'middle',h:'center'}}
+function newLine(){return {text:'Neue Zeile',color:'#ff7800',size:'normal',v:'middle',h:'center',anim:'none',speed:5}}
 function lineBody(sc,l,i){
   const upd=()=>{renderScenes(false);preview()};
   return el('div',{className:'line'},
     field('Zeile '+(i+1),el('input',{type:'text',value:l.text,maxLength:60,placeholder:'Text',oninput:e=>{l.text=e.target.value;upd()}}),
       el('button',{className:'del',textContent:'✕',title:'Zeile löschen',ariaLabel:'Zeile löschen',onclick:()=>{sc.lines.splice(i,1);renderScenes();preview()}})),
-    field('Farbe',swatches(COLORS,l.color,(c,typing)=>{l.color=c;typing?upd():(renderScenes(),preview())})),
+    field('Farbe',swatches(COLORS,l.color,(c,typing)=>{l.color=c;typing?upd():(renderScenes(),preview())},true)),
     field('Schrift',seg(SIZES,l.size,v=>{l.size=v;renderScenes();preview()})),
     field('Höhe',seg(VPOS,l.v,v=>{l.v=v;renderScenes();preview()})),
-    field('Ausrichtung',seg(HALIGN,l.h,v=>{l.h=v;renderScenes();preview()})));
+    field('Ausrichtung',seg(HALIGN,l.h,v=>{l.h=v;renderScenes();preview()})),
+    field('Animation',chips(ANIMS,l.anim,v=>{l.anim=v;renderScenes();preview()})),
+    l.anim!=='none'||l.color==='rainbow'?field('Tempo',el('span',{className:'hint',style:'margin:0',textContent:'langsam'}),
+      el('input',{type:'range',min:1,max:10,value:l.speed,ariaLabel:'Tempo',oninput:e=>{l.speed=+e.target.value;preview()}}),
+      el('span',{className:'hint',style:'margin:0',textContent:'schnell'})):'');
 }
 function sceneBody(sc,i){
   const b=el('div',{className:'sbody'},
     field('Name',el('input',{type:'text',value:sc.name,maxLength:22,placeholder:'z. B. Happy Hour',oninput:e=>{sc.name=e.target.value;renderScenes(false);preview()}})),
     field('Anzeigedauer',el('input',{type:'number',min:2,max:600,value:sc.durS,oninput:e=>{sc.durS=+e.target.value;renderScenes(false)}}),'Sekunden'),
     field('Hintergrund',swatches(BGS,sc.bg,(c,typing)=>{sc.bg=c;typing?preview():(renderScenes(),preview())})),
-    el('div',{className:'hint',textContent:'Dunkle Töne wirken am besten. Ein heller Hintergrund lässt alle LEDs leuchten und macht die Tafel sehr hell.'}));
+    el('div',{className:'hint',textContent:'Dunkle Töne wirken am besten. Ein heller Hintergrund lässt alle LEDs leuchten und macht die Tafel sehr hell.'}),
+    field('Übergang',seg(TRANS,sc.trans,v=>{sc.trans=v;renderScenes()}),
+      el('span',{className:'hint',style:'margin:0',textContent:'zur nächsten Szene'})));
   sc.lines.forEach((l,j)=>b.append(lineBody(sc,l,j)));
   b.append(el('button',{className:'add',textContent:'+ Zeile',disabled:sc.lines.length>=MAX_LINES,
     onclick:()=>{sc.lines.push(newLine());renderScenes();preview()}}));
@@ -216,14 +259,16 @@ function renderScenes(full=true){
 function toggle(i){open=open===i?-1:i;renderScenes();if(open>=0)preview()}
 function chip(sc,i){
   const l=sc.lines.find(l=>l.text)||{text:'(leer)',color:'#777'};
+  const color=l.color==='rainbow'?'#fff':l.color;
   const total=S.scenes.reduce((a,s)=>a+(+s.durS||0),0);
   return el('div',{className:'chip',onclick:()=>toggle(i)},
-    el('span',{className:'led',style:`color:${l.color};background:${sc.bg==='#000000'?'':sc.bg}`,textContent:l.text}),
+    el('span',{className:'led',style:`color:${color};background:${sc.bg==='#000000'?'':sc.bg}`,textContent:l.text}),
     el('span',{},el('b',{textContent:(i+1)+'. '+(sc.name||'Szene')}),
-      el('small',{textContent:`${sc.durS} s · ${sc.lines.length} ${sc.lines.length===1?'Zeile':'Zeilen'}`+(i===0&&S.scenes.length>1?` · Durchlauf ${total} s`:'')})));
+      el('small',{textContent:`${sc.durS} s · ${sc.lines.length} ${sc.lines.length===1?'Zeile':'Zeilen'}`+
+        (S.scenes.length>1&&sc.trans!=='cut'?' · '+TRANS.find(t=>t[0]===sc.trans)[1]:'')+(i===0&&S.scenes.length>1?` · Durchlauf ${total} s`:'')})));
 }
 $('addScene').onclick=()=>{
-  S.scenes.push({name:'',durS:8,bg:'#000000',lines:[newLine()]});
+  S.scenes.push({name:'',durS:8,bg:'#000000',trans:'cut',lines:[newLine()]});
   open=S.scenes.length-1;renderScenes();preview();
 };
 
@@ -254,8 +299,8 @@ $('modeSwitch').onclick=async()=>{
 
 // ---- load, save, keep in sync (as on the main page) ----
 function collect(){
-  return {brightnessPct:S.brightnessPct,scenes:S.scenes.map(sc=>({name:sc.name,durS:Math.min(600,Math.max(2,+sc.durS||8)),bg:sc.bg,
-    lines:sc.lines.map(l=>({text:l.text,color:l.color,size:l.size,v:l.v,h:l.h}))}))};
+  return {brightnessPct:S.brightnessPct,scenes:S.scenes.map(sc=>({name:sc.name,durS:Math.min(600,Math.max(2,+sc.durS||8)),bg:sc.bg,trans:sc.trans,
+    lines:sc.lines.map(l=>({text:l.text,color:l.color,size:l.size,v:l.v,h:l.h,anim:l.anim,speed:l.speed}))}))};
 }
 const dirty=()=>!!S&&JSON.stringify(collect())!==base;
 function updateSave(){
@@ -320,6 +365,7 @@ async function status(){
 }
 load().catch(e=>$('msg').textContent='Laden fehlgeschlagen: '+e.message);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)status()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)setPlaying(false)});
 window.addEventListener('pageshow',e=>{if(e.persisted)status()});
 status();setInterval(()=>{if(!document.hidden)status()},15000);
 </script>

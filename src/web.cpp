@@ -147,16 +147,22 @@ static void handleEventOn() {
 }
 
 // One scene (JSON as in the event) drawn as the board would show it ?ms=
-// after it came up: 192 x 64 RGB565 pixels, little-endian, row by row. The
-// page shows that, so its preview is exact without knowing the fonts.
+// after it came up: the 192 x 64 RGB565 pixels row by row, run-length
+// coded as pairs of uint16 (count, colour), little-endian. The page shows
+// that, so its preview is exact without knowing the fonts; as an animation
+// it asks every few hundred ms, the coding keeps that small (~2-6 KB).
 static void handleEventPreview() {
+  static const int N = PANEL_RES_X * PANEL_CHAIN * PANEL_RES_Y;
   static GFXcanvas16* canvas = nullptr;  // 24 KB, in PSRAM (large mallocs go there)
+  static uint16_t* runs = nullptr;       // worst case a run per pixel
   static U8G2_FOR_ADAFRUIT_GFX u8;
   if (!canvas) {
     canvas = new GFXcanvas16(PANEL_RES_X * PANEL_CHAIN, PANEL_RES_Y);
-    if (!canvas->getBuffer()) {
+    runs = (uint16_t*)heap_caps_malloc(N * 4, MALLOC_CAP_SPIRAM);
+    if (!canvas->getBuffer() || !runs) {
       delete canvas;
       canvas = nullptr;
+      heap_caps_free(runs);
       server.send(500, "text/plain", "out of memory");
       return;
     }
@@ -171,9 +177,30 @@ static void handleEventPreview() {
   }
   canvas->fillScreen(0);
   renderScene(*canvas, u8, sc, strtoul(server.arg("ms").c_str(), nullptr, 10));
+  const uint16_t* px = canvas->getBuffer();
+  size_t n = 0;
+  for (int i = 0; i < N;) {
+    int j = i + 1;
+    while (j < N && px[j] == px[i]) j++;
+    runs[n++] = j - i;
+    runs[n++] = px[i];
+    i = j;
+  }
   server.sendHeader("Cache-Control", "no-store");
-  server.send_P(200, "application/octet-stream", (const char*)canvas->getBuffer(),
-                canvas->width() * canvas->height() * 2);
+  server.send_P(200, "application/octet-stream", (const char*)runs, n * 2);
+}
+
+// One scene (JSON as in the event) shown on the board for EVENT_TEST_S seconds.
+static void handleEventTest() {
+  JsonDocument doc(&spiRam);
+  if (!readBody(doc)) return;
+  Scene sc;
+  if (!sceneFromJson(doc.as<JsonVariantConst>(), sc)) {
+    server.send(400, "text/plain", "ungültige Daten");
+    return;
+  }
+  eventTest(sc);
+  server.send(200, "text/plain", "ok");
 }
 
 static void handleStatus() {
@@ -273,6 +300,7 @@ void webBegin() {
   server.on("/api/event", HTTP_POST, handleEventSave);
   server.on("/api/event/on", HTTP_POST, handleEventOn);
   server.on("/api/event/preview", HTTP_POST, handleEventPreview);
+  server.on("/api/event/test", HTTP_POST, handleEventTest);
   server.onNotFound([] { server.send(404, "text/plain", "not found"); });
   server.begin();
   MDNS.addService("http", "tcp", 80);  // mDNS itself is started by ArduinoOTA

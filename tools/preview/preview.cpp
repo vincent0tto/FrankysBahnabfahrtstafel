@@ -195,7 +195,8 @@ int main(int argc, char** argv) {
   writePpm(argc > 2 ? argv[2] : "preview_anim.ppm", anim);
 
   // event mode: the example scene, every text size and position, a coloured
-  // background, a text too long for the board (start and scrolled)
+  // background, a text too long for the board (start and scrolled), the
+  // animations and the transitions
   std::vector<Frame> event;
   Event ev;
   eventDefaults(ev);
@@ -223,6 +224,30 @@ int main(int argc, char** argv) {
   strcpy(h.text, "Ölige Äpfel für Jürgen");
   ev.scenes[0] = huge;
   for (uint32_t ms : {0u, 6000u}) event.push_back(renderEventFrame(ev, ms));
+
+  // animations: rainbow + wave, typewriter half-way, ticker, pulse dimmed
+  Scene fx;
+  const char* fxTexts[] = {"Regenbogen-Welle", "Schreibmaschine", "Laufschrift von rechts"};
+  const Anim fxAnims[] = {Anim::Wave, Anim::Type, Anim::Scroll};
+  for (int i = 0; i < 3; i++) {
+    EventLine& l = fx.lines[fx.nLines++];
+    strcpy(l.text, fxTexts[i]);
+    l.v = (VPos)i;
+    l.anim = fxAnims[i];
+    l.rainbow = i == 0;
+    l.color = 0x4BE04B;
+  }
+  ev.scenes[0] = fx;
+  for (uint32_t ms : {800u, 3000u}) event.push_back(renderEventFrame(ev, ms));
+  // transitions: slide and wipe half-way from the example scene into "PARTY"
+  eventDefaults(ev);
+  ev.nScenes = 2;
+  strcpy(h.text, "PARTY");
+  ev.scenes[1] = huge;
+  for (Transition tr : {Transition::Slide, Transition::Wipe}) {
+    ev.scenes[0].trans = tr;
+    event.push_back(renderEventFrame(ev, ev.scenes[0].durS * 1000 + TRANSITION_MS / 2));
+  }
   writePpm(argc > 3 ? argv[3] : "preview_event.ppm", event);
   return 0;
 }

@@ -133,6 +133,10 @@ void loop() {
   static Event event;
   static uint32_t evVersion = 0;
   static uint32_t eventStartMs = 0;
+  static Event test;  // a scene tested from the event page, EVENT_TEST_S long
+  static uint32_t testVersion = 0;
+  static uint32_t testStartMs = 0;
+  static bool testing = false;
 
   esp_task_wdt_reset();
   if (boardVersion != localVersion && xSemaphoreTake(boardMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
@@ -141,13 +145,27 @@ void loop() {
     xSemaphoreGive(boardMutex);
   }
   settingsFetch(settings, settingsVersion);
-  if (eventFetch(event, evVersion)) eventStartMs = millis();  // switched on or saved: from the first scene
+  if (eventFetch(event, evVersion)) {  // switched on or saved: from the first scene
+    eventStartMs = millis();
+    testing = false;
+  }
+  if (eventTestFetch(test.scenes[0], testVersion)) {
+    testStartMs = millis();
+    testing = true;
+  }
+  if (testing && millis() - testStartMs >= EVENT_TEST_S * 1000UL) testing = false;
+  if (testing) {
+    test.on = true;
+    test.brightness = event.brightness;
+    test.nScenes = 1;
+  }
 
   DisplayStatus st;
   st.wifi = WiFi.status() == WL_CONNECTED;
   st.timeValid = timeValid();
   st.updating = updateRunning();
   uint32_t ms = millis();
-  bool dark = displayRender(local, settings, event, st, time(nullptr), ms, ms - eventStartMs);
+  bool dark = testing ? displayRender(local, settings, test, st, time(nullptr), ms, ms - testStartMs)
+                      : displayRender(local, settings, event, st, time(nullptr), ms, ms - eventStartMs);
   delay(dark ? 500 : 33);  // off time: nothing to draw
 }

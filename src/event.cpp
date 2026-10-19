@@ -10,6 +10,8 @@
 static const char* const SIZE_NAMES[] = {"small", "normal", "large", "huge"};
 static const char* const VPOS_NAMES[] = {"top", "middle", "bottom"};
 static const char* const HALIGN_NAMES[] = {"left", "center", "right"};
+static const char* const ANIM_NAMES[] = {"none", "scroll", "blink", "pulse", "type", "wave"};
+static const char* const TRANS_NAMES[] = {"cut", "slide", "wipe"};
 
 void eventDefaults(Event& e) {
   e = Event();
@@ -17,10 +19,10 @@ void eventDefaults(Event& e) {
   Scene& sc = e.scenes[e.nScenes++];
   snprintf(sc.name, sizeof(sc.name), "Willkommen");
   EventLine& a = sc.lines[sc.nLines++];
-  snprintf(a.text, sizeof(a.text), "Willkommen bei");
+  snprintf(a.text, sizeof(a.text), "Willkommen im");
   a.v = VPos::Top;
   EventLine& b = sc.lines[sc.nLines++];
-  snprintf(b.text, sizeof(b.text), "Franky's");
+  snprintf(b.text, sizeof(b.text), "FRANKY'S");
   b.size = TextSize::Huge;
   b.v = VPos::Bottom;
 }
@@ -28,6 +30,26 @@ void eventDefaults(Event& e) {
 uint16_t rgb565(uint32_t rgb) {
   uint8_t r = rgb >> 16, g = rgb >> 8, b = rgb;
   return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+}
+
+uint32_t hueColor(int hue) {
+  hue = ((hue % 360) + 360) % 360;
+  int x = (hue % 60) * 255 / 60;  // rising part of the current sixth
+  uint8_t r, g, b;
+  switch (hue / 60) {
+    case 0: r = 255, g = x, b = 0; break;
+    case 1: r = 255 - x, g = 255, b = 0; break;
+    case 2: r = 0, g = 255, b = x; break;
+    case 3: r = 0, g = 255 - x, b = 255; break;
+    case 4: r = x, g = 0, b = 255; break;
+    default: r = 255, g = 0, b = 255 - x; break;
+  }
+  return (uint32_t)r << 16 | g << 8 | b;
+}
+
+uint32_t dimColor(uint32_t rgb, int level) {
+  uint32_t r = (rgb >> 16 & 0xFF) * level >> 8, g = (rgb >> 8 & 0xFF) * level >> 8, b = (rgb & 0xFF) * level >> 8;
+  return r << 16 | g << 8 | b;
 }
 
 int eventSceneAt(const Event& e, uint32_t ms, uint32_t& sceneMs) {
@@ -87,15 +109,19 @@ void sceneToJson(const Scene& sc, JsonObject out) {
   out["name"] = (const char*)sc.name;
   out["durS"] = sc.durS;
   colorToJson(sc.bg, out, "bg");
+  out["trans"] = TRANS_NAMES[(int)sc.trans];
   JsonArray lines = out["lines"].to<JsonArray>();
   for (int i = 0; i < sc.nLines; i++) {
     const EventLine& l = sc.lines[i];
     JsonObject o = lines.add<JsonObject>();
     o["text"] = (const char*)l.text;
-    colorToJson(l.color, o, "color");
+    if (l.rainbow) o["color"] = "rainbow";
+    else colorToJson(l.color, o, "color");
     o["size"] = SIZE_NAMES[(int)l.size];
     o["v"] = VPOS_NAMES[(int)l.v];
     o["h"] = HALIGN_NAMES[(int)l.h];
+    o["anim"] = ANIM_NAMES[(int)l.anim];
+    o["speed"] = l.speed;
   }
 }
 
@@ -112,15 +138,19 @@ bool sceneFromJson(JsonVariantConst in, Scene& sc) {
   copyText(sc.name, sizeof(sc.name), in["name"]);
   sc.durS = (uint16_t)clampU(in["durS"], 2, 600, sc.durS);
   sc.bg = colorFromJson(in["bg"], sc.bg);
+  sc.trans = (Transition)nameIndex(in["trans"], TRANS_NAMES, 3, (uint8_t)sc.trans);
   for (JsonVariantConst o : in["lines"].as<JsonArrayConst>()) {
     if (sc.nLines >= MAX_EVENT_LINES) break;
     if (!o.is<JsonObjectConst>()) continue;
     EventLine& l = sc.lines[sc.nLines++];
     copyText(l.text, sizeof(l.text), o["text"]);
+    l.rainbow = o["color"] == "rainbow";
     l.color = colorFromJson(o["color"], l.color);
     l.size = (TextSize)nameIndex(o["size"], SIZE_NAMES, 4, (uint8_t)l.size);
     l.v = (VPos)nameIndex(o["v"], VPOS_NAMES, 3, (uint8_t)l.v);
     l.h = (HAlign)nameIndex(o["h"], HALIGN_NAMES, 3, (uint8_t)l.h);
+    l.anim = (Anim)nameIndex(o["anim"], ANIM_NAMES, 6, (uint8_t)l.anim);
+    l.speed = (uint8_t)clampU(o["speed"], 1, 10, l.speed);
   }
   return true;
 }

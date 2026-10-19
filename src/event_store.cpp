@@ -13,6 +13,8 @@ static const char* const EVENT_TMP = "/event.tmp";
 
 static Event current;  // written by the network task only, under `mutex`
 static volatile uint32_t currentVersion = 1;
+static Scene testScene;  // same
+static volatile uint32_t testVersion = 0;
 static SemaphoreHandle_t mutex;
 static bool mounted = false;
 
@@ -76,6 +78,22 @@ bool eventSave(const Event& e) {
   }
   Log.printf("[event] %s (%u bytes), %s\n", ok ? "saved" : "saving FAILED", (unsigned)n, e.on ? "on" : "off");
   return ok;
+}
+
+void eventTest(const Scene& sc) {
+  xSemaphoreTake(mutex, portMAX_DELAY);
+  testScene = sc;
+  testVersion++;
+  xSemaphoreGive(mutex);
+  Log.printf("[event] testing scene \"%s\" on the board\n", sc.name);
+}
+
+bool eventTestFetch(Scene& out, uint32_t& version) {
+  if (version == testVersion || xSemaphoreTake(mutex, pdMS_TO_TICKS(10)) != pdTRUE) return false;
+  out = testScene;
+  version = testVersion;
+  xSemaphoreGive(mutex);
+  return true;
 }
 
 bool eventFetch(Event& out, uint32_t& version) {

@@ -1,6 +1,6 @@
-# Franky's Bahnabfahrtstafel
+# FRANKY'S Bahnabfahrtstafel
 
-Eine kleine Abfahrtstafel für **[Franky's](https://frankys-schriesheim.de)**, das Café direkt
+Eine kleine Abfahrtstafel für **[FRANKY'S](https://frankys-schriesheim.de)**, das Café direkt
 am Bahnhof in Schriesheim. Sie zeigt, wann die nächsten Bahnen und Busse am
 **Schriesheim Bahnhof** abfahren – so kann man in Ruhe seinen Kaffee austrinken und erwischt
 trotzdem seine Bahn.
@@ -220,12 +220,24 @@ ganze Tafel an das Event, bis man ihn wieder ausschaltet. Solange:
 Ein- und Ausschalten überstehen Neustarts, auch den täglichen um 04:00.
 
 Auf `/event` bearbeitet man bis zu 8 **Szenen**, die der Reihe nach in einer Schleife laufen. Jede
-hat eine Anzeigedauer, einen Hintergrund (Schwarz oder eine Farbe) und bis zu 4 **Zeilen**: Text,
-Farbe, Schrift (*Klein* wie die Kopfzeile, *Normal* wie eine Abfahrt, *Groß* etwa zwei Zeilen hoch,
-*Riesig* fast die ganze Tafel), Höhe (oben, Mitte, unten) und Ausrichtung. Ein Text, der nicht
-auf die Tafel passt, läuft hin und her wie ein langes Ziel. Die Vorschau auf der Seite zeichnet
-die Tafel selbst (`/api/event/preview`), sie sieht also genau so aus wie auf dem Panel. Nach
-dem Speichern beginnt die Tafel wieder mit der ersten Szene.
+hat eine Anzeigedauer, einen Hintergrund (Schwarz oder eine Farbe), einen **Übergang** zur
+nächsten Szene (*Schnitt*, *Schieben* oder *Wischen*, je 0,6 s, `TRANSITION_MS`) und bis zu 4
+**Zeilen**:
+
+- Text und Farbe, auch *Regenbogen* (die Farben laufen durch die Buchstaben),
+- Schrift: *Klein* wie die Kopfzeile, *Normal* wie eine Abfahrt, *Groß* etwa zwei Zeilen hoch,
+  *Riesig* fast die ganze Tafel,
+- Höhe (oben, Mitte, unten) und Ausrichtung,
+- Animation: *Laufschrift* (von rechts durch), *Blinken*, *Pulsieren* (hell und dunkel),
+  *Schreibmaschine* (Buchstabe für Buchstabe) oder *Welle*, mit einem Tempo von 1 bis 10, das auch
+  für den Regenbogen gilt.
+
+Ein Text, der nicht auf die Tafel passt, läuft hin und her wie ein langes Ziel. Die Vorschau auf
+der Seite zeichnet die Tafel selbst (`/api/event/preview`), sie sieht also genau so aus wie auf
+dem Panel; nach jeder Änderung spielt sie die Animation 20 Sekunden lang ab, ▶ startet sie
+erneut. **Auf der Tafel testen** zeigt die Szene 30 Sekunden auf dem Panel (`EVENT_TEST_S`),
+ohne zu speichern, auch wenn der Event-Modus aus ist. Nach dem Speichern beginnt die Tafel
+wieder mit der ersten Szene.
 
 Das Event liegt als `/event.json` in einem eigenen Dateisystem (LittleFS auf der Partition
 `spiffs`, 1,5 MB), das Firmware-Updates nicht anrühren. Beim allerersten Start mit dieser

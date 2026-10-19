@@ -116,6 +116,8 @@
 
 #define TICKER_SPEED_PX_S  30       // scrolling text speed
 
+#define EVENT_TEST_S       30       // "Auf der Tafel testen" on the event page shows a scene this long
+
 // When a departure leaves, 1 in N times its tram/bus drives out of the row
 // (src/depart_anim.cpp). Only if no other shown row leaves in the same minute.
 // 0 = never, 1 = always.
