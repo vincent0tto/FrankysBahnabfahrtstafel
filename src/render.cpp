@@ -436,7 +436,8 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
 
   // Now and then a promo or the disruption texts replace the 4th row while
   // that departure is still a while away (the disruptions also if the row is
-  // empty; with promoFullRow the promos regardless); once started a promo stays
+  // empty; with promoFullRow the promos regardless, but like those only once
+  // the departures are loaded); once started a promo stays
   // promoShowS (with promoFullRow scrolls through once), the disruptions
   // scroll through disruptPasses times
   int minute = st.timeValid ? minuteOfDay(now) : -1;
@@ -445,7 +446,7 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
   bool haveDisruption = haveData && b.ticker[0] && s.disruptOn;
   if (haveDisruption) snprintf(disruption, sizeof(disruption), "+++ %s +++", b.ticker);
   long rowMins = n == MAX_ROWS + 1 ? minutesUntil(rows[MAX_ROWS]->when, now) : -1;
-  const char* promoMsg = promoText(u8, s, s.promoFullRow || rowMins >= PROMO_MIN_MINUTES,
+  const char* promoMsg = promoText(u8, s, haveData && (s.promoFullRow || rowMins >= PROMO_MIN_MINUTES),
                                    n <= MAX_ROWS || rowMins >= DISRUPTION_MIN_MINUTES,
                                    tickerMsg || animRow == MAX_ROWS,
                                    haveDisruption ? disruption : nullptr,
