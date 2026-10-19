@@ -70,6 +70,7 @@ void settingsDefaults(Settings& s) {
 #endif
   s.promoShowS = PROMO_SHOW_S;
   s.promoIntervalS = PROMO_INTERVAL_S;
+  s.disruptPasses = DISRUPTION_PASSES;
   for (int i = 0; i < N_PRESET_PROMOS && s.nPromos < MAX_PROMOS; i++)
     promoFromConfig(PRESET_PROMOS[i], s.promos[s.nPromos++]);
 }
@@ -243,6 +244,9 @@ void settingsToJson(const Settings& s, JsonObject out, bool forWeb) {
   }
   out["promoShowS"] = s.promoShowS;
   out["promoIntervalS"] = s.promoIntervalS;
+  out["promoFullRow"] = s.promoFullRow;
+  out["disruptOn"] = s.disruptOn;
+  out["disruptPasses"] = s.disruptPasses;
 
   JsonArray promos = out["promos"].to<JsonArray>();
   for (int i = 0; i < s.nPromos; i++) {
@@ -308,6 +312,9 @@ bool settingsFromJson(JsonVariantConst in, Settings& s) {
   }
   s.promoShowS = (uint16_t)clampU(in["promoShowS"], 3, 600, s.promoShowS);
   s.promoIntervalS = (uint16_t)clampU(in["promoIntervalS"], 0, 3600, s.promoIntervalS);
+  s.promoFullRow = in["promoFullRow"] | s.promoFullRow;
+  s.disruptOn = in["disruptOn"] | s.disruptOn;
+  s.disruptPasses = (uint8_t)clampU(in["disruptPasses"], 1, 10, s.disruptPasses);
 
   if (in["promos"].is<JsonArrayConst>()) {
     // built-in ones keep their place; without texts (not edited) they keep

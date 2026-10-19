@@ -40,6 +40,9 @@ void test_defaults() {
   TEST_ASSERT_FALSE(isOffTime(s, 6 * 60));
   TEST_ASSERT_EQUAL(BRIGHTNESS_NIGHT, brightnessAt(s, 23 * 60));
   TEST_ASSERT_EQUAL(BRIGHTNESS_DAY, brightnessAt(s, 12 * 60));
+  TEST_ASSERT_TRUE(s.disruptOn);
+  TEST_ASSERT_EQUAL(DISRUPTION_PASSES, s.disruptPasses);
+  TEST_ASSERT_FALSE(s.promoFullRow);
   TEST_ASSERT_EQUAL(BRIGHTNESS_MAX, brightnessToPanel(100));
   TEST_ASSERT_EQUAL(151, brightnessToPanel(85));
   TEST_ASSERT_EQUAL(BRIGHTNESS_MAX, brightnessToPanel(200));
@@ -79,6 +82,9 @@ void test_json_roundtrip() {
   s.dim[1].value = 50;
   s.nDim = 2;
   s.promoShowS = 12;
+  s.promoFullRow = true;
+  s.disruptOn = false;
+  s.disruptPasses = 4;
   s.promos[0].on = false;
   Promo own;
   strcpy(own.icon, "[c2]");
@@ -103,6 +109,9 @@ void test_json_roundtrip() {
   TEST_ASSERT_EQUAL(2, t.nDim);
   TEST_ASSERT_EQUAL(50, t.dim[1].value);
   TEST_ASSERT_EQUAL(12, t.promoShowS);
+  TEST_ASSERT_TRUE(t.promoFullRow);
+  TEST_ASSERT_FALSE(t.disruptOn);
+  TEST_ASSERT_EQUAL(4, t.disruptPasses);
   TEST_ASSERT_EQUAL(s.nPromos, t.nPromos);
   TEST_ASSERT_FALSE(t.promos[0].on);
   TEST_ASSERT_TRUE(t.promos[1].on);
@@ -153,7 +162,7 @@ void test_dim_skip() {
 void test_json_clamps_and_rejects() {
   JsonDocument doc;
   deserializeJson(doc,
-                  "{\"brightnessPct\":999,\"promoShowS\":0,\"off\":{\"on\":true,\"from\":\"25:00\",\"to\":\"x\"},"
+                  "{\"brightnessPct\":999,\"promoShowS\":0,\"disruptPasses\":99,\"off\":{\"on\":true,\"from\":\"25:00\",\"to\":\"x\"},"
                   "\"dim\":[{\"from\":\"1:00\",\"to\":\"2:00\",\"pct\":0},{\"from\":\"bad\"}],"
                   "\"promos\":[{\"preset\":\"gibt es nicht\",\"on\":false},{\"text\":\"\"},"
                   "{\"icon\":\"<script>\",\"text\":\"Ein sehr sehr sehr sehr sehr sehr sehr sehr sehr sehr langer Text\"}],"
@@ -162,6 +171,9 @@ void test_json_clamps_and_rejects() {
   settingsDefaults(s);
   TEST_ASSERT_EQUAL(100, t.brightness);
   TEST_ASSERT_EQUAL(3, t.promoShowS);
+  TEST_ASSERT_EQUAL(10, t.disruptPasses);
+  TEST_ASSERT_TRUE(t.disruptOn);        // missing: default
+  TEST_ASSERT_FALSE(t.promoFullRow);
   TEST_ASSERT_EQUAL(s.off.from, t.off.from);  // malformed times keep the default
   TEST_ASSERT_EQUAL(1, t.nDim);
   TEST_ASSERT_EQUAL(1, t.dim[0].value);

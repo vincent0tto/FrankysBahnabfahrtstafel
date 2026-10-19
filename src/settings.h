@@ -50,6 +50,10 @@ struct Settings {
   uint8_t nDim = 0;
   uint16_t promoShowS = 0;      // how long one promo stays
   uint16_t promoIntervalS = 0;  // average pause between promos, 0 = no promos
+  bool promoFullRow = false;    // 4th row shows promos back to back (no pause) instead of
+                                // its departure, as long as one is open
+  bool disruptOn = true;        // VRN disruption texts
+  uint8_t disruptPasses = 0;    // how often one showing scrolls through them (1..10)
   Promo promos[MAX_PROMOS];
   uint8_t nPromos = 0;
   CustomIcon icons[MAX_CUSTOM_ICONS];  // index = number in the tag

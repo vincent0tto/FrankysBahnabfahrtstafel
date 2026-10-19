@@ -140,7 +140,7 @@
 #define PROMO_MIN_MINUTES   7   // only if the 4th row's departure is this far away
 // VRN disruption texts take turns with the promos in the 4th row
 #define DISRUPTION_MIN_MINUTES  5   // only if the 4th row's departure is this far away
-#define DISRUPTION_PASSES       2   // scroll through all messages this often
+#define DISRUPTION_PASSES       2   // scroll through all messages this often (default; web page)
 
 // HUB75 pin map (ESP32-S3-DevKitC-1 N8R8; avoids PSRAM 35-37, straps 0/3/45/46,
 // USB 19/20, UART 43/44)

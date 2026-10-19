@@ -85,10 +85,18 @@ footer button{background:var(--accent);border-color:var(--accent);color:#fff;pad
 <label>Anzeigedauer <input type="number" min="3" max="600" id="show"> s</label>
 &nbsp; <label>Pause dazwischen ca. <input type="number" min="0" max="3600" id="interval"> s</label>
 <div class="hint">Pause 0 = keine Promos.</div>
+<label><input type="checkbox" id="fullRow"> 4. Zeile ganz für Promos (nur 3 Abfahrten)</label>
+<div class="hint">Die Promos laufen dann ohne Pause nacheinander, die Pause gilt nur noch für die Störmeldungen dazwischen. Passt gerade keine Promo (Zeitfenster, Wochentag), erscheint wieder die 4. Abfahrt.</div>
 <div id="promos"></div>
 <button class="add" id="addPromo">+ Eigener Text</button>
 </section>
 
+<section>
+<h2>VRN-Störmeldungen</h2>
+<div class="hint">Laufen abwechselnd mit den Promos durch die 4. Zeile.</div>
+<label><input type="checkbox" id="disruptOn"> anzeigen</label>
+&nbsp; <label><input type="number" min="1" max="10" id="passes"> Durchläufe pro Anzeige</label>
+</section>
 <section>
 <h2>Icons</h2>
 <div class="icons" id="icons"></div>
@@ -266,12 +274,14 @@ $('addPromo').onclick=()=>{S.promos.push({on:true,icon:'',text:'',right:''});ren
 $('addDim').onclick=()=>{S.dim.push({from:'22:00',to:'06:00',pct:20});renderDim()};
 function setBright(v){S.brightnessPct=v;$('bright').value=v;$('brightVal').textContent=v+' %'}
 $('bright').oninput=e=>setBright(+e.target.value);
+$('disruptOn').onchange=e=>$('passes').disabled=!e.target.checked;
 $('brightReset').onclick=()=>setBright(S.brightnessDefaultPct);
 
 function render(){
   $('offOn').checked=S.off.on;$('offFrom').value=time(S.off.from);$('offTo').value=time(S.off.to);
   setBright(S.brightnessPct);
-  $('show').value=S.promoShowS;$('interval').value=S.promoIntervalS;
+  $('show').value=S.promoShowS;$('interval').value=S.promoIntervalS;$('fullRow').checked=S.promoFullRow;
+  $('disruptOn').checked=S.disruptOn;$('passes').value=S.disruptPasses;$('passes').disabled=!S.disruptOn;
   renderDim();renderPromos();renderIcons();
 }
 
@@ -285,7 +295,8 @@ function collect(){
   }).filter(p=>p.preset||p.text||p.icon);
   return {off:{on:$('offOn').checked,from:$('offFrom').value||'02:00',to:$('offTo').value||'06:00'},
     brightnessPct:S.brightnessPct,dim:S.dim.filter(d=>d.from&&d.to),
-    promoShowS:+$('show').value,promoIntervalS:+$('interval').value,promos,icons:S.icons};
+    promoShowS:+$('show').value,promoIntervalS:+$('interval').value,promoFullRow:$('fullRow').checked,
+    disruptOn:$('disruptOn').checked,disruptPasses:+$('passes').value,promos,icons:S.icons};
 }
 
 const dirty=()=>JSON.stringify(collect())!==base;

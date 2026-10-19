@@ -177,7 +177,8 @@ static int promoLineWidth(U8G2_FOR_ADAFRUIT_GFX& u8, const Settings& s, const Pr
 static bool isPromoDep(const Promo& p) { return p.right[0] != 0; }
 
 // The 4th row now and then shows a promo or the VRN disruption text instead
-// of its departure; with a disruption the two take turns.
+// of its departure (with promoFullRow all the time while one is open); with
+// a disruption the two take turns.
 static struct {
   uint32_t next = 0;   // ms of the next showing, 0 = not scheduled yet
   uint32_t start = 0;
@@ -199,7 +200,7 @@ static uint32_t promoPause(const Settings& s) {  // promoIntervalS +-50 %
 
 // A promo switched on and open at `minute` of `day`, or nullptr.
 static const Promo* pickPromo(const Settings& s, int minute, int32_t day) {
-  if (s.promoIntervalS == 0) return nullptr;
+  if (s.promoIntervalS == 0 && !s.promoFullRow) return nullptr;
   int open[MAX_PROMOS], nOpen = 0;
   for (int i = 0; i < s.nPromos; i++)
     if (promoOpen(s.promos[i], minute, day)) open[nOpen++] = i;
@@ -208,10 +209,10 @@ static const Promo* pickPromo(const Settings& s, int minute, int32_t day) {
   return &s.promos[forced ? forcedPromo : open[rand() % nOpen]];
 }
 
-// How long a disruption text `tw` px wide stays: DISRUPTION_PASSES scroll
-// passes, however long they take.
-static uint32_t disruptionMs(int tw) {
-  return (uint32_t)DISRUPTION_PASSES * (tw + W - 2 * MARGIN_X) * 1000 / TICKER_SPEED_PX_S;
+// How long a disruption text `tw` px wide stays: `passes` scroll passes,
+// however long they take.
+static uint32_t disruptionMs(int tw, int passes) {
+  return (uint32_t)passes * (tw + W - 2 * MARGIN_X) * 1000 / TICKER_SPEED_PX_S;
 }
 
 // Returns the text to show in the 4th row this frame, or nullptr; the
@@ -220,8 +221,9 @@ static uint32_t disruptionMs(int tw) {
 // nullptr if none) if `canStartDisruption`. A running one stays its full
 // time even if the departure gets close, unless `blocked` (the row is needed
 // for a status message; the departure animation only keeps a new one from
-// starting). `minute`, `day`: local time for the promos' time windows and
-// weekdays, minute -1 if the time isn't known.
+// starting). With promoFullRow a promo needn't wait for the pause, only the
+// disruption text does. `minute`, `day`: local time for the promos' time
+// windows and weekdays, minute -1 if the time isn't known.
 static const char* promoText(const Settings& s, bool canStartPromo, bool canStartDisruption, bool blocked,
                              const char* disruption, int disruptW, int minute, int32_t day, uint32_t ms) {
   if (promo.active && (blocked || ms - promo.start >= promo.durMs)) {
@@ -232,19 +234,20 @@ static const char* promoText(const Settings& s, bool canStartPromo, bool canStar
     if (!disruption) canStartDisruption = false;
     if (blocked || !(canStartPromo || canStartDisruption)) return nullptr;
     if (promo.next == 0) promo.next = ms + promoPause(s);
-    if ((int32_t)(ms - promo.next) < 0) return nullptr;
+    bool due = (int32_t)(ms - promo.next) >= 0;
+    if (!due && !s.promoFullRow) return nullptr;
     const Promo* p = nullptr;
-    if (canStartPromo && !(canStartDisruption && !promo.disruption)) p = pickPromo(s, minute, day);
+    if (canStartPromo && !(due && canStartDisruption && !promo.disruption)) p = pickPromo(s, minute, day);
     if (p) {
       promo.item = *p;
       promo.disruption = false;
       promo.durMs = s.promoShowS * 1000UL;
-    } else if (canStartDisruption) {
+    } else if (due && canStartDisruption) {
       strcpy(disruptBuf, disruption);
       promo.disruption = true;
-      promo.durMs = disruptionMs(disruptW);
+      promo.durMs = disruptionMs(disruptW, s.disruptPasses);
     } else {
-      promo.next = ms + promoPause(s);
+      if (due) promo.next = ms + promoPause(s);
       return nullptr;
     }
     promo.active = true;
@@ -373,15 +376,16 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
 
   // Now and then a promo or the disruption texts replace the 4th row while
   // that departure is still a while away (the disruptions also if the row is
-  // empty); once started a promo stays promoShowS, the disruptions scroll
-  // through DISRUPTION_PASSES times
+  // empty; with promoFullRow the promos regardless); once started a promo stays
+  // promoShowS, the disruptions scroll through disruptPasses times
   int minute = st.timeValid ? minuteOfDay(now) : -1;
   int32_t day = st.timeValid ? localDay(now) : 0;
   static char disruption[TICKER_LEN + 16];
-  bool haveDisruption = haveData && b.ticker[0];
+  bool haveDisruption = haveData && b.ticker[0] && s.disruptOn;
   if (haveDisruption) snprintf(disruption, sizeof(disruption), "+++ %s +++", b.ticker);
   long rowMins = n == MAX_ROWS + 1 ? minutesUntil(rows[MAX_ROWS]->when, now) : -1;
-  const char* promoMsg = promoText(s, rowMins >= PROMO_MIN_MINUTES, n <= MAX_ROWS || rowMins >= DISRUPTION_MIN_MINUTES,
+  const char* promoMsg = promoText(s, s.promoFullRow || rowMins >= PROMO_MIN_MINUTES,
+                                   n <= MAX_ROWS || rowMins >= DISRUPTION_MIN_MINUTES,
                                    tickerMsg || animRow == MAX_ROWS,
                                    haveDisruption ? disruption : nullptr,
                                    haveDisruption ? width(u8, disruption) : 0, minute, day, ms);
