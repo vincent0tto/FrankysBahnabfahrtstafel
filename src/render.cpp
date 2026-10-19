@@ -133,7 +133,8 @@ static void checkDeparted(const Departure* const* rows, int n, time_t now, uint3
 }
 
 // ---- Promo texts in the 4th row ---------------------------------------------
-static const int ICON_GAP = 4;  // between an icon and a plain text
+static const int ICON_GAP = 4;    // between an icon and a plain text
+static const int RIGHT_GAP = 18;  // between the text and `right` in a scrolling promo
 
 // An icon to draw: built-in (src/icons.cpp) or made on the web page.
 struct IconRef {
@@ -176,20 +177,33 @@ static int promoLineWidth(U8G2_FOR_ADAFRUIT_GFX& u8, const Settings& s, const Pr
 
 static bool isPromoDep(const Promo& p) { return p.right[0] != 0; }
 
+// Width of a plain or scrolling promo: icon, text and (if `scroll`) `right`.
+static int promoWidth(U8G2_FOR_ADAFRUIT_GFX& u8, const Settings& s, const Promo& p, bool scroll) {
+  IconRef ic = findIcon(s, p.icon);
+  int w = (ic ? ic.w + (p.text[0] ? ICON_GAP : 0) : 0) + width(u8, p.text);
+  if (scroll && isPromoDep(p)) {
+    if (!ic) w += width(u8, p.icon) + (p.icon[0] ? ICON_GAP : 0);
+    w += RIGHT_GAP + width(u8, p.right);
+  }
+  return w;
+}
+
 // The 4th row now and then shows a promo or the VRN disruption text instead
-// of its departure (with promoFullRow all the time while one is open); with
-// a disruption the two take turns.
+// of its departure (with promoFullRow all the time while one is open, the
+// promos in turn as scrolling text); with a disruption the two take turns.
 static struct {
   uint32_t next = 0;   // ms of the next showing, 0 = not scheduled yet
   uint32_t start = 0;
   uint32_t durMs = 0;
   bool active = false;
   bool disruption = false;  // showing (or last showed) the disruption text
+  bool scroll = false;      // the promo scrolls through once (promoFullRow)
   Promo item;               // copy, the settings may change meanwhile
 } promo;
 static char disruptBuf[TICKER_LEN + 16];  // copy, a fetch may change the board meanwhile
 
 static int forcedPromo = -1;
+static int promoCursor = -1;  // last promo shown with promoFullRow
 void setPromoIndex(int idx) { forcedPromo = idx; }
 
 static uint32_t promoPause(const Settings& s) {  // promoIntervalS +-50 %
@@ -198,7 +212,8 @@ static uint32_t promoPause(const Settings& s) {  // promoIntervalS +-50 %
   return base / 2 + (uint32_t)rand() % (base + 1);
 }
 
-// A promo switched on and open at `minute` of `day`, or nullptr.
+// A promo switched on and open at `minute` of `day`, or nullptr; with
+// promoFullRow the next one in the list, else a random one.
 static const Promo* pickPromo(const Settings& s, int minute, int32_t day) {
   if (s.promoIntervalS == 0 && !s.promoFullRow) return nullptr;
   int open[MAX_PROMOS], nOpen = 0;
@@ -206,12 +221,17 @@ static const Promo* pickPromo(const Settings& s, int minute, int32_t day) {
     if (promoOpen(s.promos[i], minute, day)) open[nOpen++] = i;
   if (nOpen == 0) return nullptr;
   bool forced = forcedPromo >= 0 && forcedPromo < s.nPromos && promoOpen(s.promos[forcedPromo], minute, day);
-  return &s.promos[forced ? forcedPromo : open[rand() % nOpen]];
+  if (forced) return &s.promos[forcedPromo];
+  if (!s.promoFullRow) return &s.promos[open[rand() % nOpen]];
+  int k = 0;
+  while (k < nOpen && open[k] <= promoCursor) k++;
+  promoCursor = open[k < nOpen ? k : 0];
+  return &s.promos[promoCursor];
 }
 
-// How long a disruption text `tw` px wide stays: `passes` scroll passes,
+// How long a scrolling text `tw` px wide stays: `passes` scroll passes,
 // however long they take.
-static uint32_t disruptionMs(int tw, int passes) {
+static uint32_t tickerMs(int tw, int passes) {
   return (uint32_t)passes * (tw + W - 2 * MARGIN_X) * 1000 / TICKER_SPEED_PX_S;
 }
 
@@ -222,9 +242,10 @@ static uint32_t disruptionMs(int tw, int passes) {
 // time even if the departure gets close, unless `blocked` (the row is needed
 // for a status message; the departure animation only keeps a new one from
 // starting). With promoFullRow a promo needn't wait for the pause, only the
-// disruption text does. `minute`, `day`: local time for the promos' time
-// windows and weekdays, minute -1 if the time isn't known.
-static const char* promoText(const Settings& s, bool canStartPromo, bool canStartDisruption, bool blocked,
+// disruption text does, and it scrolls through once instead of promoShowS.
+// `minute`, `day`: local time for the promos' time windows and weekdays,
+// minute -1 if the time isn't known.
+static const char* promoText(U8G2_FOR_ADAFRUIT_GFX& u8, const Settings& s, bool canStartPromo, bool canStartDisruption, bool blocked,
                              const char* disruption, int disruptW, int minute, int32_t day, uint32_t ms) {
   if (promo.active && (blocked || ms - promo.start >= promo.durMs)) {
     promo.active = false;
@@ -241,11 +262,12 @@ static const char* promoText(const Settings& s, bool canStartPromo, bool canStar
     if (p) {
       promo.item = *p;
       promo.disruption = false;
-      promo.durMs = s.promoShowS * 1000UL;
+      promo.scroll = s.promoFullRow;
+      promo.durMs = promo.scroll ? tickerMs(promoWidth(u8, s, *p, true), 1) : s.promoShowS * 1000UL;
     } else if (due && canStartDisruption) {
       strcpy(disruptBuf, disruption);
       promo.disruption = true;
-      promo.durMs = disruptionMs(disruptW, s.disruptPasses);
+      promo.durMs = tickerMs(disruptW, s.disruptPasses);
     } else {
       if (due) promo.next = ms + promoPause(s);
       return nullptr;
@@ -274,17 +296,27 @@ static void drawTicker(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const char* t
   clipRow(g, base, MARGIN_X, W - MARGIN_X);
 }
 
-// Draws a plain promo (optional icon in front), centred or ping-ponging.
+// Draws a plain promo (optional icon in front), centred or ping-ponging; if
+// `scroll` (also one with `right`, appended) scrolling in from the right like
+// the ticker, `t` ms after it entered.
 static void drawPromo(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const Settings& s, int base,
-                      const Promo& p, uint32_t ms) {
+                      const Promo& p, uint32_t ms, bool scroll, uint32_t t) {
   IconRef ic = findIcon(s, p.icon);
-  int iconW = ic ? ic.w + (p.text[0] ? ICON_GAP : 0) : 0;
-  int tw = iconW + width(u8, p.text);
+  int tw = promoWidth(u8, s, p, scroll);
   int box = W - 2 * MARGIN_X;
-  int x = tw <= box ? (W - tw) / 2 : MARGIN_X - pingPongOffset(tw - box, ms);
-  if (ic) drawIcon(g, color, ic, x, base);
-  u8.drawUTF8(x + iconW, base, p.text);
-  if (tw > box) clipRow(g, base, MARGIN_X, W - MARGIN_X);
+  int x;
+  if (scroll) x = W - MARGIN_X - (int)((uint64_t)t * TICKER_SPEED_PX_S / 1000 % (tw + box));
+  else x = tw <= box ? (W - tw) / 2 : MARGIN_X - pingPongOffset(tw - box, ms);
+  if (ic) {
+    drawIcon(g, color, ic, x, base);
+    x += ic.w + (p.text[0] ? ICON_GAP : 0);
+  } else if (scroll && isPromoDep(p) && p.icon[0]) {
+    u8.drawUTF8(x, base, p.icon);
+    x += width(u8, p.icon) + ICON_GAP;
+  }
+  u8.drawUTF8(x, base, p.text);
+  if (scroll && isPromoDep(p)) u8.drawUTF8(x + width(u8, p.text) + RIGHT_GAP, base, p.right);
+  if (scroll || tw > box) clipRow(g, base, MARGIN_X, W - MARGIN_X);
 }
 
 // Draws a promo with `right` in the departure columns: icon (or text) as
@@ -377,14 +409,15 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
   // Now and then a promo or the disruption texts replace the 4th row while
   // that departure is still a while away (the disruptions also if the row is
   // empty; with promoFullRow the promos regardless); once started a promo stays
-  // promoShowS, the disruptions scroll through disruptPasses times
+  // promoShowS (with promoFullRow scrolls through once), the disruptions
+  // scroll through disruptPasses times
   int minute = st.timeValid ? minuteOfDay(now) : -1;
   int32_t day = st.timeValid ? localDay(now) : 0;
   static char disruption[TICKER_LEN + 16];
   bool haveDisruption = haveData && b.ticker[0] && s.disruptOn;
   if (haveDisruption) snprintf(disruption, sizeof(disruption), "+++ %s +++", b.ticker);
   long rowMins = n == MAX_ROWS + 1 ? minutesUntil(rows[MAX_ROWS]->when, now) : -1;
-  const char* promoMsg = promoText(s, s.promoFullRow || rowMins >= PROMO_MIN_MINUTES,
+  const char* promoMsg = promoText(u8, s, s.promoFullRow || rowMins >= PROMO_MIN_MINUTES,
                                    n <= MAX_ROWS || rowMins >= DISRUPTION_MIN_MINUTES,
                                    tickerMsg || animRow == MAX_ROWS,
                                    haveDisruption ? disruption : nullptr,
@@ -392,7 +425,7 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
   bool showDisruption = promoMsg && promo.disruption;
   const int nLineW = n;  // the hidden 4th row still reserves its line width
   if (promoMsg && n > MAX_ROWS) n = MAX_ROWS;
-  bool promoIsDep = promoMsg && !showDisruption && isPromoDep(promo.item);
+  bool promoIsDep = promoMsg && !showDisruption && !promo.scroll && isPromoDep(promo.item);
 
   // Now and then the time column shows the platforms instead (also for
   // cancelled trips, not without a platform)
@@ -456,7 +489,8 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
     if (promoIsDep) drawPromoDep(g, u8, color, s, rowBase(MAX_ROWS), promo.item, lineW, destX, ms);
   }
   if (showDisruption) drawTicker(g, u8, promoMsg, ms - promo.start, true);
-  else if (promoMsg && !promoIsDep) drawPromo(g, u8, color, s, rowBase(MAX_ROWS), promo.item, ms);
+  else if (promoMsg && !promoIsDep)
+    drawPromo(g, u8, color, s, rowBase(MAX_ROWS), promo.item, ms, promo.scroll, ms - promo.start);
 
   if (tickerMsg) drawTicker(g, u8, tickerMsg, ms, false);
 
