@@ -161,22 +161,31 @@ selben WLAN öffnen. Es gibt kein Login. Auf der Seite lässt sich einstellen:
   <img src="docs/img/einstellungen.jpg" alt="Screenshot der Einstellungsseite mit Ruhezeit, Helligkeit, Promo-Texten, Icons und WLAN" width="450">
 </p>
 
-- **Ruhezeit** (Standard 02:00–06:00): Das Panel ist komplett dunkel, und die Tafel ruft keine
-  Daten ab. 2 Minuten bevor das Panel wieder angeht, holt sie neue Daten (`WAKE_FETCH_LEAD_S`).
-- **Helligkeit** in Prozent: ein Standardwert (85 %; der Knopf **Standard** setzt den Regler
-  darauf zurück) und bis zu 4 Zeitfenster mit eigener Helligkeit. 100 % entsprechen 70 % der
-  Hardware-Helligkeit des Panels (`BRIGHTNESS_MAX`).
-- **Promo-Texte**: Anzeigedauer, Pause und welche Texte erscheinen. Die eingebauten Texte
-  (`PROMO_TEXTS`) lassen sich an- und ausschalten und bearbeiten; ↺ stellt die Version der
-  Firmware wieder her. Dazu kommen bis zu 20 eigene Texte, jeweils mit Symbol, optionaler
-  rechter Spalte und optionalem Zeitfenster. Jeder Text lässt sich außerdem auf bestimmte
-  Wochentage beschränken; ein Zeitfenster über Mitternacht zählt zum Tag, an dem es beginnt.
+- **Promos**: Jede Promo zeigt eine kleine Vorschau, wie sie auf der Tafel aussieht; antippen
+  klappt sie zum Bearbeiten auf. Die eingebauten Texte (`PROMO_TEXTS`) lassen sich an- und
+  ausschalten und bearbeiten; ↺ stellt die Version der Firmware wieder her. Dazu kommen bis zu
+  20 eigene, jeweils mit Symbol, Darstellung (*mittig* oder *wie eine Abfahrt*, dann mit einem
+  Text rechts statt der Minuten), Wochentagen und optionalem Zeitfenster. Ein Zeitfenster über
+  Mitternacht zählt zum Tag, an dem es beginnt.
 - **Icons**: die eingebauten Symbole (Instagram, Grilled Cheese, Flat White, Kuchen, Bier) und
-  bis zu 8 eigene, gezeichnet in einem 12×9-Pixel-Editor.
-- **WLAN**: Name und Passwort des WLANs, gilt nach einem Neustart (siehe oben).
-- **Log**: die letzten Meldungen der Tafel (dieselben wie am USB-Anschluss, mit Uhrzeit), wird
-  alle 10 Sekunden ergänzt, solange es angezeigt wird und der Tab im Vordergrund ist. Die Tafel hält etwa 32 KB davon im PSRAM
-  (`LOG_BUFFER_BYTES`); nach einem Neustart beginnt es von vorn.
+  bis zu 8 eigene, gezeichnet in einem 12×9-Pixel-Editor. Ein neues Icon lässt sich auch direkt
+  aus der Icon-Auswahl einer Promo heraus anlegen.
+- **4. Zeile**: *Ab und zu Promo* (die Abfahrt, ab und zu eine Promo; mit Anzeigedauer und
+  Pause), *Nur Promos* (die Promos laufen der Reihe nach als Laufschrift durch) oder *Keine
+  Promos*. Dazu die VRN-Störmeldungen: an/aus und wie oft sie am Stück durchlaufen.
+- **Zeitplan**: Eine Leiste zeigt, wie hell die Tafel über den Tag ist. Darunter die
+  **Ruhezeit** (Standard 02:00–06:00; das Panel ist dunkel und die Tafel ruft keine Daten ab,
+  2 Minuten vor dem Ende holt sie neue, `WAKE_FETCH_LEAD_S`) und die **Helligkeit** in Prozent:
+  ein Normalwert (85 %, ↺ setzt ihn zurück) und bis zu 4 Zeitfenster mit eigener Helligkeit.
+  100 % entsprechen 70 % der Hardware-Helligkeit des Panels (`BRIGHTNESS_MAX`).
+- **Technik** (eingeklappt): **WLAN**, Name und Passwort, gilt nach einem Neustart (siehe
+  oben); **Log**, die letzten Meldungen der Tafel (dieselben wie am USB-Anschluss, mit Uhrzeit),
+  alle 10 Sekunden ergänzt, solange es angezeigt wird und der Tab im Vordergrund ist (die Tafel
+  hält etwa 32 KB davon im PSRAM, `LOG_BUFFER_BYTES`; nach einem Neustart beginnt es von vorn);
+  **Neu starten**.
+
+Der Knopf unten zeigt, ob es ungespeicherte Änderungen gibt; verlässt man die Seite mit
+welchen, fragt der Browser nach.
 
 Ändert jemand die Einstellungen auf einem anderen Gerät, übernimmt eine offene Seite das von
 selbst: alle 15 Sekunden und sobald der Tab wieder im Vordergrund ist. Hat man auf der Seite

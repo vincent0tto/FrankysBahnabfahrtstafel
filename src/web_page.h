@@ -20,11 +20,14 @@ body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 -apple-system,s
 main{max-width:760px;margin:0 auto}
 h1{font-size:22px;margin:4px 0 2px}
 h2{font-size:17px;margin:0 0 10px}
+h3{font-size:15px;margin:16px 0 4px}
 .status{color:var(--muted);font-size:13px;margin-bottom:16px}
-section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+section,details.tech{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+details.tech summary{font-weight:600;font-size:17px;cursor:pointer}
+details.tech summary span{font-weight:400;font-size:13px;color:var(--muted)}
 .hint{color:var(--muted);font-size:13px;margin:4px 0 10px}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
-.row:first-child,h2+.row{border-top:0}
+.row:first-child,h2+.row,h3+.row,.hint+.row{border-top:0}
 .row.paused input{opacity:.5}
 label{display:inline-flex;align-items:center;gap:6px}
 input,select,button{font:inherit;color:inherit}
@@ -38,6 +41,32 @@ button{background:var(--bg);border:1px solid var(--line);border-radius:6px;paddi
 button.add{margin-top:8px}
 button.del{color:#c0392b}
 .val{width:48px;white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:100%;max-width:520px}
+.seg button{flex:1;border:0;border-radius:0;border-left:1px solid var(--line);padding:7px 6px;font-size:14px}
+.seg button:first-child{border-left:0}
+.seg button.on{background:var(--accent);color:#fff;font-weight:600}
+.promo{border-top:1px solid var(--line);padding:8px 0}
+.promo:first-child{border-top:0}
+.phead{display:flex;gap:8px;align-items:center}
+.pv{flex:1;min-width:0;cursor:pointer}
+.promo.off .pv{opacity:.4}
+.pinfo{color:var(--muted);font-size:13px;padding:3px 0 0 26px}
+.chev{width:36px;padding:5px 0}
+.pbody{padding:6px 0 4px 26px}
+.field{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:5px 0}
+.flabel{width:90px;color:var(--muted);font-size:13px}
+.fctl{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;flex:1;min-width:200px}
+.led{display:flex;align-items:center;gap:8px;background:var(--panel);color:var(--led);border-radius:6px;padding:0 10px;height:32px;font:600 14px ui-monospace,Menlo,monospace;white-space:nowrap;overflow:hidden;justify-content:center}
+.led.left{justify-content:flex-start}
+.led .tx{display:flex;align-items:center;gap:6px;min-width:0}
+.led .t{overflow:hidden;text-overflow:ellipsis}
+.led .ln{width:28px;flex:none;display:flex;justify-content:flex-end}
+.led.dep .tx{flex:1}
+.led .empty{opacity:.4;font-weight:400}
+.tl{position:relative;height:30px;border-radius:6px;border:1px solid var(--line);overflow:hidden}
+.tl span{position:absolute;top:0;bottom:0;display:flex;align-items:center;justify-content:center;font-size:12px;overflow:hidden;white-space:nowrap}
+.tl i{position:absolute;top:0;bottom:0;width:2px;background:var(--fg)}
+.tlx{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-top:2px}
 canvas.icon{background:var(--panel);border-radius:4px;image-rendering:pixelated;vertical-align:middle}
 .icons{display:flex;flex-wrap:wrap;gap:12px}
 .icons figure{margin:0;text-align:center;font-size:12px;color:var(--muted)}
@@ -48,11 +77,14 @@ canvas.icon{background:var(--panel);border-radius:4px;image-rendering:pixelated;
 .days button{padding:3px 0;width:30px;font-size:13px}
 .days button.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .grp{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.lbl{width:60px}
 .sub{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%;padding-left:26px}
+.note{background:var(--bg);border-radius:6px;padding:6px 10px;font-size:13px;margin-bottom:8px}
 /* narrow: times and ⏸ ✕ on top, the slider below at full width */
-@media (max-width:560px){#dim .row>button:first-of-type{margin-left:auto}#dim .row>input[type=range],#dim .val{order:1}#dim .sub{order:2}}
+@media (max-width:560px){#dim .row>button:first-of-type{margin-left:auto}#dim .row>input[type=range],#dim .val{order:1}#dim .sub{order:2}.pbody{padding-left:0}.flabel{width:100%}}
 footer{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 16px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:center}
 footer button{background:var(--accent);border-color:var(--accent);color:#fff;padding:8px 22px;font-weight:600}
+footer button:disabled{background:var(--bg);border-color:var(--line);color:var(--muted);font-weight:400;cursor:default}
 #stale{width:100%;text-align:center;font-size:14px}
 #stale button{background:var(--bg);border-color:var(--line);color:inherit;padding:5px 10px;font-weight:400;margin:2px}
 #msg{font-size:14px;color:var(--muted)}
@@ -65,40 +97,16 @@ footer button{background:var(--accent);border-color:var(--accent);color:#fff;pad
 <div class="status" id="status">Lade ...</div>
 
 <section>
-<h2>Ruhezeit</h2>
-<div class="hint">In dieser Zeit ist das Panel komplett aus und es werden keine Abfahrten abgerufen.</div>
-<label><input type="checkbox" id="offOn"> Panel ausschalten von</label>
-<span class="grp"><input type="time" id="offFrom"> bis <input type="time" id="offTo"></span>
-</section>
-
-<section>
-<h2>Helligkeit</h2>
-<div class="row"><button id="brightReset" title="auf den Standardwert setzen">Standard</button><input type="range" min="1" max="100" id="bright"><span class="val" id="brightVal"></span></div>
-<div class="hint">Zeitfenster mit eigener Helligkeit (das erste passende gilt). ⏸ setzt ein Zeitfenster einmal aus (heute bzw. das nächste Mal) und speichert sofort.</div>
-<div id="dim"></div>
-<button class="add" id="addDim">+ Zeitfenster</button>
-</section>
-
-<section>
-<h2>Promo-Texte</h2>
-<div class="hint">Erscheinen ab und zu statt der 4. Zeile. „Rechts“ leer: Text mittig mit Icon davor. „Rechts“ gesetzt (z. B. „sofort“): wie eine Abfahrt, Icon als Linie. Ein Zeitfenster über Mitternacht zählt zu dem Wochentag, an dem es beginnt.</div>
-<label>Anzeigedauer <input type="number" min="3" max="600" id="show"> s</label>
-&nbsp; <label>Pause dazwischen ca. <input type="number" min="0" max="3600" id="interval"> s</label>
-<div class="hint">Pause 0 = keine Promos.</div>
-<label><input type="checkbox" id="fullRow"> 4. Zeile ganz für Promos (nur 3 Abfahrten)</label>
-<div class="hint">Die Promos laufen dann ohne Pause der Reihe nach als Laufschrift durch (je einmal, ohne den Text rechts; die Anzeigedauer gilt dann nicht), die Pause gilt nur noch für die Störmeldungen dazwischen. Passt gerade keine Promo (Zeitfenster, Wochentag), erscheint wieder die 4. Abfahrt.</div>
+<h2>Promos</h2>
+<div class="hint">Kleine Nachrichten vom Café in der 4. Zeile. Auf eine Promo tippen, um sie zu bearbeiten.</div>
+<div class="note" id="promoOff" hidden>Promos sind gerade aus (unter „4. Zeile“ einschalten).</div>
 <div id="promos"></div>
-<button class="add" id="addPromo">+ Eigener Text</button>
+<button class="add" id="addPromo">+ Eigene Promo</button>
 </section>
 
-<section>
-<h2>VRN-Störmeldungen</h2>
-<div class="hint">Laufen abwechselnd mit den Promos durch die 4. Zeile.</div>
-<label><input type="checkbox" id="disruptOn"> anzeigen</label>
-&nbsp; <label><input type="number" min="1" max="10" id="passes"> Durchläufe pro Anzeige</label>
-</section>
 <section>
 <h2>Icons</h2>
+<div class="hint">Symbole für die Promos. Eigene lassen sich ändern.</div>
 <div class="icons" id="icons"></div>
 <div id="editBox" hidden>
 <div class="hint">Punkte anklicken oder darüber wischen (12 × 9).</div>
@@ -110,42 +118,68 @@ footer button{background:var(--accent);border-color:var(--accent);color:#fff;pad
 </section>
 
 <section>
-<h2>WLAN</h2>
+<h2>4. Zeile</h2>
+<div id="row4"></div>
+</section>
+
+<section>
+<h2>Zeitplan</h2>
+<div class="tl" id="tl"></div>
+<div class="tlx"><span>0</span><span>6</span><span>12</span><span>18</span><span>24 Uhr</span></div>
+<div class="hint">So hell ist die Tafel über den Tag, der Strich ist jetzt.</div>
+<h3>Ruhezeit</h3>
+<div class="row"><label><input type="checkbox" id="offOn"> Panel aus von</label>
+<span class="grp"><input type="time" id="offFrom"> bis <input type="time" id="offTo"></span></div>
+<div class="hint">Dann ist das Panel dunkel und es werden keine Abfahrten abgerufen.</div>
+<h3>Helligkeit</h3>
+<div class="row"><span class="lbl">Normal</span><input type="range" min="1" max="100" id="bright"><span class="val" id="brightVal"></span><button id="brightReset" title="auf den Standardwert setzen">↺</button></div>
+<div class="hint">Zu bestimmten Zeiten eine andere Helligkeit (überschneiden sich zwei, gilt das obere). ⏸ setzt ein Zeitfenster einmal aus und gilt sofort.</div>
+<div id="dim"></div>
+<button class="add" id="addDim">+ Zeitfenster</button>
+</section>
+
+<details class="tech">
+<summary>Technik <span>WLAN, Log, Neustart</span></summary>
+<h3>WLAN</h3>
 <div class="hint">Verbunden mit <b id="ssidNow">?</b>. Nach dem Speichern startet die Tafel neu. Klappt die Verbindung nicht (z. B. Tippfehler), nimmt sie nach etwa einer Minute wieder das bisherige WLAN.</div>
 <div class="row"><input type="text" id="ssid" maxlength="32" placeholder="WLAN-Name" autocomplete="off" autocapitalize="off">
 <input type="text" id="pass" maxlength="63" placeholder="Passwort" autocomplete="off" autocapitalize="off" spellcheck="false">
 <button id="wifiSave">WLAN speichern</button></div>
 <span id="wifiMsg" class="hint"></span>
-</section>
-
-<section>
-<h2>Log</h2>
+<h3>Log</h3>
 <div class="hint">Die letzten Meldungen der Tafel, dieselben wie am USB-Anschluss. Wird laufend ergänzt, solange es angezeigt wird.</div>
 <pre id="log" hidden></pre>
 <button id="logToggle">Anzeigen</button>
-</section>
-
-<section>
-<h2>System</h2>
+<h3>Neustart</h3>
 <div class="hint">Startet die Tafel neu, die Seite lädt danach von selbst neu.</div>
 <button id="restart">Neu starten</button> <span id="restartMsg" class="hint"></span>
-</section>
+</details>
 </main>
 <footer><div id="stale" hidden>Die Einstellungen wurden inzwischen auf einem anderen Gerät geändert.
 <button id="reload">Neu laden</button><button id="force" title="die Änderungen vom anderen Gerät gehen verloren">Trotzdem meine speichern</button></div>
-<button id="save">Speichern</button><span id="msg"></span></footer>
+<button id="save" disabled>Alles gespeichert</button><span id="msg"></span></footer>
 
 <script>
 const $=id=>document.getElementById(id);
 const DAYS=['Mo','Di','Mi','Do','Fr','Sa','So'],ALL_DAYS=127;
 const MAX_PROMOS=20,MAX_DIM=4,MAX_ICONS=8,IW=12,IH=9;
-let S=null,editing=null;
+const PROMO_INTERVAL_S=75;  // config.h, for switching promos back on
+// 4th row: S.mode stands for promoIntervalS (0 = 'off') and promoFullRow ('scroll')
+const MODES=[
+  ['mix','Ab und zu Promo','Die 4. Zeile zeigt die nächste Abfahrt, ab und zu steht dort stattdessen eine Promo.'],
+  ['scroll','Nur Promos','Die 4. Zeile gehört den Promos: Sie laufen der Reihe nach als Laufschrift durch. Passt gerade keine (Uhrzeit, Wochentag), erscheint dort wieder die 4. Abfahrt.'],
+  ['off','Keine Promos','Die 4. Zeile zeigt immer die Abfahrt.']];
+let S=null,editing=null,leaving=false;
 // base: collect() as loaded, to tell unsaved changes; srv: the loaded
 // settings as sent by the board, to tell real changes from a new rev alone
 let base='',srv='',staleRev='';
 
 function el(tag,props={},...kids){const e=document.createElement(tag);Object.assign(e,props);for(const k of kids)e.append(k);return e}
 function time(v){return v==='24:00'?'00:00':v}
+function seg(opts,cur,pick){
+  return el('div',{className:'seg'},...opts.map(([v,t])=>el('button',{type:'button',textContent:t,className:v===cur?'on':'',onclick:()=>pick(v)})));
+}
+function field(label,...kids){return el('div',{className:'field'},el('span',{className:'flabel',textContent:label}),el('div',{className:'fctl'},...kids))}
 function iconRows(tag){
   const p=S.presetIcons.find(i=>i.tag===tag);
   if(p)return p.rows.map(r=>[...r].map(c=>c==='#'));
@@ -165,11 +199,13 @@ function iconOptions(sel){
   s.append(el('option',{value:'',textContent:'kein Icon'}));
   for(const i of S.presetIcons)s.append(el('option',{value:i.tag,textContent:i.name}));
   for(const i of S.icons)s.append(el('option',{value:'[c'+i.id+']',textContent:(i.name||'Icon '+(i.id+1))+' (eigenes)'}));
+  s.append(el('option',{value:'new',textContent:'+ Neues Icon zeichnen ...',disabled:S.icons.length>=MAX_ICONS}));
   s.value=sel;if(s.value!==sel)s.value='';
   return s;
 }
 
 function mins(v){const [h,m]=v.split(':');return h*60+ +m}
+function inWin(from,to,m){const f=mins(from),t=mins(to);return f!==t&&(f<t?m>=f&&m<t:m>=f||m<t)}
 function ymd(t){const p=n=>String(n).padStart(2,'0');return t.getFullYear()+'-'+p(t.getMonth()+1)+'-'+p(t.getDate())}
 // start date of the window's current occurrence, or of the next one
 function nextStart(d){
@@ -178,6 +214,26 @@ function nextStart(d){
   if(f>t&&m<t)return day(-1);
   return f<t&&m>=t?day(1):day(0);
 }
+
+// the day as a bar: off time dark, otherwise orange as bright as the panel
+function renderTimeline(){
+  const c=collect(),box=$('tl');box.replaceChildren();
+  const at=m=>{
+    if(c.off.on&&inWin(c.off.from,c.off.to,m))return -1;
+    const d=c.dim.find(d=>inWin(d.from,d.to,m));
+    return d?d.pct:c.brightnessPct;
+  };
+  for(let m=0;m<1440;){
+    const v=at(m);let e=m+1;while(e<1440&&at(e)===v)e++;
+    const a=.15+.85*v/100;
+    box.append(el('span',{textContent:e-m>=150?(v<0?'aus':v+' %'):'',style:`left:${m/14.4}%;width:${(e-m)/14.4}%;`+
+      (v<0?'background:var(--ledoff);color:#bbb':`background:rgba(255,120,0,${a.toFixed(2)});color:${a>.6?'#120f0c':'var(--fg)'}`)}));
+    m=e;
+  }
+  const now=new Date();
+  box.append(el('i',{style:`left:${(now.getHours()*60+now.getMinutes())/14.4}%`}));
+}
+
 function renderDim(){
   const box=$('dim');box.replaceChildren();
   S.dim.forEach((d,i)=>{
@@ -189,37 +245,115 @@ function renderDim(){
         el('input',{type:'time',value:time(d.to),onchange:e=>d.to=e.target.value})),r,val,
       el('button',{textContent:paused?'▶':'⏸',title:paused?'wieder aktivieren':'einmal aussetzen (heute bzw. das nächste Mal)',
         onclick:()=>{if(paused)delete d.skip;else d.skip=nextStart(d);save()}}),
-      el('button',{className:'del',textContent:'✕',onclick:()=>{S.dim.splice(i,1);renderDim()}}),
+      el('button',{className:'del',textContent:'✕',title:'Zeitfenster löschen',onclick:()=>{S.dim.splice(i,1);renderDim()}}),
       paused?el('div',{className:'sub',style:'padding-left:0;color:var(--muted);font-size:13px',textContent:'Einmal ausgesetzt, danach gilt das Zeitfenster wieder.'}):''));
   });
   $('addDim').disabled=S.dim.length>=MAX_DIM;
 }
 
+function renderRow(){
+  const num=(key,min,max)=>el('input',{type:'number',min,max,value:S[key],oninput:e=>S[key]=+e.target.value});
+  const mode=MODES.find(m=>m[0]===S.mode);
+  const box=$('row4');
+  box.replaceChildren(seg(MODES,S.mode,v=>{S.mode=v;renderRow();renderPromos()}),el('div',{className:'hint',textContent:mode[2]}));
+  if(S.mode==='mix')box.append(el('div',{className:'row'},
+    el('label',{},'Eine Promo bleibt',num('promoShowS',3,600),'s'),
+    el('label',{},'Pause dazwischen ca.',num('interval',1,3600),'s')));
+  box.append(el('h3',{textContent:'VRN-Störmeldungen'}));
+  const row=el('div',{className:'row'},el('label',{},el('input',{type:'checkbox',checked:S.disruptOn,onchange:e=>{S.disruptOn=e.target.checked;renderRow()}}),'anzeigen'));
+  if(S.disruptOn){
+    row.append(el('label',{},num('disruptPasses',1,10),'Durchläufe am Stück'));
+    if(S.mode==='scroll')row.append(el('label',{},'alle ca.',num('interval',1,3600),'s'));
+  }
+  box.append(row);
+  if(S.disruptOn)box.append(el('div',{className:'hint',textContent:{
+    mix:'Laufen durch die 4. Zeile, abwechselnd mit den Promos.',
+    scroll:'Unterbrechen die Promos immer wieder.',
+    off:'Laufen etwa jede Minute durch die 4. Zeile.'}[S.mode]}));
+}
+
+function daysText(m){
+  if(m===ALL_DAYS)return '';
+  const out=[];
+  for(let d=0;d<7;d++){
+    if(!(m>>d&1))continue;
+    let e=d;while(e<6&&m>>(e+1)&1)e++;
+    out.push(e-d>=2?DAYS[d]+'–'+DAYS[e]:e>d?DAYS[d]+', '+DAYS[e]:DAYS[d]);
+    d=e;
+  }
+  return out.join(', ');
+}
+const hasWin=p=>!!(p.win&&p.win.from&&p.win.to&&p.win.from!==p.win.to);
+function promoInfo(p){
+  const parts=[];
+  if(!p.on)parts.push('aus');
+  const d=daysText(p.days??ALL_DAYS);if(d)parts.push(d);
+  if(hasWin(p))parts.push(p.win.from+'–'+p.win.to+' Uhr');
+  return parts.join(' · ')||'immer';
+}
+// roughly how the promo looks on the board
+function ledPreview(p){
+  const scroll=S.mode==='scroll',dep=!scroll&&p._dep;
+  const ic=p.icon?(iconRows(p.icon)?iconCanvas(p.icon,2):el('span',{textContent:p.icon})):'';
+  const tx=el('span',{className:'tx'});
+  tx.append(p.text?el('span',{className:'t',textContent:p.text}):el('span',{className:'t empty',textContent:'(kein Text)'}));
+  if(dep)return el('div',{className:'led dep'},el('span',{className:'ln'},ic),tx,el('span',{textContent:p.right||'sofort'}));
+  tx.prepend(ic);
+  return el('div',{className:'led'+(scroll?' left':'')},tx);
+}
+function promoBody(p,i,upd){
+  const sel=iconOptions(p.icon||'');
+  sel.onchange=e=>{
+    if(e.target.value!=='new'){p.icon=e.target.value;upd();return}
+    const ic=newIcon();p.icon='[c'+ic.id+']';
+    renderIcons();renderPromos();edit(ic);
+  };
+  const b=el('div',{className:'pbody'},
+    field('Text',el('input',{type:'text',value:p.text,maxLength:60,placeholder:'Text',oninput:e=>{p.text=e.target.value;upd()}})),
+    field('Icon',sel));
+  if(S.mode!=='scroll'){
+    b.append(field('Darstellung',seg([['c','Mittig'],['d','Wie eine Abfahrt']],p._dep?'d':'c',v=>{p._dep=v==='d';renderPromos()})));
+    if(p._dep)b.append(field('Rechts',el('input',{type:'text',value:p.right,maxLength:15,placeholder:'sofort',style:'flex:none;width:110px;min-width:0',
+      oninput:e=>{p.right=e.target.value;upd()}}),el('span',{className:'hint',style:'margin:0',textContent:'wo sonst die Minuten stehen'})));
+  }
+  // weekday toggles; the last one left can't be switched off
+  const days=el('span',{className:'days'});
+  DAYS.forEach((n,d)=>{
+    const btn=el('button',{textContent:n,title:'an diesem Wochentag anzeigen'});
+    const show=()=>btn.classList.toggle('on',!!((p.days??ALL_DAYS)&1<<d));show();
+    btn.onclick=()=>{const v=(p.days??ALL_DAYS)^1<<d;if(v){p.days=v;show();upd()}};
+    days.append(btn);
+  });
+  b.append(field('Tage',days));
+  const tf=field('Uhrzeit',el('label',{},el('input',{type:'checkbox',checked:hasWin(p),
+    onchange:e=>{p.win=e.target.checked?{from:'12:00',to:'18:00'}:null;renderPromos()}}),hasWin(p)?'nur von':'nur zu bestimmten Zeiten'));
+  if(hasWin(p)){
+    tf.lastChild.append(el('span',{className:'grp'},
+      el('input',{type:'time',value:time(p.win.from),onchange:e=>{if(e.target.value){p.win.from=e.target.value;upd()}}}),'bis',
+      el('input',{type:'time',value:time(p.win.to),onchange:e=>{if(e.target.value){p.win.to=e.target.value;upd()}}})));
+    if(mins(p.win.from)>mins(p.win.to))b.append(tf,el('div',{className:'hint',textContent:'Über Mitternacht: zählt zu dem Wochentag, an dem es beginnt.'}));
+    else b.append(tf);
+  }else b.append(tf);
+  b.append(el('div',{className:'field'},p.preset
+    ?el('button',{textContent:'↺ Vorgabe wiederherstellen',onclick:()=>{
+      Object.assign(p,{icon:'',text:'',right:'',win:null,days:ALL_DAYS},JSON.parse(JSON.stringify(p.def)));p._dep=!!p.right;renderPromos()}})
+    :el('button',{className:'del',textContent:'Promo löschen',onclick:()=>{S.promos.splice(i,1);renderPromos()}})));
+  return b;
+}
 function renderPromos(){
   const box=$('promos');box.replaceChildren();
+  $('promoOff').hidden=S.mode!=='off';
   S.promos.forEach((p,i)=>{
-    const pre=!!p.preset,dis={};
-    const prev=el('span');const upd=()=>prev.replaceChildren(p.icon?iconCanvas(p.icon,2):'');upd();
-    const sel=iconOptions(p.icon||'');Object.assign(sel,dis,{onchange:e=>{p.icon=e.target.value;upd()}});
-    const win=p.win||{from:'',to:''};
-    const from=el('input',{type:'time',value:win.from?time(win.from):'',...dis,onchange:e=>{win.from=e.target.value;p.win=win}});
-    const to=el('input',{type:'time',value:win.to?time(win.to):'',...dis,onchange:e=>{win.to=e.target.value;p.win=win}});
-    // weekday toggles; the last one left can't be switched off
-    const days=el('span',{className:'days'});
-    DAYS.forEach((n,d)=>{
-      const b=el('button',{textContent:n,title:'an diesem Wochentag anzeigen'});
-      const show=()=>b.classList.toggle('on',!!((p.days??ALL_DAYS)&1<<d));show();
-      b.onclick=()=>{const v=(p.days??ALL_DAYS)^1<<d;if(v){p.days=v;show()}};
-      days.append(b);
-    });
-    box.append(el('div',{className:'row'},
-      el('input',{type:'checkbox',checked:p.on,title:'anzeigen',onchange:e=>p.on=e.target.checked}),
-      prev,
-      el('input',{type:'text',value:p.text,maxLength:60,placeholder:'Text',...dis,oninput:e=>p.text=e.target.value}),
-      pre?el('button',{textContent:'↺',title:'Vorgabe wiederherstellen',onclick:()=>{Object.assign(p,{icon:'',text:'',right:'',win:null,days:ALL_DAYS},JSON.parse(JSON.stringify(p.def)));renderPromos()}}):el('button',{className:'del',textContent:'✕',onclick:()=>{S.promos.splice(i,1);renderPromos()}}),
-      el('div',{className:'sub'},el('span',{className:'grp'},'Icon',sel),el('span',{className:'grp'},'Rechts',
-        el('input',{type:'text',value:p.right,maxLength:15,placeholder:'leer',style:'width:90px',...dis,oninput:e=>p.right=e.target.value})),
-        el('span',{className:'grp'},'nur von',from,'bis',to),days)));
+    p._dep??=!!p.right;
+    const card=el('div',{className:'promo'+(p.on?'':' off')});
+    const toggle=()=>{p._open=!p._open;renderPromos()};
+    const pv=el('div',{className:'pv',title:p._open?'zuklappen':'bearbeiten',onclick:toggle}),info=el('div',{className:'pinfo'});
+    const upd=()=>{pv.replaceChildren(ledPreview(p));info.textContent=promoInfo(p)};upd();
+    card.append(el('div',{className:'phead'},
+      el('input',{type:'checkbox',checked:p.on,title:'anzeigen',onchange:e=>{p.on=e.target.checked;card.classList.toggle('off',!p.on);upd()}}),
+      pv,el('button',{className:'chev',textContent:p._open?'▴':'▾',title:p._open?'zuklappen':'bearbeiten',onclick:toggle})),info);
+    if(p._open)card.append(promoBody(p,i,upd));
+    box.append(card);
   });
   $('addPromo').disabled=S.promos.length>=MAX_PROMOS;
 }
@@ -243,6 +377,10 @@ function delIcon(i){
   if(editing===i)$('editBox').hidden=true;
   renderIcons();renderPromos();
 }
+function newIcon(){
+  let id=0;while(S.icons.some(i=>i.id===id))id++;
+  const i={id,name:'',rows:Array(IH).fill(0)};S.icons.push(i);return i;
+}
 
 function edit(i){
   editing=i;$('editBox').hidden=false;$('editName').value=i.name;
@@ -259,52 +397,57 @@ function edit(i){
   }
   // touch: pointerenter doesn't fire while the finger moves
   ed.onpointermove=e=>{if(paint===null)return;const t=document.elementFromPoint(e.clientX,e.clientY);if(t&&t._set&&t.parentNode===ed)t._set(paint)};
-  window.onpointerup=()=>{if(paint!==null){paint=null;renderIcons();renderPromos()}};
+  window.onpointerup=()=>{if(paint!==null){paint=null;renderIcons();renderPromos();updateSave()}};
   $('editBox').scrollIntoView({behavior:'smooth',block:'center'});
 }
 $('editName').oninput=e=>{if(editing){editing.name=e.target.value;renderIcons();renderPromos()}};
 $('editClear').onclick=()=>{if(editing){editing.rows.fill(0);edit(editing);renderIcons();renderPromos()}};
 $('editDone').onclick=()=>{$('editBox').hidden=true;editing=null;renderIcons();renderPromos()};
-$('addIcon').onclick=()=>{
-  let id=0;while(S.icons.some(i=>i.id===id))id++;
-  const i={id,name:'',rows:Array(IH).fill(0)};S.icons.push(i);renderIcons();edit(i);
-};
-$('addPromo').onclick=()=>{S.promos.push({on:true,icon:'',text:'',right:''});renderPromos();
-  const ins=$('promos').querySelectorAll('input[type=text]');ins[ins.length-2].focus()};
+$('addIcon').onclick=()=>{const i=newIcon();renderIcons();edit(i)};
+$('addPromo').onclick=()=>{S.promos.push({on:true,icon:'',text:'',right:'',_open:true});renderPromos();
+  const ins=$('promos').querySelectorAll('input[type=text]');ins[ins.length-1].focus()};
 $('addDim').onclick=()=>{S.dim.push({from:'22:00',to:'06:00',pct:20});renderDim()};
 function setBright(v){S.brightnessPct=v;$('bright').value=v;$('brightVal').textContent=v+' %'}
 $('bright').oninput=e=>setBright(+e.target.value);
-$('disruptOn').onchange=e=>$('passes').disabled=!e.target.checked;
 $('brightReset').onclick=()=>setBright(S.brightnessDefaultPct);
 
 function render(){
   $('offOn').checked=S.off.on;$('offFrom').value=time(S.off.from);$('offTo').value=time(S.off.to);
   setBright(S.brightnessPct);
-  $('show').value=S.promoShowS;$('interval').value=S.promoIntervalS;$('fullRow').checked=S.promoFullRow;
-  $('disruptOn').checked=S.disruptOn;$('passes').value=S.disruptPasses;$('passes').disabled=!S.disruptOn;
-  renderDim();renderPromos();renderIcons();
+  renderRow();renderDim();renderPromos();renderIcons();
 }
 
 function collect(){
   const promos=S.promos.map(p=>{
-    const o={on:p.on,icon:p.icon||'',text:p.text,right:p.right};
+    const o={on:p.on,icon:p.icon||'',text:p.text,right:(p._dep??!!p.right)?p.right||'sofort':''};
     if(p.preset)o.preset=p.preset;
-    if(p.win&&p.win.from&&p.win.to&&p.win.from!==p.win.to)o.win={from:p.win.from,to:p.win.to};
+    if(hasWin(p))o.win={from:p.win.from,to:p.win.to};
     if((p.days??ALL_DAYS)!==ALL_DAYS)o.days=p.days;
     return o;
   }).filter(p=>p.preset||p.text||p.icon);
   return {off:{on:$('offOn').checked,from:$('offFrom').value||'02:00',to:$('offTo').value||'06:00'},
     brightnessPct:S.brightnessPct,dim:S.dim.filter(d=>d.from&&d.to),
-    promoShowS:+$('show').value,promoIntervalS:+$('interval').value,promoFullRow:$('fullRow').checked,
-    disruptOn:$('disruptOn').checked,disruptPasses:+$('passes').value,promos,icons:S.icons};
+    promoShowS:S.promoShowS,promoIntervalS:S.mode==='off'?0:S.interval,promoFullRow:S.mode==='scroll',
+    disruptOn:S.disruptOn,disruptPasses:S.disruptPasses,promos,icons:S.icons};
 }
 
-const dirty=()=>JSON.stringify(collect())!==base;
+const dirty=()=>!!S&&JSON.stringify(collect())!==base;
+// after every change: the save button and the day bar
+function updateSave(){
+  if(!S)return;
+  const d=dirty();
+  $('save').disabled=!d;$('save').textContent=d?'Änderungen speichern':'Alles gespeichert';
+  renderTimeline();
+}
+for(const ev of ['input','change','click'])document.addEventListener(ev,updateSave);
+window.addEventListener('beforeunload',e=>{if(!leaving&&dirty())e.preventDefault()});
 const content=s=>JSON.stringify({...s,rev:''});
 function apply(s){
-  S=s;srv=content(s);staleRev='';
+  srv=content(s);S=s;staleRev='';
+  S.mode=s.promoFullRow?'scroll':s.promoIntervalS?'mix':'off';
+  S.interval=s.promoIntervalS||PROMO_INTERVAL_S;
   if(editing){$('editBox').hidden=true;editing=null}
-  render();base=JSON.stringify(collect());$('stale').hidden=true;
+  render();base=JSON.stringify(collect());$('stale').hidden=true;updateSave();
 }
 async function getSettings(){
   const r=await fetch('/api/settings',{cache:'no-store'});
@@ -357,6 +500,7 @@ async function status(){
     const up=s.uptimeS<7200?Math.round(s.uptimeS/60)+' min':Math.round(s.uptimeS/3600)+' h';
     $('ssidNow').textContent=s.ssid;
     $('status').textContent=`Firmware ${s.build} · läuft seit ${up} · ${age} · ${s.off?'Ruhezeit':'Panel an'} · WLAN ${s.rssi} dBm`;
+    if(S)renderTimeline();
     sync(s.rev);
   }catch(e){$('status').textContent='Tafel nicht erreichbar'}
 }
@@ -365,7 +509,7 @@ async function afterRestart(msg){
   const t0=Date.now();
   await new Promise(r=>setTimeout(r,5000));
   for(;;){
-    try{const s=await (await fetch('/api/status',{cache:'no-store'})).json();if(s.uptimeS<120){location.reload();return}}catch(e){}
+    try{const s=await (await fetch('/api/status',{cache:'no-store'})).json();if(s.uptimeS<120){leaving=true;location.reload();return}}catch(e){}
     if(Date.now()-t0>120000){msg.textContent='Tafel meldet sich nicht, bitte Seite neu laden.';return}
     await new Promise(r=>setTimeout(r,2000));
   }
