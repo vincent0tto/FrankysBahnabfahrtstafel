@@ -86,7 +86,7 @@ footer button{background:var(--accent);border-color:var(--accent);color:#fff;pad
 &nbsp; <label>Pause dazwischen ca. <input type="number" min="0" max="3600" id="interval"> s</label>
 <div class="hint">Pause 0 = keine Promos.</div>
 <label><input type="checkbox" id="fullRow"> 4. Zeile ganz für Promos (nur 3 Abfahrten)</label>
-<div class="hint">Die Promos laufen dann ohne Pause der Reihe nach als Laufschrift durch (je einmal, auch die mit Text rechts; die Anzeigedauer gilt dann nicht), die Pause gilt nur noch für die Störmeldungen dazwischen. Passt gerade keine Promo (Zeitfenster, Wochentag), erscheint wieder die 4. Abfahrt.</div>
+<div class="hint">Die Promos laufen dann ohne Pause der Reihe nach als Laufschrift durch (je einmal, ohne den Text rechts; die Anzeigedauer gilt dann nicht), die Pause gilt nur noch für die Störmeldungen dazwischen. Passt gerade keine Promo (Zeitfenster, Wochentag), erscheint wieder die 4. Abfahrt.</div>
 <div id="promos"></div>
 <button class="add" id="addPromo">+ Eigener Text</button>
 </section>
