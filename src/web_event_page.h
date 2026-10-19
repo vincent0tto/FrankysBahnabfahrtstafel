@@ -100,7 +100,6 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 .pal{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .pal .sw{width:30px;height:30px;border-radius:6px}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
-.filebtn{display:inline-flex;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -132,7 +131,7 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff;fo
 
 <section>
 <h2>Bilder</h2>
-<div class="hint">Pixelgrafiken über die ganze Tafel (192 × 64) für den Hintergrund einer Szene, unter ihren Texten. Selbst zeichnen oder ein Bild laden; mehrere Einzelbilder laufen als Animation.</div>
+<div class="hint">Pixelgrafiken über die ganze Tafel (192 × 64) für den Hintergrund einer Szene, unter ihren Texten. Selbst zeichnen oder mit einer Vorlage (z. B. dem FRANKY'S-Logo) anfangen; mehrere Einzelbilder laufen als Animation.</div>
 <div class="thumbs" id="thumbs"></div>
 <div class="hint" id="space" style="margin-top:10px"></div>
 <div id="editor" hidden>
@@ -142,16 +141,14 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff;fo
 <div class="row" id="edOpts" style="margin-top:8px"></div>
 <div class="zoomwrap" id="edWrap"><canvas id="edCanvas" width="1152" height="384"></canvas></div>
 <div class="hint" id="edHint" style="margin-top:0"></div>
-<div class="row"><div id="edZoom" style="flex:1;min-width:220px"></div><button id="edUndo">↶ Rückgängig</button><button id="edClear">Leeren</button></div>
+<div class="row"><div id="edZoom" style="flex:1;min-width:220px"></div><button id="edUndo" title="Strg+Z">↶ Rückgängig</button><button id="edRedo" title="Strg+Umschalt+Z">↷ Wiederholen</button><button id="edClear">Leeren</button></div>
 <div class="field"><span class="flabel">Farbe</span><div class="fctl"><div class="pal" id="edPal"></div></div></div>
+<div class="field"><span class="flabel">Verschieben</span><div class="fctl"><button id="edLeft" aria-label="nach links">←</button><button id="edUp" aria-label="nach oben">↑</button><button id="edDown" aria-label="nach unten">↓</button><button id="edRight" aria-label="nach rechts">→</button><button id="edFlip" title="das Einzelbild waagerecht spiegeln">⇋ Umdrehen</button></div></div>
+<div class="field"><span class="flabel">Hilfen</span><div class="fctl"><label><input type="checkbox" id="edMirror"> Spiegeln</label><label><input type="checkbox" id="edOnion"> vorheriges Einzelbild zeigen</label></div></div>
 <h3>Einzelbilder</h3>
 <div class="frames" id="edFrames"></div>
 <div class="row" style="margin-top:8px"><button id="edAddFrame">+ Kopie</button><button id="edDelFrame" class="del">Einzelbild entfernen</button><button id="edPlay">▶ Abspielen</button></div>
 <div class="row" style="margin-top:8px"><span class="flabel">Bildwechsel</span><input type="range" id="edDelay" min="50" max="2000" step="50" aria-label="Bildwechsel"><span class="val" id="edDelayVal" style="width:70px"></span></div>
-<h3>Aus einer Datei</h3>
-<div class="hint">PNG, JPG oder GIF, wird auf 192 × 64 verkleinert und ersetzt das Bild oben. Aus einem animierten GIF werden (in Chrome) bis zu 8 Einzelbilder. <b>Kräftig</b> nimmt die gut sichtbaren Farben oben, das passt zu Logos und Grafiken; <b>Foto</b> rastert feine Abstufungen.</div>
-<div class="row"><div id="edFit" style="flex:1;min-width:200px"></div><div id="edLook" style="flex:1;min-width:200px"></div></div>
-<div class="row" style="margin-top:8px"><label class="filebtn">Datei wählen …<input type="file" id="edFile" accept="image/*" hidden></label></div>
 <div class="row" style="margin-top:14px"><button id="edSave" class="primary">Bild speichern</button><button id="edClose">Schließen</button><button id="edDelete" class="del">Bild löschen</button><span class="hint" id="edMsg" style="margin:0"></span></div>
 </div>
 </section>
@@ -366,17 +363,64 @@ $('brightReset').onclick=()=>setBright(S.brightnessDefaultPct);
 const PAL=['#ff7800','#ffb000','#ffd400','#ff3030','#ff2a4a','#ff3bd0','#ff5fae','#8a5bff',
   '#2f7bff','#29c6ff','#cfefff','#4be04b','#7ee04a','#ffe9a8','#ffffff','#6b4a2a'];
 const TOOLS=[['pen','Stift'],['line','Linie'],['rect','Rechteck'],['circle','Kreis'],['fill','Füllen'],
-  ['text','Text'],['icon','Symbol'],['erase','Radierer'],['pick','Pipette']];
+  ['text','Text'],['icon','Symbol'],['tpl','Vorlage'],['erase','Radierer'],['pick','Pipette']];
 const TOOL_HINTS={pen:'Malen mit dem Finger oder der Maus.',
   line:'Ziehen von Anfang bis Ende. Rastet waagerecht, senkrecht und diagonal ein.',
   rect:'Ziehen von einer Ecke zur anderen.',circle:'Ziehen von der Mitte nach außen.',
   fill:'Tippen füllt die zusammenhängende Fläche gleicher Farbe.',
   text:'Tippen oder ziehen setzt den Text, so wie die Tafel ihn schreibt.',
-  icon:'Tippen oder ziehen setzt das Symbol.',erase:'Wischen macht Pixel aus (schwarz = durchsichtig).',
+  icon:'Tippen oder ziehen setzt das Symbol.',tpl:'Tippen oder ziehen setzt die Vorlage in der gewählten Farbe, „In die Mitte“ setzt sie mittig.',
+  erase:'Wischen macht Pixel aus (schwarz = durchsichtig).',
   pick:'Tippen übernimmt die Farbe eines Pixels.'};
 const ZOOMS=[[1,'Ganz'],[2,'2×'],[4,'4×'],[8,'8×']];
-const FITS=[['contain','Einpassen'],['cover','Ausfüllen']];
-const LOOKS=[['vivid','Kräftig'],['photo','Foto']];
+// Vorlagen: 1-bit pictures, one hex string per row (made from the FRANKY'S logos)
+const TEMPLATES=[
+  {key:'logo',name:"FRANKY'S Logo",w:64,rows:[
+   '0000000000000000','000007fbf0000000','bfff7e000fe7f3f8','c000000000007f86','c000000000000004','4000000000000004',
+   '4000000000000004','4000c70000000002','40ffdfc0300c0002','43ff9fe0300c0082','c30018e0300e0182','c3001830780e0182',
+   'c3001830780f0182','c3f01810680d0182','83f018106c0d8382','c38018306c0d8381','c3001830c40cc301','83001870c60cc301',
+   '83001fe0c60c4301','83001fc0ce0c6301','83001e00ff0c2301','c3001f00c10c3301','c3001b01818c1301','c3001981818c1b01',
+   '430019c1808c0f01','c30018c180cc0e01','830018e180cc0601','87001861806c0600','83001873006c0201','8700183300000001',
+   '8200103000000001','c000000000000001','8000000000000001','8000000038000001','800000003c000061','800000003c07c001',
+   '86018c000c1fc041','86030e010c78e041','8607060200e07001','860e070c01c07081','8618039c01c07001','863001b801c00001',
+   '866000f000e00000','86e000e0003c0002','87f000e000070002','c33800600001c002','c218006000006042','c20c006000003042',
+   'c20e006000003002','4207006000003042','4203006000003002','4201806007003002','4201c06003807002','4200c06003c07002',
+   '4200606001ffe002','42002060007fc002','40000020001f0002','4000000000000002','4000000000000002','4000000000000002',
+   '4000800000140003','4ffffffffffffffe','0000000000000000','0000000000000000']},
+  {key:'wide',name:"FRANKY'S breit",w:192,rows:[
+   '000000000000000000000000000000000000000000000000','000000000000000000000000000000000000000000000000',
+   '000000000000000000000000000000000000000000000000','000000000003fffffffffffffff8000ff800000000000000',
+   '06ffffffffffffffffffffffffffffffffffffffffffe000','02c000000007fe00000000000000000ffffffffffffffc00',
+   '02c000000000000000000000000000000000000000001c00','02c000000000000000000000000000000000000000001c00',
+   '03c000000000000000000000000000000000000000001c00','03c000000000000000000000000000000000000000001c00',
+   '03c000000000000000000000000000000000000000000c00','01c000000000000000000000000000000000000000000c00',
+   '01c000000000000000000000000000000000078000000e00','01c00000000000080000000000000000000007c000000600',
+   '01c007ff8ff000180008000000000000000007e000000600','01c0ffff9ffc001c000c000000000000000007e0003c0300',
+   '0143fffe1ffc003c000c000201800080000000e003fc0300','0347ff803ffe003c001e0003018001c1c00000e00ffe0180',
+   '034700001c0f003c001e000701800381c000c0e03fbf0180','034700001c07003e001f000f01800781e001c0e07c0f8180',
+   '034700001c03803e001f000f01800f00f0038041f0078180','024700001c03803e001f800e01801e00f0070003e007c1c0',
+   '024700003c018077001d800e01c03c00780e0003c007c1c0','0247fe003c01c077001d800e01c07800381c0007c007c1c0',
+   '0247fe003c01c073801cc00e01c0e0001c3c0007c0038140','0647f8003c01c073801cc00e01c1c0001e780003c0000140',
+   '064700003c018073801c600e01c380000ef00001e0000340','064700003c0380e1801c600e01c7000007e00000f0000240',
+   '064700003c0380e1c01c701c01cf000007e000007c000240','064700003c0f80e0c01c301c01df000003c000000f800240',
+   '064700003fff00e0c01c381c01ff800003c0000001f00640','074700003ffe00e0e01c181c01f3c00003c00000003c04c0',
+   '074700003ffc01e0e01c1c1c01e1e00003c00000001f04c0','074700003ff001fff01c0c1c01c0f00001c0000000078cc0',
+   '074700003f8001fff01c0e1c01c0f80001c0000000038cc0','034700003fc001c0301c061c01c0780001c000000001c8c0',
+   '034700003de001c0381c071c01c03c0001c000000001c9c0','034700003ce003c0181c031801c01e0001c000000000c9c0',
+   '034700003cf003801c1c039801c00e0001c000000000d980','034700003c7003801c1c019801c0070001c000000001d980',
+   '034700003c7803800e1c01d801c0078001c000000001f380','034700003c3c03800e1c00f801c003c001c0003c0001f300',
+   '034700003c3c0380061c00f801c001c001c0003e0003f300','03470000381e0780071c007801c001e001c0001f0003d300',
+   '03c70000381e0700071c003801c000f001c0000f8007d300','03c70000380e0700031c003801c0007001c00007c00f9300',
+   '03c70000380f0700039c001801c0003801c00003fc7f1300','03c70000380707000118001801c0001801c00001fffe1b00',
+   '03e7000038030600000000000080001801c000003ff81b00','01e7000038038600000000000000000001c000000ff00b00',
+   '01e000000001000000000000000000000080000000000b00','01e000000000000000000000000000000000000000000f00',
+   '01e000000000000000000000000000000000000000000f00','01e000000000000000000000000000000000000000000700',
+   '00e000000000000000000000000000000000000000000700','00e000000000000000000000000000000000000000000700',
+   '00e000000000000000000000000000000000000000000300','00e000000000000000000000000000000000000000000300',
+   '00e000000000000000000000000000003ffc000000000300','00ffffffffffffffff000001fffffff8007ffffffffffb80',
+   '0027ffffff80007fffffffffffffffffffffffffffffff80','002000000000000000000000000000000000000000000000',
+   '000000000000000000000000000000000000000000000000','000000000000000000000000000000000000000000000000']}
+];
 const CELL=6;  // editor canvas pixels per LED
 let IM={images:[],freeBytes:0,totalBytes:0,frameBytes:W*H*2,maxFrames:8,maxImages:16},thumbs={},ED=null,ICONS=null;
 const to565=hex=>{const v=parseInt(hex.slice(1),16),r=v>>16,g=v>>8&255,b=v&255;return (r&0xF8)<<8|(g&0xFC)<<3|b>>3};
@@ -425,13 +469,15 @@ async function openEditor(id){
   }
   const narrow=innerWidth<600;  // on a phone the whole board is too small to draw on
   ED={id:info?id:-1,name:info?info.name:'',delay:info?info.delayMs:300,frames,cur:0,tool:'pen',color:'#ff7800',
-    size:1,filled:false,text:'Text',textSize:'normal',icon:'',iconScale:2,stamp:null,
-    zoom:ED?ED.zoom:narrow?4:1,fit:'contain',look:'vivid',undo:[],dirty:false,play:0};
+    size:1,filled:false,text:'Text',textSize:'normal',icon:'',iconScale:2,tpl:TEMPLATES[0].key,stamp:null,
+    zoom:ED?ED.zoom:narrow?4:1,mirror:false,onion:false,undo:[],redo:[],dirty:false,play:0};
   $('editor').hidden=false;$('edMsg').textContent='';
   renderEditor();renderThumbs();
   $('editor').scrollIntoView({behavior:'smooth',block:'start'});
 }
-function setTool(t){ED.tool=t;renderEditor();if(t==='text')textStamp();if(t==='icon')loadIcons()}
+function setTool(t){ED.tool=t;renderEditor();if(t==='icon')loadIcons();else restamp()}
+// the stamp of the current tool, again (after a change of colour or setting)
+function restamp(){if(ED.tool==='text')textStamp();if(ED.tool==='icon')iconStamp();if(ED.tool==='tpl')tplStamp()}
 function renderEditor(){
   $('edTitle').textContent=ED.id<0?'Neues Bild':'Bild bearbeiten';
   $('edName').value=ED.name;
@@ -439,11 +485,9 @@ function renderEditor(){
   renderOpts();
   $('edHint').textContent=TOOL_HINTS[ED.tool]+(ED.zoom>1?' Mit zwei Fingern verschieben.':'');
   $('edZoom').replaceChildren(seg(ZOOMS,ED.zoom,v=>{ED.zoom=v;renderEditor()}));
-  $('edFit').replaceChildren(seg(FITS,ED.fit,v=>{ED.fit=v;renderEditor()}));
-  $('edLook').replaceChildren(seg(LOOKS,ED.look,v=>{ED.look=v;renderEditor()}));
   $('edCanvas').style.width=ED.zoom*100+'%';
   const pal=$('edPal');pal.replaceChildren();
-  const pick=c=>{ED.color=c;if(ED.tool==='erase'||ED.tool==='pick')ED.tool='pen';renderEditor();if(ED.tool==='text')textStamp();if(ED.tool==='icon')iconStamp()};
+  const pick=c=>{ED.color=c;if(ED.tool==='erase'||ED.tool==='pick')ED.tool='pen';renderEditor();restamp()};
   for(const c of PAL)pal.append(el('button',{type:'button',className:'sw'+(c===ED.color?' on':''),style:'background:'+c,ariaLabel:c,onclick:()=>pick(c)}));
   pal.append(el('input',{type:'color',value:ED.color,title:'eigene Farbe',ariaLabel:'eigene Farbe',className:PAL.includes(ED.color)?'':'sw on',
     onchange:e=>pick(e.target.value)}));
@@ -453,6 +497,9 @@ function renderEditor(){
   $('edAddFrame').disabled=ED.frames.length>=IM.maxFrames;
   $('edDelFrame').disabled=ED.frames.length<2;
   $('edUndo').disabled=!ED.undo.length;
+  $('edRedo').disabled=!ED.redo.length;
+  $('edMirror').checked=ED.mirror;
+  $('edOnion').checked=ED.onion;$('edOnion').disabled=ED.cur===0;
   $('edDelete').hidden=ED.id<0;
   $('edSave').disabled=!ED.dirty;
   drawEditor();
@@ -475,6 +522,11 @@ function renderOpts(){
     box.append(sel,el('span',{className:'flabel',textContent:'Größe'}),seg([[1,'1×'],[2,'2×'],[3,'3×'],[4,'4×']],ED.iconScale,v=>{ED.iconScale=v;renderOpts();iconStamp()}));
     if(!ICONS)box.append(el('span',{className:'hint',style:'margin:0',textContent:'Lade Symbole ...'}));
   }
+  if(t==='tpl')box.append(chips(TEMPLATES.map(tp=>[tp.key,tp.name]),ED.tpl,v=>{ED.tpl=v;renderOpts();tplStamp()}));
+  if(t==='text'||t==='icon'||t==='tpl')box.append(el('button',{type:'button',textContent:'In die Mitte',onclick:()=>{
+    if(!ED.stamp)return;
+    stopPlay();pushUndo();stamp(ED.frames[ED.cur],ED.stamp,{x:W>>1,y:H>>1});markDirty();renderEditor();
+  }}));
 }
 function renderFrames(){
   const box=$('edFrames');box.replaceChildren();
@@ -483,29 +535,80 @@ function renderFrames(){
     drawSmall(cv,f);box.append(cv);
   });
 }
-// the frame 1:1 into a small canvas, scaled up without smoothing, with a grid between the LEDs
+// the frame 1:1 into a small canvas, scaled up without smoothing, with a grid between the LEDs;
+// `ghost` (the previous frame while drawing an animation) shows faintly where the frame is off,
+// `cursor` ({x,y,w,h} in LEDs) is outlined where the pointer would draw
 const edSmall=el('canvas');
-function drawEditor(px=ED.frames[ED.cur]){
+function drawEditor(px=ED.frames[ED.cur],cursor=null){
   drawSmall(edSmall,px);
+  const ghost=!ED.play&&ED.onion&&ED.cur>0?ED.frames[ED.cur-1]:null;
+  if(ghost){
+    const sg=edSmall.getContext('2d'),d=sg.getImageData(0,0,W,H);
+    for(let i=0;i<W*H;i++){
+      const c=!px[i]&&ledRGB(ghost[i]);
+      if(c)for(let k=0;k<3;k++)d.data[i*4+k]=11+(c[k]-11)*.3|0;
+    }
+    sg.putImageData(d,0,0);
+  }
   const g=$('edCanvas').getContext('2d');
   g.imageSmoothingEnabled=false;
   g.drawImage(edSmall,0,0,W*CELL,H*CELL);
   g.fillStyle='#000';
   for(let x=1;x<=W;x++)g.fillRect(x*CELL-1,0,1,H*CELL);
   for(let y=1;y<=H;y++)g.fillRect(0,y*CELL-1,W*CELL,1);
+  if(ED.mirror){g.fillStyle='rgba(224,122,31,.7)';g.fillRect(W/2*CELL-2,0,3,H*CELL)}
+  if(cursor){
+    g.strokeStyle='rgba(255,255,255,.8)';g.lineWidth=2;
+    const box=c=>g.strokeRect(c.x*CELL,c.y*CELL,c.w*CELL-1,c.h*CELL-1);
+    box(cursor);if(ED.mirror&&ED.tool!=='text'&&ED.tool!=='icon'&&ED.tool!=='tpl')box({...cursor,x:W-cursor.x-cursor.w});
+  }
 }
-function markDirty(){ED.dirty=true;$('edSave').disabled=false;$('edUndo').disabled=!ED.undo.length}
-function pushUndo(){ED.undo.push({cur:ED.cur,frames:ED.frames.map(f=>f.slice())});if(ED.undo.length>20)ED.undo.shift()}
-$('edUndo').onclick=()=>{const u=ED.undo.pop();if(!u)return;stopPlay();ED.frames=u.frames;ED.cur=Math.min(u.cur,u.frames.length-1);markDirty();renderEditor()};
+function markDirty(){ED.dirty=true;$('edSave').disabled=false;$('edUndo').disabled=!ED.undo.length;$('edRedo').disabled=!ED.redo.length}
+const snapshot=()=>({cur:ED.cur,frames:ED.frames.map(f=>f.slice())});
+function pushUndo(){ED.undo.push(snapshot());ED.redo=[];if(ED.undo.length>30)ED.undo.shift()}
+// takes the last state from `from`, the current one goes onto `to`
+function undoRedo(from,to){
+  const u=from.pop();if(!u)return;
+  stopPlay();to.push(snapshot());
+  ED.frames=u.frames;ED.cur=Math.min(u.cur,u.frames.length-1);markDirty();renderEditor();
+}
+$('edUndo').onclick=()=>undoRedo(ED.undo,ED.redo);
+$('edRedo').onclick=()=>undoRedo(ED.redo,ED.undo);
+document.addEventListener('keydown',e=>{
+  if(!ED||$('editor').hidden||!(e.ctrlKey||e.metaKey)||e.key.toLowerCase()!=='z'||e.target.matches('input[type=text]'))return;
+  e.preventDefault();
+  if(e.shiftKey)undoRedo(ED.redo,ED.undo);else undoRedo(ED.undo,ED.redo);
+});
 $('edClear').onclick=()=>{stopPlay();pushUndo();ED.frames[ED.cur].fill(0);markDirty();renderEditor()};
 $('edName').oninput=e=>{ED.name=e.target.value;markDirty()};
+$('edMirror').onchange=e=>{ED.mirror=e.target.checked;drawEditor()};
+$('edOnion').onchange=e=>{ED.onion=e.target.checked;drawEditor()};
+// moves the current frame by one LED (what goes over the edge is lost), or turns it round
+function shift(dx,dy){
+  stopPlay();pushUndo();
+  const f=ED.frames[ED.cur],old=f.slice();f.fill(0);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const X=x+dx,Y=y+dy;
+    if(X>=0&&X<W&&Y>=0&&Y<H)f[Y*W+X]=old[y*W+x];
+  }
+  markDirty();renderEditor();
+}
+$('edLeft').onclick=()=>shift(-1,0);$('edRight').onclick=()=>shift(1,0);
+$('edUp').onclick=()=>shift(0,-1);$('edDown').onclick=()=>shift(0,1);
+$('edFlip').onclick=()=>{
+  stopPlay();pushUndo();
+  const f=ED.frames[ED.cur];
+  for(let y=0;y<H;y++)f.subarray(y*W,(y+1)*W).reverse();
+  markDirty();renderEditor();
+};
 
-// ---- shapes on a frame `f` (value v = RGB565, 0 = off) ----
+// ---- shapes on a frame `f` (value v = RGB565, 0 = off); with Spiegeln
+// also mirrored onto the other half ----
 function dot(f,x,y,v,size=1){
   const o=Math.floor((size-1)/2);
   for(let dy=0;dy<size;dy++)for(let dx=0;dx<size;dx++){
     const px=x-o+dx,py=y-o+dy;
-    if(px>=0&&px<W&&py>=0&&py<H)f[py*W+px]=v;
+    if(px>=0&&px<W&&py>=0&&py<H){f[py*W+px]=v;if(ED.mirror)f[py*W+W-1-px]=v}
   }
 }
 function line(f,a,b,v,size){
@@ -592,6 +695,11 @@ function iconStamp(){
   for(let y=0;y<h*k;y++)for(let x=0;x<w*k;x++)if(ic.rows[y/k|0][x/k|0])s[y*w*k+x]=v;
   ED.stamp={w:w*k,h:h*k,px:s};
 }
+function tplStamp(){
+  const tp=TEMPLATES.find(t=>t.key===ED.tpl),v=to565(ED.color),w=tp.w,h=tp.rows.length,s=new Uint16Array(w*h);
+  tp.rows.forEach((r,y)=>{for(let x=0;x<w;x++)if(parseInt(r[x>>2],16)>>(3-(x&3))&1)s[y*w+x]=v});
+  ED.stamp={w,h,px:s};
+}
 
 // ---- pointer: one finger (or the mouse) draws, two fingers move the zoomed picture ----
 const cv=$('edCanvas'),pointers=new Map();
@@ -610,7 +718,7 @@ function strokeTo(p){
   if(t==='line')line(f,stroke.start,snap(stroke.start,p),v,ED.size);
   else if(t==='rect')rect(f,stroke.start,p,v,ED.size,ED.filled);
   else if(t==='circle')circle(f,stroke.start,p,v,ED.size,ED.filled);
-  else if((t==='text'||t==='icon')&&ED.stamp)stamp(f,ED.stamp,p);
+  else if(['text','icon','tpl'].includes(t)&&ED.stamp)stamp(f,ED.stamp,p);
   drawEditor();
 }
 cv.onpointerdown=e=>{
@@ -622,9 +730,9 @@ cv.onpointerdown=e=>{
   try{cv.setPointerCapture(e.pointerId)}catch(err){}
   const p=cellAt(e),f=ED.frames[ED.cur],c=f[p.y*W+p.x];
   if(ED.tool==='pick'){if(c){ED.color=hexOf(c);ED.tool='pen';renderEditor()}return}
-  if((ED.tool==='text'||ED.tool==='icon')&&!ED.stamp){$('edMsg').textContent=ED.tool==='text'?'Erst einen Text eingeben.':'Erst ein Symbol wählen.';return}
+  if(['text','icon','tpl'].includes(ED.tool)&&!ED.stamp){$('edMsg').textContent=ED.tool==='text'?'Erst einen Text eingeben.':'Erst ein Symbol wählen.';return}
   pushUndo();
-  if(ED.tool==='fill'){fill(f,p,to565(ED.color));markDirty();renderEditor();return}
+  if(ED.tool==='fill'){fill(f,p,to565(ED.color));if(ED.mirror)fill(f,{x:W-1-p.x,y:p.y},to565(ED.color));markDirty();renderEditor();return}
   stroke={tool:ED.tool,start:p,last:p,snap:f.slice()};
   strokeTo(p);
 };
@@ -639,6 +747,20 @@ cv.onpointermove=e=>{
   }
   if(stroke)strokeTo(cellAt(e));
 };
+// with a mouse, before pressing: where it would draw (a stamp as it would land)
+cv.addEventListener('pointermove',e=>{
+  if(!ED||e.pointerType!=='mouse'||e.buttons||stroke||ED.play)return;
+  const p=cellAt(e),t=ED.tool;
+  if(['text','icon','tpl'].includes(t)){
+    if(!ED.stamp)return drawEditor();
+    const f=ED.frames[ED.cur].slice();stamp(f,ED.stamp,p);
+    drawEditor(f,{x:p.x-(ED.stamp.w>>1),y:p.y-(ED.stamp.h>>1),w:ED.stamp.w,h:ED.stamp.h});
+    return;
+  }
+  const n=['pen','line','rect','circle','erase'].includes(t)?ED.size:1,o=Math.floor((n-1)/2);
+  drawEditor(undefined,{x:p.x-o,y:p.y-o,w:n,h:n});
+});
+cv.addEventListener('pointerleave',()=>{if(ED&&!stroke&&!ED.play)drawEditor()});
 cv.onpointerup=cv.onpointercancel=e=>{
   pointers.delete(e.pointerId);
   if(panning){if(!pointers.size)panning=false;return}
@@ -657,78 +779,6 @@ function startEdPlay(){
 function stopPlay(){if(ED&&ED.play){clearInterval(ED.play);ED.play=0;$('edPlay').textContent='▶ Abspielen';drawEditor()}}
 $('edPlay').onclick=()=>{if(ED.play)stopPlay();else startEdPlay()};
 
-// ---- import: scaled to the board, then made fit for its 16 levels per colour ----
-// Kräftig: every pixel becomes the nearest colour of the palette (or off), flat
-// areas as on the board's own graphics. Foto: each colour channel dithered
-// between the levels the panel can show, so shades come out as a fine pattern.
-const BAYER=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
-// per channel (5 or 6 bits): the codes that reach the panel's levels, darkest first
-function levelCodes(bits){
-  const out=[],max=(1<<bits)-1;
-  for(let c=0;c<=max;c++){
-    const e=bits===5?c<<3|c>>2:c<<2|c>>4,l=lvl(e);
-    if(!out.length||out[out.length-1].l<l)out.push({l,c,v:LEVEL_AT[l]});
-  }
-  return out;
-}
-const CODES5=levelCodes(5),CODES6=levelCodes(6);
-function dither(v,codes,t){
-  let i=0;while(i<codes.length-1&&codes[i+1].v<=v)i++;
-  if(i===codes.length-1)return codes[i].c;
-  const frac=(v-codes[i].v)/(codes[i+1].v-codes[i].v);
-  return codes[frac>t?i+1:i].c;
-}
-const PAL_RGB=PAL.map(h=>{const v=parseInt(h.slice(1),16);return [v>>16,v>>8&255,v&255]});
-function toPixels(src){
-  const w=src.displayWidth||src.width,h=src.displayHeight||src.height;
-  let s=ED.fit==='cover'?Math.max(W/w,H/h):Math.min(W/w,H/h);
-  const c=el('canvas',{width:W,height:H}),g=c.getContext('2d');
-  if(s>=2){s=Math.floor(s);g.imageSmoothingEnabled=false}else g.imageSmoothingQuality='high';
-  g.drawImage(src,Math.round((W-w*s)/2),Math.round((H-h*s)/2),w*s,h*s);
-  const d=g.getImageData(0,0,W,H).data,px=new Uint16Array(W*H);
-  for(let i=0;i<W*H;i++){
-    if(d[i*4+3]<128)continue;
-    const r=d[i*4],gg=d[i*4+1],b=d[i*4+2];
-    if(ED.look==='photo'){
-      const t=(BAYER[(i/W&3)*4+(i%W&3)]+.5)/16;
-      px[i]=dither(r,CODES5,t)<<11|dither(gg,CODES6,t)<<5|dither(b,CODES5,t);
-      continue;
-    }
-    if(.299*r+.587*gg+.114*b<45)continue;  // too dark for the panel: off
-    let best=0,bd=1e9;
-    PAL_RGB.forEach(([pr,pg,pb],k)=>{const dd=2*(r-pr)**2+4*(gg-pg)**2+3*(b-pb)**2;if(dd<bd){bd=dd;best=k}});
-    px[i]=to565(PAL[best]);
-  }
-  return px;
-}
-$('edFile').onchange=async e=>{
-  const file=e.target.files[0];e.target.value='';
-  if(!file)return;
-  if(ED.frames.some(f=>f.some(v=>v))&&!confirm('Das ersetzt das Bild oben. Weiter?'))return;
-  stopPlay();
-  let frames=[],delay=null;
-  try{
-    if(window.ImageDecoder&&file.type!=='image/jpeg'){
-      const dec=new ImageDecoder({data:await file.arrayBuffer(),type:file.type});
-      await dec.tracks.ready;
-      const n=Math.min(dec.tracks.selectedTrack.frameCount,IM.maxFrames);
-      for(let i=0;i<n;i++){
-        const {image}=await dec.decode({frameIndex:i});
-        frames.push(toPixels(image));
-        if(i===0&&image.duration)delay=Math.round(image.duration/1000);
-        image.close();
-      }
-    }
-  }catch(err){frames=[]}
-  try{
-    if(!frames.length){const bmp=await createImageBitmap(file);frames.push(toPixels(bmp));bmp.close()}
-  }catch(err){alert('Das Bild lässt sich nicht lesen.');return}
-  pushUndo();
-  ED.frames=frames;ED.cur=0;
-  if(delay)ED.delay=Math.min(2000,Math.max(50,Math.round(delay/50)*50));
-  if(!ED.name)ED.name=file.name.replace(/\.[^.]*$/,'').slice(0,22);
-  markDirty();renderEditor();
-};
 $('edSave').onclick=async()=>{
   stopPlay();
   $('edMsg').textContent='Speichere ...';$('edSave').disabled=true;

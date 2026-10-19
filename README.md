@@ -247,16 +247,17 @@ zeigt; schwarze Pixel sind durchsichtig, dort scheint die Hintergrundfarbe durch
 - *Linie* (rastet waagerecht, senkrecht und diagonal ein), *Rechteck* und *Kreis*, auch gefüllt,
 - *Text* in den Schriften der Tafel (die Tafel zeichnet ihn selbst, er sieht also genau so aus
   wie in einer Textzeile) und *Symbol* (die Promo-Icons, auch die eigenen, 1× bis 4×),
-- Zoom bis 8× (auf dem Handy startet der Editor bei 4×), verschoben wird mit zwei Fingern,
-  Rückgängig.
+- *Vorlage*: das FRANKY'S-Logo, quadratisch (64 × 64) oder breit über die ganze Tafel, in der
+  gewählten Farbe; Text, Symbol und Vorlage setzt *In die Mitte* auch mittig,
+- *Spiegeln* malt auf der anderen Tafelhälfte spiegelbildlich mit, *Verschieben* rückt das
+  Einzelbild um ein Pixel, *Umdrehen* spiegelt es; beim Zeichnen einer Animation scheint auf
+  Wunsch das vorherige Einzelbild schwach durch,
+- Zoom bis 8× (auf dem Handy startet der Editor bei 4×), verschoben wird mit zwei Fingern;
+  mit der Maus zeigt ein Rahmen, wo gezeichnet wird. Rückgängig und Wiederholen (auch
+  Strg/⌘+Z und Strg/⌘+Umschalt+Z).
 
-Oder man lädt eine Datei (PNG, JPG, GIF), die auf die Tafel verkleinert wird: *Einpassen*
-zeigt das ganze Bild, *Ausfüllen* füllt die Tafel und schneidet ab; kleine Pixelgrafiken werden
-in ganzen Schritten und ohne Unschärfe vergrößert. *Kräftig* setzt jedes Pixel auf die nächste
-der 16 Farben des Editors (oder aus), das passt zu Logos und Grafiken; *Foto* rastert feine
-Abstufungen. Ein Bild kann aus bis zu 8 Einzelbildern bestehen, die mit einstellbarem
-Bildwechsel als Animation laufen; ein animiertes GIF wird dabei (in Browsern mit
-`ImageDecoder`, z. B. Chrome) zu Einzelbildern. Bis zu 16 Bilder; jedes Einzelbild belegt 24 KB,
+Ein Bild kann aus bis zu 8 Einzelbildern bestehen, die mit einstellbarem
+Bildwechsel als Animation laufen. Bis zu 16 Bilder; jedes Einzelbild belegt 24 KB,
 in die 1,5 MB passen also etwa 55. Wird ein Bild gelöscht, fällt es auch aus den Szenen weg,
 die es zeigen.
 
