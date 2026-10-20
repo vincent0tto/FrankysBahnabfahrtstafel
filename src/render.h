@@ -14,9 +14,9 @@ struct DisplayStatus {
   bool updating = false;  // firmware update running -> only a notice
 };
 
-// 1 in `oneIn` departures plays the departure animation, 0 = never.
-// Defaults to DEPART_ANIM_CHANCE (buses: DEPART_ANIM_CHANCE_BUS); the preview
-// sets 1 to force it. 0 turns it off for buses too.
+// Overrides Settings::animChance/animChanceBus: 1 in `oneIn` departures plays
+// the departure animation, 0 = never, -1 = as in the settings (default). Only
+// the preview uses it (1 forces it).
 // Randomness comes from rand(), seed it once at start-up.
 void setDepartAnimChance(int oneIn);
 

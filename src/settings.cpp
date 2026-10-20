@@ -67,6 +67,8 @@ void settingsDefaults(Settings& s) {
   s.promoShowS = PROMO_SHOW_S;
   s.promoIntervalS = PROMO_INTERVAL_S;
   s.disruptPasses = DISRUPTION_PASSES;
+  s.animChance = DEPART_ANIM_CHANCE;
+  s.animChanceBus = DEPART_ANIM_CHANCE_BUS;
 }
 
 bool inWindow(const TimeWindow& w, int m) {
@@ -235,6 +237,8 @@ void settingsToJson(const Settings& s, JsonObject out, bool forWeb) {
   out["promoFullRow"] = s.promoFullRow;
   out["disruptOn"] = s.disruptOn;
   out["disruptPasses"] = s.disruptPasses;
+  out["animChance"] = s.animChance;
+  out["animChanceBus"] = s.animChanceBus;
 
   JsonArray promos = out["promos"].to<JsonArray>();
   for (int i = 0; i < s.nPromos; i++) {
@@ -295,6 +299,8 @@ bool settingsFromJson(JsonVariantConst in, Settings& s) {
   s.promoFullRow = in["promoFullRow"] | s.promoFullRow;
   s.disruptOn = in["disruptOn"] | s.disruptOn;
   s.disruptPasses = (uint8_t)clampU(in["disruptPasses"], 1, 10, s.disruptPasses);
+  s.animChance = (uint8_t)clampU(in["animChance"], 0, 100, s.animChance);
+  s.animChanceBus = (uint8_t)clampU(in["animChanceBus"], 0, 100, s.animChanceBus);
 
   if (in["promos"].is<JsonArrayConst>()) {
     for (JsonVariantConst o : in["promos"].as<JsonArrayConst>()) {

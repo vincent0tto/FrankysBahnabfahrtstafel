@@ -156,6 +156,10 @@ section.evon{border:2px solid var(--accent)}
 
 <details class="tech">
 <summary>Technik <span>WLAN, Log, Neustart</span></summary>
+<h3>Abfahrts-Animation</h3>
+<div class="hint">Wie oft eine abfahrende Bahn bzw. ein Bus aus der Zeile fährt. 1 = jedes Mal, 0 = nie. Gilt nach „Änderungen speichern“.</div>
+<div class="row"><label>Bahn: jede <input type="number" min="0" max="100" id="animChance">. Abfahrt</label>
+<label>Bus: jede <input type="number" min="0" max="100" id="animChanceBus">. Abfahrt</label></div>
 <h3>WLAN</h3>
 <div class="hint">Verbunden mit <b id="ssidNow">?</b>. Nach dem Speichern startet die Tafel neu. Klappt die Verbindung nicht (z. B. Tippfehler), nimmt sie nach etwa einer Minute wieder das bisherige WLAN.</div>
 <div class="row"><input type="text" id="ssid" maxlength="32" placeholder="WLAN-Name" autocomplete="off" autocapitalize="off">
@@ -425,7 +429,10 @@ function setBright(v){S.brightnessPct=v;$('bright').value=v;$('brightVal').textC
 $('bright').oninput=e=>setBright(+e.target.value);
 $('brightReset').onclick=()=>setBright(S.brightnessDefaultPct);
 
+for(const k of ['animChance','animChanceBus'])$(k).oninput=e=>S[k]=+e.target.value;
+
 function render(){
+  $('animChance').value=S.animChance;$('animChanceBus').value=S.animChanceBus;
   $('offOn').checked=S.off.on;$('offFrom').value=time(S.off.from);$('offTo').value=time(S.off.to);
   setBright(S.brightnessPct);
   renderRow();renderDim();renderPromos();renderIcons();
@@ -441,7 +448,8 @@ function collect(){
   return {off:{on:$('offOn').checked,from:$('offFrom').value||'02:00',to:$('offTo').value||'06:00'},
     brightnessPct:S.brightnessPct,dim:S.dim.filter(d=>d.from&&d.to),
     promoShowS:S.promoShowS,promoIntervalS:S.mode==='off'?0:S.interval,promoFullRow:S.mode==='scroll',
-    disruptOn:S.disruptOn,disruptPasses:S.disruptPasses,promos,icons:S.icons};
+    disruptOn:S.disruptOn,disruptPasses:S.disruptPasses,animChance:S.animChance,animChanceBus:S.animChanceBus,
+    promos,icons:S.icons};
 }
 
 const dirty=()=>!!S&&JSON.stringify(collect())!==base;

@@ -53,6 +53,8 @@ struct Settings {
                                 // its departure, as long as one is open
   bool disruptOn = true;        // VRN disruption texts
   uint8_t disruptPasses = 0;    // how often one showing scrolls through them (1..10)
+  uint8_t animChance = 0;       // 1 in N tram departures plays the departure animation, 0 = never
+  uint8_t animChanceBus = 0;    // same for buses
   Promo promos[MAX_PROMOS];
   uint8_t nPromos = 0;
   CustomIcon icons[MAX_CUSTOM_ICONS];  // index = number in the tag

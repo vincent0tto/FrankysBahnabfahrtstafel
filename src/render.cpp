@@ -86,8 +86,8 @@ static int pingPongOffset(int overflow, uint32_t ms) {
 }
 
 // ---- Departure animation -----------------------------------------------------
-static int animChance = DEPART_ANIM_CHANCE;
-void setDepartAnimChance(int oneIn) { animChance = oneIn; }
+static int animOverride = -1;
+void setDepartAnimChance(int oneIn) { animOverride = oneIn; }
 
 static bool sameTrip(const Departure& a, const Departure& b) {
   return a.planned == b.planned && strcmp(a.line, b.line) == 0 && strcmp(a.dest, b.dest) == 0;
@@ -107,7 +107,7 @@ static struct {
 // dropped it. Only if it was the only one leaving that minute: with several
 // rows on "sofort" a single vehicle driving off would look odd. One roll per
 // departure moment, one animation at a time.
-static void checkDeparted(const Departure* const* rows, int n, time_t now, uint32_t ms) {
+static void checkDeparted(const Settings& s, const Departure* const* rows, int n, time_t now, uint32_t ms) {
   if (!anim.active) {
     int left = 0, row = -1;
     for (int j = 0; j < prevN; j++) {
@@ -120,7 +120,9 @@ static void checkDeparted(const Departure* const* rows, int n, time_t now, uint3
       row = j;
     }
     // Buses are rare here, so they get their own (higher) chance
-    int chance = left == 1 && animChance > 0 && prevRows[row].cls > 4 ? DEPART_ANIM_CHANCE_BUS : animChance;
+    int chance = animOverride >= 0              ? animOverride
+                 : left == 1 && prevRows[row].cls > 4 ? s.animChanceBus
+                                                      : s.animChance;
     if (left == 1 && chance > 0 && rand() % chance == 0) {
       anim.active = true;
       anim.dep = prevRows[row];
@@ -422,7 +424,7 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
   // promo / disruption keeps the 4th row: a trip hidden behind it doesn't
   // animate, and an animation stays in the rows above.
   int animMaxRows = promo.active ? MAX_ROWS : maxRows;
-  checkDeparted(rows, n < animMaxRows ? n : animMaxRows, now, ms);
+  checkDeparted(s, rows, n < animMaxRows ? n : animMaxRows, now, ms);
   int animRow = -1;
   if (anim.active && (!haveData || ms - anim.startMs >= DEPART_ANIM_MS)) anim.active = false;
   if (anim.active) {
