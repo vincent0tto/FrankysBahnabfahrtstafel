@@ -1,6 +1,6 @@
 // Host preview of the LED layout: renders a few scenarios with the real
 // render code into PPM images (LED dots, 6x scale): the departures, the
-// departure animation, the event mode and the tram race.
+// departure animation, the event mode, the tram race and the karaoke list.
 // Build/run: tools/preview/run.sh
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,6 +13,7 @@
 
 #include "config.h"
 #include "event_render.h"
+#include "karaoke_render.h"
 #include "parse.h"
 #include "race_render.h"
 #include "render.h"
@@ -329,5 +330,35 @@ int main(int argc, char** argv) {
            cancelled ? " cancelled" : "", race.winner + 1);
   }
   writePpm(argc > 4 ? argv[4] : "preview_race.ppm", raceFrames);
+
+  // karaoke list: empty, two entries, more than fit (a long name and song
+  // at the start and moved on)
+  std::vector<Frame> kFrames;
+  static Karaoke k;
+  karaokeDefaults(k);
+  auto karaokeFrame = [&](uint32_t ms) {
+    GFXcanvas16 canvas(W, H);
+    canvas.fillScreen(0);
+    U8G2_FOR_ADAFRUIT_GFX u8;
+    u8.begin(canvas);
+    renderKaraoke(canvas, u8, k, ms);
+    kFrames.push_back(Frame{std::vector<uint16_t>(canvas.getBuffer(), canvas.getBuffer() + W * H)});
+  };
+  karaokeFrame(0);
+  const char* list[][2] = {{"Anna", "Dancing Queen"}, {"Tom", ""}, {"Maximilian", "Bohemian Rhapsody – Queen"},
+                           {"Lea & Jörg", "Atemlos durch die Nacht"}, {"Ben", "Wonderwall"}, {"Sophie", "Hello"}};
+  for (int i = 0; i < 2; i++) {
+    snprintf(k.entries[k.n].name, sizeof(k.entries[0].name), "%s", list[i][0]);
+    snprintf(k.entries[k.n++].song, sizeof(k.entries[0].song), "%s", list[i][1]);
+  }
+  karaokeFrame(0);
+  k.n = 0;
+  for (auto& e : list) {
+    snprintf(k.entries[k.n].name, sizeof(k.entries[0].name), "%s", e[0]);
+    snprintf(k.entries[k.n++].song, sizeof(k.entries[0].song), "%s", e[1]);
+  }
+  snprintf(k.title, sizeof(k.title), "Karaoke – als Nächstes");
+  for (uint32_t ms : {0u, 6000u}) karaokeFrame(ms);
+  writePpm(argc > 5 ? argv[5] : "preview_karaoke.ppm", kFrames);
   return 0;
 }

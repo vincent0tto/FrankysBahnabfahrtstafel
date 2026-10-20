@@ -11,9 +11,12 @@
 #include "psram_alloc.h"
 
 static const char* const EVENT_FILE = "/event.json";
+static const char* const KARAOKE_FILE = "/karaoke.json";
 
 static Event current;  // written by the network task only, under `mutex`
 static volatile uint32_t currentVersion = 1;
+static Karaoke karaoke;  // same
+static volatile uint32_t karaokeVer = 1;
 static Scene testScene;  // same
 static bool testActive = false;
 static volatile uint32_t testVersion = 0;
@@ -28,13 +31,34 @@ Event& eventScratch() {
   return *e;
 }
 
+Karaoke& karaokeScratch() {
+  static Karaoke* k = new (heap_caps_malloc(sizeof(Karaoke), MALLOC_CAP_SPIRAM)) Karaoke;
+  return *k;
+}
+
+static void karaokeLoad() {
+  JsonDocument doc(&spiRam);
+  size_t n;
+  DeserializationError err = jsonFileRead(KARAOKE_FILE, doc, n);
+  if (!n) return;  // none yet: the defaults
+  Karaoke& loaded = karaokeScratch();
+  if (!err && karaokeFromJson(doc.as<JsonVariantConst>(), loaded)) {
+    karaoke = loaded;
+    Log.printf("[karaoke] loaded, %d entries\n", karaoke.n);
+  } else {
+    Log.printf("[karaoke] stored data broken (%s), using defaults\n", err.c_str());
+  }
+}
+
 void eventBegin() {
   mutex = xSemaphoreCreateMutex();
   eventDefaults(current);
+  karaokeDefaults(karaoke);
   if (!jsonFsBegin()) {
     Log.println("[event] file system not available, event can't be stored");
     return;
   }
+  karaokeLoad();
   Log.printf("[event] file system %u of %u KB used\n", (unsigned)(LittleFS.usedBytes() / 1024),
              (unsigned)(LittleFS.totalBytes() / 1024));
   JsonDocument doc(&spiRam);
@@ -47,7 +71,7 @@ void eventBegin() {
   Event& loaded = eventScratch();
   if (!err && eventFromJson(doc.as<JsonVariantConst>(), loaded)) {
     current = loaded;
-    Log.printf("[event] loaded (%u bytes), %s\n", (unsigned)n, current.on ? "on" : "off");
+    Log.printf("[event] loaded (%u bytes), %s\n", (unsigned)n, current.on ? current.karaoke ? "karaoke" : "on" : "off");
   } else {
     Log.printf("[event] stored data broken (%s), using defaults\n", err.c_str());
   }
@@ -67,8 +91,35 @@ bool eventSave(const Event& e) {
   eventToJson(e, doc.to<JsonObject>());
   size_t n;
   bool ok = jsonFileWrite(EVENT_FILE, doc, n);
-  Log.printf("[event] %s (%u bytes), %s\n", ok ? "saved" : "saving FAILED", (unsigned)n, e.on ? "on" : "off");
+  Log.printf("[event] %s (%u bytes), %s\n", ok ? "saved" : "saving FAILED", (unsigned)n,
+             e.on ? e.karaoke ? "karaoke" : "on" : "off");
   return ok;
+}
+
+const Karaoke& karaokeNet() { return karaoke; }
+
+uint32_t karaokeVersion() { return karaokeVer; }
+
+bool karaokeSave(const Karaoke& k) {
+  xSemaphoreTake(mutex, portMAX_DELAY);
+  karaoke = k;
+  karaokeVer++;
+  xSemaphoreGive(mutex);
+
+  JsonDocument doc(&spiRam);
+  karaokeToJson(k, doc.to<JsonObject>());
+  size_t n;
+  bool ok = jsonFileWrite(KARAOKE_FILE, doc, n);
+  Log.printf("[karaoke] %s (%u bytes), %d entries\n", ok ? "saved" : "saving FAILED", (unsigned)n, k.n);
+  return ok;
+}
+
+bool karaokeFetch(Karaoke& out, uint32_t& version) {
+  if (version == karaokeVer || xSemaphoreTake(mutex, pdMS_TO_TICKS(10)) != pdTRUE) return false;
+  out = karaoke;
+  version = karaokeVer;
+  xSemaphoreGive(mutex);
+  return true;
 }
 
 void eventTest(const Scene& sc) {

@@ -144,6 +144,24 @@ canvas.board{display:block;width:100%;aspect-ratio:3/1;background:var(--panel);b
 .frames canvas.on{outline:2px solid var(--accent);outline-offset:1px}
 .pal{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .pal .sw{width:30px;height:30px;border-radius:6px}
+/* Karaoke */
+#kaState{background:var(--card);border:1px solid var(--line);padding:8px 12px;margin-bottom:14px}
+#kaState button{margin-left:6px}
+.ka{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 0 6px 8px;border-top:1px solid var(--line);border-left:4px solid transparent}
+.ka:first-child{border-top:0}
+.ka.shown{border-left-color:var(--c)}
+.ka .no{width:22px;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+.ka.shown .no{color:var(--fg);font-weight:600}
+.ka input[type=text]{min-width:90px}
+.ka .kn{flex:2}.ka .ks{flex:3}
+.ka button{padding:5px 9px}
+.ka button.done{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.kadd{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.kadd input[type=text]{min-width:120px}
+.kadd .kn{flex:2}.kadd .ks{flex:3}
+.kempty{color:var(--muted);font-size:14px;padding:8px 0}
+.undo{display:flex;gap:8px;align-items:center;font-size:14px;margin-top:8px}
+@media (max-width:560px){.ka .ks{order:1;flex-basis:100%;margin-left:28px}}
 /* Technik */
 #log{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;margin:0 0 8px;max-height:60vh;overflow:auto;font:12px/1.35 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-all}
 /* narrow: times and ⏸ ✕ on top, the slider below at full width */
@@ -163,7 +181,7 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 <h1>Abfahrtstafel</h1>
 <div class="status" id="status">Lade ...</div>
 <nav class="tabs" id="tabs">
-<a href="#jetzt">Jetzt</a><a href="#tafel">Tafel</a><a href="#zeitplan">Zeitplan</a><a href="#event">Event</a><a href="#technik">Technik</a>
+<a href="#jetzt">Jetzt</a><a href="#tafel">Tafel</a><a href="#zeitplan">Zeitplan</a><a href="#event">Event</a><a href="#karaoke">Karaoke</a><a href="#technik">Technik</a>
 </nav>
 
 <div class="tab" id="t-jetzt">
@@ -176,6 +194,9 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 <div class="mode" id="mEvent"><button class="pick" role="radio" aria-checked="false"><i></i><span><b>Event</b>
 <small>Eigene Szenen in Farbe über die ganze Tafel, bis du wieder umschaltest. Abfahrten, Promos und die Ruhezeit pausieren so lange.</small></span><em></em></button>
 <a class="more" href="#event">Event bearbeiten ›</a></div>
+<div class="mode" id="mKaraoke"><button class="pick" role="radio" aria-checked="false"><i></i><span><b>Karaoke</b>
+<small>Wer als Nächstes singt: die ersten vier der Liste, jede Zeile in ihrer Farbe. Sonst wie beim Event.</small></span><em></em></button>
+<a class="more" href="#karaoke">Liste bearbeiten ›</a></div>
 </div>
 </section>
 
@@ -281,6 +302,33 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 <h2>Helligkeit im Event</h2>
 <div class="row"><input type="range" min="1" max="100" id="evBright" aria-label="Helligkeit im Event"><span class="val" id="evBrightVal"></span><button id="evBrightReset" title="auf den Standardwert setzen">↺</button></div>
 <div class="hint">Gilt, solange das Event läuft. Die Zeitfenster aus dem Zeitplan zählen dann nicht.</div>
+</section>
+</div>
+
+<div class="tab" id="t-karaoke" hidden>
+<div class="note" id="kaState" hidden></div>
+<section>
+<h2>Vorschau</h2>
+<canvas class="board" id="kaBoard" width="768" height="256"></canvas>
+<div class="cap">So zeigt es die Tafel. Lange Namen und Songs laufen hin und her.</div>
+</section>
+
+<section>
+<h2>Wer singt?</h2>
+<div class="hint">Die ersten vier stehen auf der Tafel, wer danach kommt, rückt nach. Ist jemand fertig, auf ✓ tippen. Jede Änderung gilt sofort, auch auf der Tafel.</div>
+<div id="kaList"></div>
+<div class="undo" id="kaUndo" hidden></div>
+<form class="kadd" id="kaAdd"><input type="text" class="kn" id="kaName" maxlength="22" placeholder="Name" autocomplete="off">
+<input type="text" class="ks" id="kaSong" maxlength="46" placeholder="Song (optional)" autocomplete="off">
+<button class="primary" id="kaAddBtn">+ Eintragen</button></form>
+<div class="hint" id="kaMsg" style="margin-top:8px"></div>
+</section>
+
+<section>
+<h2>Aussehen</h2>
+<div class="field"><span class="flabel">Überschrift</span><div class="fctl"><input type="text" id="kaTitle" maxlength="30" placeholder="leer: keine"></div></div>
+<div id="kaColors"></div>
+<div class="hint">Die Farben gehören zu den Zeilen der Tafel, nicht zu den Namen: Wer nachrückt, bekommt die Farbe seiner neuen Zeile. Die Helligkeit ist die des Events (Tab Event).</div>
 </section>
 </div>
 
@@ -679,28 +727,31 @@ async function status(){
     const age=s.dataAgeS<0?'noch keine Daten':'Daten von vor '+(s.dataAgeS<120?s.dataAgeS+' s':Math.round(s.dataAgeS/60)+' min');
     const up=s.uptimeS<7200?Math.round(s.uptimeS/60)+' min':Math.round(s.uptimeS/3600)+' h';
     $('ssidNow').textContent=s.ssid;
-    $('status').textContent=`Firmware ${s.build} · läuft seit ${up} · ${age} · ${s.race?'Bahnrennen':s.event?'Event läuft':s.off?'Ruhezeit':'Panel an'} · WLAN ${s.rssi} dBm`;
-    eventOn=!!s.event;raceOn=!!s.race;renderModes();
+    $('status').textContent=`Firmware ${s.build} · läuft seit ${up} · ${age} · ${s.race?'Bahnrennen':s.karaoke?'Karaoke läuft':s.event?'Event läuft':s.off?'Ruhezeit':'Panel an'} · WLAN ${s.rssi} dBm`;
+    shown=s.karaoke?'karaoke':s.event?'event':'dep';raceOn=!!s.race;renderModes();
     if(S)renderTimeline();
     sync(s.rev);
     EV.sync(s.eventRev);
+    KA.sync(s.karaokeRev);
   }catch(e){$('status').textContent='Tafel nicht erreichbar'}
 }
-// What the board shows: the departures or the event, switched at once (no
-// saving). A race only interrupts that for a while, then it shows again.
-let eventOn=false,raceOn=false,raceTimer=0,switching=false;
+// What the board shows: the departures, the event or the karaoke list
+// ('dep', 'event', 'karaoke'), switched at once (no saving). A race only
+// interrupts that for a while, then it shows again.
+let shown='dep',raceOn=false,raceTimer=0,switching=false;
 function renderModes(){
   const set=(id,on)=>{
     const m=$(id);m.classList.toggle('on',on);m.classList.toggle('paused',on&&raceOn);
     m.querySelector('.pick').setAttribute('aria-checked',on);
     m.querySelector('em').textContent=on?raceOn?'unterbrochen':'läuft':'';
   };
-  set('mDep',!eventOn);
-  set('mEvent',eventOn);
+  set('mDep',shown==='dep');
+  set('mEvent',shown==='event');
+  set('mKaraoke',shown==='karaoke');
   $('raceCard').classList.toggle('on',raceOn);
   $('raceStart').hidden=raceOn;$('raceStop').hidden=!raceOn;
   $('raceText').textContent=raceOn?'Rennen läuft …':'';
-  EV.setOn(eventOn);
+  EV.setShown(shown);KA.setShown(shown);
   clearTimeout(raceTimer);
   if(raceOn)raceTimer=setTimeout(status,3000);  // the race ends by itself, so ask more often meanwhile
 }
@@ -717,13 +768,17 @@ async function act(f){
   switching=false;
   renderModes();
 }
-function pick(event){
-  if(event===eventOn)return;
-  if(event&&EV.dirty()&&!confirm('Im Event gibt es ungespeicherte Änderungen. Die Tafel zeigt zunächst den gespeicherten Stand. Trotzdem einschalten?'))return;
-  act(async()=>{eventOn=!!(await (await post('/api/event/on',{on:event})).json()).on});
+function pick(m){
+  if(m===shown)return;
+  if(m==='event'&&EV.dirty()&&!confirm('Im Event gibt es ungespeicherte Änderungen. Die Tafel zeigt zunächst den gespeicherten Stand. Trotzdem einschalten?'))return;
+  act(async()=>{
+    const e=await (await post('/api/event/on',{on:m!=='dep',karaoke:m==='karaoke'})).json();
+    shown=!e.on?'dep':e.karaoke?'karaoke':'event';
+  });
 }
-$('mDep').querySelector('.pick').onclick=()=>pick(false);
-$('mEvent').querySelector('.pick').onclick=()=>pick(true);
+$('mDep').querySelector('.pick').onclick=()=>pick('dep');
+$('mEvent').querySelector('.pick').onclick=()=>pick('event');
+$('mKaraoke').querySelector('.pick').onclick=()=>pick('karaoke');
 $('raceStart').onclick=()=>act(async()=>{await post('/api/race');raceOn=true});
 $('raceStop').onclick=()=>act(async()=>{await post('/api/race/stop');raceOn=false});
 // waits for the board to come back after a restart, then reloads the page
@@ -843,25 +898,35 @@ async function drawPreview(){
   let px=new Uint16Array(W*H);
   if(sc){
     pvBusy=true;
-    try{
-      const r=await fetch('/api/event/preview?ms='+(playing?ms:0),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(sc)});
-      if(r.ok){
-        const runs=new Uint16Array(await r.arrayBuffer());
-        for(let i=0,p=0;i+1<runs.length&&p<px.length;i+=2){px.fill(runs[i+1],p,p+runs[i]);p+=runs[i]}
-      }
-    }catch(e){}
+    px=await fetchBoard('/api/event/preview?ms='+(playing?ms:0),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(sc)});
     pvBusy=false;
   }
-  const g=$('board').getContext('2d');
+  paintBoard($('board'),px);
+  if(pvAgain){pvAgain=false;drawPreview()}
+  else if(playing&&sc)nextFrame=setTimeout(drawPreview,Math.max(0,FRAME_MS-(performance.now()-t0)));
+}
+// The board's pixels as /api/event/preview and /api/karaoke/preview send
+// them (runs of count, colour); all off if that fails.
+async function fetchBoard(url,opts){
+  const px=new Uint16Array(W*H);
+  try{
+    const r=await fetch(url,opts);
+    if(r.ok){
+      const runs=new Uint16Array(await r.arrayBuffer());
+      for(let i=0,p=0;i+1<runs.length&&p<px.length;i+=2){px.fill(runs[i+1],p,p+runs[i]);p+=runs[i]}
+    }
+  }catch(e){}
+  return px;
+}
+// as LED dots, onto a canvas of W*DOT x H*DOT
+function paintBoard(cv,px){
+  const g=cv.getContext('2d');
   g.fillStyle='#000';g.fillRect(0,0,W*DOT,H*DOT);
   for(let y=0;y<H;y++)for(let x=0;x<W;x++){
-    const c=px[y*W+x];
-    const led=ledRGB(c);
+    const led=ledRGB(px[y*W+x]);
     g.fillStyle=led?`rgb(${led})`:'#1c1814';
     g.beginPath();g.arc(x*DOT+DOT/2,y*DOT+DOT/2,DOT*.42,0,7);g.fill();
   }
-  if(pvAgain){pvAgain=false;drawPreview()}
-  else if(playing&&sc)nextFrame=setTimeout(drawPreview,Math.max(0,FRAME_MS-(performance.now()-t0)));
 }
 // While a test runs (TEST_S on the board) the button ends it instead.
 const TEST_S=30;
@@ -1422,8 +1487,9 @@ $('edDelete').onclick=async()=>{
 // ---- on or off: switched on "Jetzt", here only shown ----
 function renderMode(){
   $('evState').hidden=false;
-  $('evState').replaceChildren(...(S.on?['Das Event läuft gerade auf der Tafel.']
-    :['Das Event ist gerade aus. Die Tafel zeigt es, sobald du es unter ',el('a',{href:'#jetzt',textContent:'Jetzt'}),' auswählst.']));
+  $('evState').replaceChildren(...(S.on&&!S.karaoke?['Das Event läuft gerade auf der Tafel.']
+    :[S.on?'Die Tafel zeigt gerade die Karaoke-Liste. Die Szenen zeigt sie, sobald du unter ':'Das Event ist gerade aus. Die Tafel zeigt es, sobald du es unter ',
+      el('a',{href:'#jetzt',textContent:'Jetzt'}),' „Event“ auswählst.']));
 }
 
 // ---- load, save, keep in sync (as the settings) ----
@@ -1439,7 +1505,7 @@ function updateSave(){
   markTabs();
 }
 for(const ev of ['input','change','click'])document.addEventListener(ev,updateSave);
-const content=s=>JSON.stringify({...s,rev:'',on:false});
+const content=s=>JSON.stringify({...s,rev:'',on:false,karaoke:false});
 function apply(s){
   srv=content(s);S=s;staleRev='';
   if(open>=S.scenes.length)open=S.scenes.length-1;
@@ -1458,9 +1524,9 @@ async function sync(rev){
   syncing=true;
   try{
     const s=await getEvent();
-    if(content(s)===srv){S.rev=s.rev;S.on=s.on;renderMode()}  // only switched on/off or restarted
+    if(content(s)===srv){S.rev=s.rev;S.on=s.on;S.karaoke=s.karaoke;renderMode()}  // only switched on/off or restarted
     else if(!dirty())apply(s);
-    else{staleRev=s.rev;S.on=s.on;renderMode();$('evStale').hidden=false}
+    else{staleRev=s.rev;S.on=s.on;S.karaoke=s.karaoke;renderMode();$('evStale').hidden=false}
   }catch(e){}
   syncing=false;
 }
@@ -1496,7 +1562,144 @@ return {
   hide(){setPlaying(false)},
   sync,
   dirty:()=>dirty()||!!(ED&&ED.dirty),
-  setOn(on){if(S&&S.on!==on){S.on=on;renderMode()}},
+  // what the board shows: 'dep', 'event' or 'karaoke'
+  setShown(m){const on=m!=='dep',k=m==='karaoke';if(S&&(S.on!==on||!!S.karaoke!==k)){S.on=on;S.karaoke=k;renderMode()}},
+  // for the karaoke tab
+  fetchBoard,paintBoard,swatches,COLORS,
+};
+})();
+
+// ---- Karaoke tab: the list, its heading and the colours of the rows ----
+// Every change is saved at once (/api/karaoke): as a function on the list,
+// so if another device changed it meanwhile (409) it is done again on the
+// newer one.
+const KA=(()=>{
+const ROWS=4,PLAY_MS=15000,FRAME_MS=300;
+let K=null,max=30,queue=Promise.resolve(),undoTimer=0,shownNow='dep';
+const plain=k=>({title:k.title,titleColor:k.titleColor,colors:k.colors,entries:k.entries.map(e=>({name:e.name,song:e.song}))});
+const same=(a,b)=>a.name===b.name&&a.song===b.song;
+// where entry `e`, last seen at `i`, is in `k` now (-1: gone)
+function find(k,e,i){return k.entries[i]&&same(k.entries[i],e)?i:k.entries.findIndex(x=>same(x,e))}
+
+async function get(){
+  const r=await fetch('/api/karaoke',{cache:'no-store'});
+  if(!r.ok)throw new Error(await r.text());
+  return r.json();
+}
+function msg(t){$('kaMsg').textContent=t}
+function change(f){
+  queue=queue.then(async()=>{
+    for(let i=0;i<3;i++){
+      const k=plain(K);
+      if(f(k)===false){render();return false}
+      const r=await fetch('/api/karaoke?rev='+encodeURIComponent(K.rev),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(k)});
+      if(r.status===409){apply(await get());continue}
+      if(!r.ok)throw new Error(await r.text());
+      apply(await r.json());msg('');return true;
+    }
+    throw new Error('die Liste ändert sich gerade ständig, bitte nochmal');
+  }).catch(e=>{msg('Fehler: '+e.message);render();return false});
+  return queue;  // true once saved
+}
+function apply(k){K=k;max=k.max||max;render();play()}
+
+// keeps the focus (and what is being typed) when the list is drawn anew
+function render(){
+  if(!K)return;
+  const a=document.activeElement,key=a&&a.dataset.key,sel=key&&[a.selectionStart,a.selectionEnd];
+  const box=$('kaList');box.replaceChildren();
+  if(!K.entries.length)box.append(el('div',{className:'kempty',textContent:'Noch niemand eingetragen.'}));
+  K.entries.forEach((e,i)=>{
+    const shown=i<ROWS;
+    const edit=field=>{
+      const inp=el('input',{type:'text',className:field==='name'?'kn':'ks',value:e[field],maxLength:field==='name'?22:46,
+        placeholder:field==='name'?'Name':'Song',ariaLabel:field==='name'?'Name':'Song',
+        onchange:ev=>{const v=ev.target.value.trim();if(field==='name'&&!v){render();return}
+          change(k=>{const j=find(k,e,i);if(j<0)return false;k.entries[j][field]=v})}});
+      inp.dataset.key=field+i;
+      return inp;
+    };
+    const move=d=>change(k=>{const j=find(k,e,i);if(j<0||j+d<0||j+d>=k.entries.length)return false;k.entries.splice(j+d,0,...k.entries.splice(j,1))});
+    box.append(el('div',{className:'ka'+(shown?' shown':''),style:shown?'--c:'+K.colors[i]:''},
+      el('span',{className:'no',textContent:i+1}),edit('name'),edit('song'),
+      el('button',{textContent:'▲',title:'nach vorn',ariaLabel:'nach vorn',disabled:i===0,onclick:()=>move(-1)}),
+      el('button',{textContent:'▼',title:'nach hinten',ariaLabel:'nach hinten',disabled:i===K.entries.length-1,onclick:()=>move(1)}),
+      i===0?el('button',{className:'done',textContent:'✓ Fertig',title:'hat gesungen: von der Liste nehmen, alle rücken nach',onclick:()=>remove(e,i)})
+        :el('button',{className:'del',textContent:'✕',title:'von der Liste nehmen',ariaLabel:'von der Liste nehmen',onclick:()=>remove(e,i)})));
+  });
+  const full=K.entries.length>=max;
+  $('kaAddBtn').disabled=full;
+  $('kaName').placeholder=full?`Liste voll (${max})`:'Name';
+  if(document.activeElement!==$('kaTitle'))$('kaTitle').value=K.title;
+  const colors=$('kaColors');
+  if(!colors.contains(document.activeElement))colors.replaceChildren(
+    field('Farbe',EV.swatches(EV.COLORS,K.titleColor,(c,typing)=>setColor(k=>k.titleColor=c,typing))),
+    ...K.colors.map((c,i)=>field('Zeile '+(i+1),EV.swatches(EV.COLORS,c,(c,typing)=>setColor(k=>k.colors[i]=c,typing)))));
+  if(key){const b=document.querySelector(`#kaList [data-key="${key}"]`);if(b){b.focus();try{b.setSelectionRange(...sel)}catch(e){}}}
+}
+// the colour picker reports while it is moved: saved once it rests
+let colorTimer=0;
+function setColor(f,typing){
+  clearTimeout(colorTimer);
+  if(typing){f(K);colorTimer=setTimeout(()=>change(f),400);return}
+  change(f);
+}
+function remove(e,i){
+  let at=-1;
+  change(k=>{at=find(k,e,i);if(at<0)return false;k.entries.splice(at,1)}).then(ok=>{
+    if(!ok)return;
+    const u={e,j:at};
+    clearTimeout(undoTimer);
+    $('kaUndo').hidden=false;
+    $('kaUndo').replaceChildren(el('span',{textContent:`„${u.e.name}“ ist von der Liste.`}),
+      el('button',{textContent:'↶ Rückgängig',onclick:()=>{hideUndo();change(k=>{if(k.entries.length>=max)return false;k.entries.splice(Math.min(u.j,k.entries.length),0,u.e)})}}));
+    undoTimer=setTimeout(hideUndo,15000);
+  });
+}
+function hideUndo(){$('kaUndo').hidden=true}
+$('kaAdd').onsubmit=ev=>{
+  ev.preventDefault();
+  const name=$('kaName').value.trim(),song=$('kaSong').value.trim();
+  if(!name){$('kaName').focus();return}
+  $('kaName').value=$('kaSong').value='';$('kaName').focus();
+  change(k=>{if(k.entries.length>=max)return false;k.entries.push({name,song})});
+};
+$('kaTitle').onchange=e=>{const v=e.target.value.trim();change(k=>{k.title=v})};
+
+// ---- preview: after a change it plays for PLAY_MS (as on the event tab) ----
+let playFrom=0,frameTimer=0,busy=false,visible=false;
+function play(){playFrom=performance.now();if(!busy)frame()}
+async function frame(){
+  clearTimeout(frameTimer);
+  if(!visible||document.hidden)return;
+  busy=true;
+  const t0=performance.now(),ms=Math.round(t0-playFrom);
+  EV.paintBoard($('kaBoard'),await EV.fetchBoard('/api/karaoke/preview?ms='+ms,{cache:'no-store'}));
+  busy=false;
+  if(ms<PLAY_MS)frameTimer=setTimeout(frame,Math.max(0,FRAME_MS-(performance.now()-t0)));
+}
+
+function renderState(){
+  $('kaState').hidden=false;
+  $('kaState').replaceChildren(...(shownNow==='karaoke'?['Die Tafel zeigt gerade die Liste.']
+    :['Die Liste ist gerade nicht auf der Tafel.',el('button',{className:'primary',textContent:'Jetzt zeigen',onclick:()=>pick('karaoke')})]));
+}
+let started=false;
+return {
+  show(){
+    visible=true;renderState();
+    if(started){play();return}
+    started=true;
+    get().then(apply).catch(e=>msg('Laden fehlgeschlagen: '+e.message));
+  },
+  hide(){visible=false;clearTimeout(frameTimer)},
+  // changed on another device: take it over, unless something is being typed in the list
+  sync(rev){
+    if(!K||!rev||rev===K.rev)return;
+    if(document.activeElement&&document.activeElement.closest('#kaList'))return;
+    queue=queue.then(async()=>{const k=await get();if(k.rev!==K.rev)apply(k)}).catch(()=>{});
+  },
+  setShown(m){shownNow=m;if(visible)renderState()},
 };
 })();
 
@@ -1506,11 +1709,14 @@ function showTab(){
   const want=location.hash.slice(1),t=want&&$('t-'+want)?want:'jetzt';
   if(t===tab)return;
   if(tab==='event')EV.hide();
+  if(tab==='karaoke')KA.hide();
   tab=t;
   for(const d of document.querySelectorAll('.tab'))d.hidden=d.id!=='t-'+t;
   for(const a of $('tabs').children)a.classList.toggle('on',a.hash==='#'+t);
   $('setBar').hidden=t==='event';$('evBar').hidden=t!=='event';
+  document.querySelector('footer').hidden=t==='karaoke';  // saves each change at once
   if(t==='event')EV.show();
+  if(t==='karaoke')KA.show();
   scrollTo(0,0);
 }
 addEventListener('hashchange',showTab);

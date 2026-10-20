@@ -136,6 +136,8 @@ void loop() {
   static Event event;
   static uint32_t evVersion = 0;
   static uint32_t eventStartMs = 0;
+  static Karaoke karaoke;
+  static uint32_t kVersion = 0;
   static Event test;  // a scene tested from the event page, EVENT_TEST_S long
   static uint32_t testVersion = 0;
   static uint32_t testStartMs = 0;
@@ -156,6 +158,7 @@ void loop() {
     eventStartMs = millis();
     testing = false;
   }
+  karaokeFetch(karaoke, kVersion);
   if (eventTestFetch(test.scenes[0], testing, testVersion)) testStartMs = millis();
   if (testing && millis() - testStartMs >= EVENT_TEST_S * 1000UL) testing = false;
   if (testing) {
@@ -177,8 +180,10 @@ void loop() {
   st.updating = updateRunning();
   uint32_t ms = millis();
   const Race* r = racing ? &race : nullptr;
-  bool dark = testing ? displayRender(local, settings, test, st, time(nullptr), ms, ms - testStartMs, r, ms - raceStartMs)
-                      : displayRender(local, settings, event, st, time(nullptr), ms, ms - eventStartMs, r, ms - raceStartMs);
+  bool dark = testing ? displayRender(local, settings, test, karaoke, st, time(nullptr), ms, ms - testStartMs, r,
+                                      ms - raceStartMs)
+                      : displayRender(local, settings, event, karaoke, st, time(nullptr), ms, ms - eventStartMs, r,
+                                      ms - raceStartMs);
   // a fixed frame rate however long the frame took (off time: nothing to
   // draw); if one took longer than that, wait a tick anyway and go on from now
   static TickType_t lastWake = xTaskGetTickCount();

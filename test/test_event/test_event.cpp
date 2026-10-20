@@ -60,6 +60,7 @@ void test_scene_at() {
 void test_json_roundtrip() {
   eventDefaults(e);
   e.on = true;
+  e.karaoke = true;
   e.brightness = 42;
   e.nScenes = 2;
   Scene& sc = e.scenes[1];
@@ -94,6 +95,7 @@ void test_json_roundtrip() {
   TEST_ASSERT_TRUE(eventFromJson(doc.as<JsonVariantConst>(), t));
 
   TEST_ASSERT_TRUE(t.on);
+  TEST_ASSERT_TRUE(t.karaoke);
   TEST_ASSERT_EQUAL(42, t.brightness);
   TEST_ASSERT_EQUAL(2, t.nScenes);
   TEST_ASSERT_EQUAL_STRING(e.scenes[0].name, t.scenes[0].name);

@@ -47,6 +47,7 @@ Schriesheim Bahnhof                     10:42
 - **Nachtruhe:** nachts schaltet sich die Tafel ab, am späten Abend wird sie dunkler.
 - **Event-Modus:** Für eine Party oder einen besonderen Abend übernimmt die Tafel auf Knopfdruck
   ganz eigene Texte und Bilder in Farbe, bis man sie wieder auf die Abfahrten zurückschaltet.
+- **Karaoke-Liste:** Beim Karaoke-Abend zeigt die Tafel, wer als Nächstes singt und was.
 - **Leicht zu ändern:** Nachrichten, Symbole, Helligkeit und Zeiten lassen sich von jedem
   Handy, Tablet oder Laptop im Mitarbeiter-WLAN des Cafés ändern, ganz ohne Kabel.
 - **Kümmert sich um sich selbst:** nach WLAN-Problemen verbindet sie sich neu, und Updates
@@ -69,7 +70,8 @@ Lange Ziele laufen durch (Pause, bis zum Ende schieben, Pause, zurückspringen).
 Schriften und Layout stehen oben in `src/render.cpp`. Um ein Layout ohne Hardware anzusehen,
 `tools/preview/run.sh` ausführen; es schreibt `tools/preview/preview.png`, die Bilder der
 Abfahrtsanimation nach `tools/preview/preview_anim.png`, Beispiele des Event-Modus nach
-`tools/preview/preview_event.png` und ein Bahnrennen nach `tools/preview/preview_race.png`.
+`tools/preview/preview_event.png`, ein Bahnrennen nach `tools/preview/preview_race.png` und die
+Karaoke-Liste nach `tools/preview/preview_karaoke.png`.
 
 ## Datenquelle
 
@@ -166,15 +168,16 @@ CI nur Builds, die die Tests bestehen.
 ### Einstellungsseite
 
 `http://abfahrtstafel.local` (oder die IP aus dem seriellen Log) von einem beliebigen Gerät im
-selben WLAN öffnen. Es gibt kein Login. Die Seite hat fünf Tabs; der offene steht in der Adresse
+selben WLAN öffnen. Es gibt kein Login. Die Seite hat sechs Tabs; der offene steht in der Adresse
 (`/#zeitplan`), so lässt sich jeder direkt aufrufen:
 
-- **Jetzt**: *Was zeigt die Tafel?* – *Abfahrten* oder *Event*, immer eins davon, gilt sofort,
+- **Jetzt**: *Was zeigt die Tafel?* – *Abfahrten*, *Event* oder *Karaoke*, immer eins davon, gilt sofort,
   ohne Speichern. Darunter *Zwischendurch* mit dem Knopf für ein **Bahnrennen**: Es unterbricht
   die Tafel nur, die Auswahl oben steht so lange auf „unterbrochen“.
 - **Tafel**: 4. Zeile, Promos und Icons.
 - **Zeitplan**: Ruhezeit und Helligkeit.
 - **Event**: Szenen, Bilder und Helligkeit des Events (siehe *Event-Modus*).
+- **Karaoke**: die Karaoke-Liste (siehe *Karaoke*).
 - **Technik**: Abfahrts-Animation, WLAN, Log, Neustart.
 
 Im Einzelnen:
@@ -293,6 +296,23 @@ allerersten Start mit dieser Firmware formatiert die Tafel die Partition einmal.
 `eventToJson` in `src/event.cpp`, `FileHeader` in `src/image_store.cpp`. Beim Start lädt die
 Tafel alle Bilder ins PSRAM.
 
+### Karaoke
+
+*Karaoke* unter **Jetzt** zeigt statt der Szenen die Karaoke-Liste; sonst gilt alles wie im
+Event-Modus (keine Abfahrten, keine Ruhezeit, die Helligkeit des Events). Die Tafel hat dann wie
+bei den Abfahrten eine Überschrift (frei wählbar, leer lassen geht auch) und darunter die ersten
+4 Einträge, Name links, Song daneben; zu lange laufen hin und her. Stehen mehr auf der Liste,
+zeigt die Überschrift rechts „+N weitere“.
+
+Auf dem Tab **Karaoke** (`/#karaoke`) trägt man bis zu 30 Namen mit Song ein, ändert sie direkt
+in der Liste, schiebt sie mit ▲/▼ um und nimmt sie mit ✕ heraus; beim ersten heißt der Knopf
+**✓ Fertig**, danach rücken alle nach (für 15 s gibt es *Rückgängig*). Die Farben gehören zu den
+4 Zeilen der Tafel und zur Überschrift, nicht zu den Namen: Wer nachrückt, bekommt die Farbe
+seiner neuen Zeile. Jede Änderung speichert sofort (`POST /api/karaoke`, als `/karaoke.json` im
+selben Dateisystem wie das Event); hat ein anderes Gerät die Liste inzwischen geändert, wiederholt
+die Seite die Änderung auf der neuen Liste, so gehen gleichzeitige Einträge nicht verloren.
+Format: `karaokeToJson` in `src/karaoke.cpp`.
+
 ### Tests (Parser, laufen auf dem Mac)
 
 ```bash
@@ -343,8 +363,10 @@ vorher einmal `sudo xcodebuild -license` aus.
 | `src/settings_store.cpp` | Einstellungen im Flash (LittleFS), Übergabe an die Render-Schleife |
 | `src/web.cpp`, `src/web/index.html` | die Webseite (alle Tabs, auch der Event-Editor) und ihre JSON-API; `tools/web_assets.py` packt sie beim Build per gzip in die Firmware |
 | `src/event.cpp` | Event-Modus: Szenen und Zeilen, JSON (auf dem Host getestet) |
-| `src/event_store.cpp` | Event im Flash (LittleFS), Übergabe an die Render-Schleife |
+| `src/event_store.cpp` | Event und Karaoke-Liste im Flash (LittleFS), Übergabe an die Render-Schleife |
 | `src/event_render.cpp` | zeichnet die Szenen, für das Panel und die Vorschau auf der Seite |
+| `src/karaoke.cpp` | Karaoke-Liste: Einträge, Farben, JSON (auf dem Host getestet) |
+| `src/karaoke_render.cpp` | zeichnet die Karaoke-Liste, für das Panel und die Vorschau auf der Seite |
 | `src/image_store.cpp` | Pixelbilder des Events im Flash (LittleFS) und PSRAM |
 | `src/updater.cpp` | Firmware-Update aus den GitHub-Releases |
 | `src/icons.cpp` | eingebaute Promo-Symbole |

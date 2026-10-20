@@ -70,20 +70,19 @@ int eventSceneAt(const Event& e, uint32_t ms, uint32_t& sceneMs) {
 
 // ---- JSON ----------------------------------------------------------------------
 
-static void copyText(char* out, size_t outSize, const char* in) {
+void copyText(char* out, size_t outSize, const char* in) {
   char tmp[128];
   snprintf(tmp, sizeof(tmp), "%s", in ? in : "");
   sanitizeUtf8(tmp, out, outSize);
 }
 
-static void colorToJson(uint32_t rgb, JsonObject o, const char* key) {
+void colorToJson(uint32_t rgb, JsonObject o, const char* key) {
   char t[8];
   snprintf(t, sizeof(t), "#%06lx", (unsigned long)(rgb & 0xFFFFFF));
   o[key] = (const char*)t;
 }
 
-// "#rrggbb" -> 0xRRGGBB, `def` if missing or malformed
-static uint32_t colorFromJson(JsonVariantConst v, uint32_t def) {
+uint32_t colorFromJson(JsonVariantConst v, uint32_t def) {
   const char* s = v;
   if (!s || s[0] != '#' || strlen(s) != 7) return def;
   char* end;
@@ -128,6 +127,7 @@ void sceneToJson(const Scene& sc, JsonObject out) {
 
 void eventToJson(const Event& e, JsonObject out) {
   out["on"] = e.on;
+  out["karaoke"] = e.karaoke;
   out["brightnessPct"] = e.brightness;
   JsonArray scenes = out["scenes"].to<JsonArray>();
   for (int i = 0; i < e.nScenes; i++) sceneToJson(e.scenes[i], scenes.add<JsonObject>());
@@ -162,6 +162,7 @@ bool eventFromJson(JsonVariantConst in, Event& e) {
   eventDefaults(e);
   if (!in.is<JsonObjectConst>()) return false;
   e.on = in["on"] | e.on;
+  e.karaoke = in["karaoke"] | e.karaoke;
   e.brightness = (uint8_t)clampU(in["brightnessPct"], 1, 100, e.brightness);
   if (in["scenes"].is<JsonArrayConst>()) {
     e.nScenes = 0;

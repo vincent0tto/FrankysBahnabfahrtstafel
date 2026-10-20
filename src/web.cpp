@@ -10,6 +10,7 @@
 #include "event_render.h"
 #include "event_store.h"
 #include "image_store.h"
+#include "karaoke_render.h"
 #include "log.h"
 #include "net.h"
 #include "parse.h"
@@ -18,7 +19,7 @@
 #include "updater.h"
 #include "web_assets.h"  // generated from src/web/ by tools/web_assets.py
 
-static const size_t MAX_BODY = 16384;  // a full settings JSON is ~5 KB, an event up to ~8 KB
+static const size_t MAX_BODY = 16384;  // a full settings JSON is ~5 KB, an event up to ~8 KB, karaoke ~3 KB
 
 static WebServer server(80);
 static bool started = false;
@@ -121,6 +122,7 @@ static void handleEventSave() {
     return;
   }
   e.on = eventNet().on;
+  e.karaoke = eventNet().karaoke;
   if (!eventSave(e)) {
     sendSaveFailed();
     return;
@@ -128,7 +130,8 @@ static void handleEventSave() {
   sendEvent();
 }
 
-// {"on": true|false}: switches the event mode, the scenes stay as they are.
+// {"on": true|false, "karaoke": true|false}: switches the event mode, with
+// the karaoke list instead of the scenes; those stay as they are.
 static void handleEventOn() {
   JsonDocument doc(&spiRam);
   if (!readBody(doc)) return;
@@ -139,6 +142,7 @@ static void handleEventOn() {
   Event& e = eventScratch();
   e = eventNet();
   e.on = doc["on"];
+  e.karaoke = e.on && (doc["karaoke"] | false);
   if (!eventSave(e)) {
     sendSaveFailed();
     return;
@@ -146,28 +150,55 @@ static void handleEventOn() {
   sendEvent();
 }
 
-// One scene (JSON as in the event) drawn as the board would show it ?ms=
-// after it came up: the 192 x 64 RGB565 pixels row by row, run-length
-// coded as pairs of uint16 (count, colour), little-endian. The page shows
-// that, so its preview is exact without knowing the fonts; as an animation
-// it asks every few hundred ms, the coding keeps that small (~2-6 KB).
-static void handleEventPreview() {
-  static const int N = PANEL_RES_X * PANEL_CHAIN * PANEL_RES_Y;
-  static GFXcanvas16* canvas = nullptr;  // 24 KB, in PSRAM (large mallocs go there)
-  static uint16_t* runs = nullptr;       // worst case a run per pixel
+// The board's pixels for the previews on the page, drawn by the same code
+// as on the panel. A canvas in PSRAM (large mallocs go there), cleared;
+// nullptr (and 500 sent) if there is no memory.
+static const int PREVIEW_N = PANEL_RES_X * PANEL_CHAIN * PANEL_RES_Y;
+static GFXcanvas16* previewCanvas(U8G2_FOR_ADAFRUIT_GFX*& u8out) {
+  static GFXcanvas16* canvas = nullptr;  // 24 KB
   static U8G2_FOR_ADAFRUIT_GFX u8;
   if (!canvas) {
     canvas = new GFXcanvas16(PANEL_RES_X * PANEL_CHAIN, PANEL_RES_Y);
-    runs = (uint16_t*)heap_caps_malloc(N * 4, MALLOC_CAP_SPIRAM);
-    if (!canvas->getBuffer() || !runs) {
+    if (!canvas->getBuffer()) {
       delete canvas;
       canvas = nullptr;
-      heap_caps_free(runs);
       server.send(500, "text/plain", "out of memory");
-      return;
+      return nullptr;
     }
     u8.begin(*canvas);
   }
+  canvas->fillScreen(0);
+  u8out = &u8;
+  return canvas;
+}
+
+// Sends the canvas as 192 x 64 RGB565 pixels row by row, run-length coded
+// as pairs of uint16 (count, colour), little-endian. The page shows that,
+// so its preview is exact without knowing the fonts; as an animation it
+// asks every few hundred ms, the coding keeps that small (~2-6 KB).
+static void sendPreview(GFXcanvas16& canvas) {
+  static uint16_t* runs = nullptr;  // worst case a run per pixel
+  if (!runs) runs = (uint16_t*)heap_caps_malloc(PREVIEW_N * 4, MALLOC_CAP_SPIRAM);
+  if (!runs) {
+    server.send(500, "text/plain", "out of memory");
+    return;
+  }
+  const uint16_t* px = canvas.getBuffer();
+  size_t n = 0;
+  for (int i = 0; i < PREVIEW_N;) {
+    int j = i + 1;
+    while (j < PREVIEW_N && px[j] == px[i]) j++;
+    runs[n++] = j - i;
+    runs[n++] = px[i];
+    i = j;
+  }
+  server.sendHeader("Cache-Control", "no-store");
+  server.send_P(200, "application/octet-stream", (const char*)runs, n * 2);
+}
+
+// One scene (JSON as in the event) drawn as the board would show it ?ms=
+// after it came up (sendPreview()).
+static void handleEventPreview() {
   JsonDocument doc(&spiRam);
   if (!readBody(doc)) return;
   Scene sc;
@@ -175,19 +206,11 @@ static void handleEventPreview() {
     server.send(400, "text/plain", "ungültige Daten");
     return;
   }
-  canvas->fillScreen(0);
-  renderScene(*canvas, u8, sc, strtoul(server.arg("ms").c_str(), nullptr, 10));
-  const uint16_t* px = canvas->getBuffer();
-  size_t n = 0;
-  for (int i = 0; i < N;) {
-    int j = i + 1;
-    while (j < N && px[j] == px[i]) j++;
-    runs[n++] = j - i;
-    runs[n++] = px[i];
-    i = j;
-  }
-  server.sendHeader("Cache-Control", "no-store");
-  server.send_P(200, "application/octet-stream", (const char*)runs, n * 2);
+  U8G2_FOR_ADAFRUIT_GFX* u8;
+  GFXcanvas16* canvas = previewCanvas(u8);
+  if (!canvas) return;
+  renderScene(*canvas, *u8, sc, strtoul(server.arg("ms").c_str(), nullptr, 10));
+  sendPreview(*canvas);
 }
 
 // One scene (JSON as in the event) shown on the board for EVENT_TEST_S seconds.
@@ -206,6 +229,48 @@ static void handleEventTest() {
 static void handleEventTestStop() {
   eventTestStop();
   server.send(200, "text/plain", "ok");
+}
+
+// ---- Karaoke list (src/karaoke.h) ----------------------------------------------
+
+static String karaokeRev() { return String(bootTag, HEX) + "." + String(karaokeVersion()); }
+
+static void sendKaraoke() {
+  JsonDocument doc(&spiRam);
+  karaokeToJson(karaokeNet(), doc.to<JsonObject>());
+  doc["rev"] = karaokeRev();
+  doc["max"] = MAX_KARAOKE;
+  sendJson(doc);
+}
+
+// The whole list, with ?rev= like handleSave(). The page saves after every
+// change and on 409 does it again on the newer list.
+static void handleKaraokeSave() {
+  if (server.hasArg("rev") && server.arg("rev") != karaokeRev()) {
+    sendConflict();
+    return;
+  }
+  JsonDocument doc(&spiRam);
+  if (!readBody(doc)) return;
+  Karaoke& k = karaokeScratch();
+  if (!karaokeFromJson(doc.as<JsonVariantConst>(), k)) {
+    server.send(400, "text/plain", "ungültige Daten");
+    return;
+  }
+  if (!karaokeSave(k)) {
+    sendSaveFailed();
+    return;
+  }
+  sendKaraoke();
+}
+
+// The stored list as the board shows it ?ms= on (sendPreview()).
+static void handleKaraokePreview() {
+  U8G2_FOR_ADAFRUIT_GFX* u8;
+  GFXcanvas16* canvas = previewCanvas(u8);
+  if (!canvas) return;
+  renderKaraoke(*canvas, *u8, karaokeNet(), strtoul(server.arg("ms").c_str(), nullptr, 10));
+  sendPreview(*canvas);
 }
 
 // ---- Tram race (src/race.h) --------------------------------------------------
@@ -342,7 +407,9 @@ static void handleStatus() {
   doc["uptimeS"] = millis() / 1000;
   doc["dataAgeS"] = lastFetch && timeValid() ? (long)(now - lastFetch) : -1;
   doc["rev"] = settingsRev();
-  doc["event"] = eventNet().on;
+  doc["event"] = eventNet().on && !eventNet().karaoke;
+  doc["karaoke"] = eventNet().on && eventNet().karaoke;
+  doc["karaokeRev"] = karaokeRev();
   doc["eventRev"] = eventRev();
   doc["race"] = raceRunning();
   doc["off"] = !eventNet().on && timeValid() && isOffTime(settingsNet(), minuteOfDay(now));
@@ -439,6 +506,9 @@ void webBegin() {
   server.on("/api/event/preview", HTTP_POST, handleEventPreview);
   server.on("/api/event/test", HTTP_POST, handleEventTest);
   server.on("/api/event/test/stop", HTTP_POST, handleEventTestStop);
+  server.on("/api/karaoke", HTTP_GET, sendKaraoke);
+  server.on("/api/karaoke", HTTP_POST, handleKaraokeSave);
+  server.on("/api/karaoke/preview", HTTP_GET, handleKaraokePreview);
   server.on("/api/race", HTTP_POST, handleRace);
   server.on("/api/race/stop", HTTP_POST, handleRaceStop);
   server.on("/api/images", HTTP_GET, [] { sendImages(); });

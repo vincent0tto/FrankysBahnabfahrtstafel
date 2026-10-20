@@ -1,11 +1,12 @@
 #pragma once
-// Owner of the event (src/event.h) at run time, like settings_store.h for the
+// Owner of the event (src/event.h) and the karaoke list at run time, like settings_store.h for the
 // settings: loaded from the flash file system (LittleFS on the "spiffs"
 // partition, which firmware updates don't touch) at start, changed by the
 // web page in the network task, copied by the render loop.
 #include <stdint.h>
 
 #include "event.h"
+#include "karaoke.h"
 
 // Mounts the file system (formats it on the very first start) and loads the
 // stored event (defaults if none or broken). Call once in setup().
@@ -39,6 +40,14 @@ void eventTestStop();
 // Render loop: if a test started or stopped since `version` (updated),
 // `active` tells which and `out` gets the scene to test. true if changed.
 bool eventTestFetch(Scene& out, bool& active, uint32_t& version);
+
+// The karaoke list (src/karaoke.h), the same way: loaded in eventBegin(),
+// stored as its own file, with its own version.
+const Karaoke& karaokeNet();
+bool karaokeSave(const Karaoke& k);
+uint32_t karaokeVersion();
+Karaoke& karaokeScratch();
+bool karaokeFetch(Karaoke& out, uint32_t& version);
 
 // Network task: starts the tram race (src/race.h) worked out from `seed`,
 // over everything else, or a new one if one is running; ends by itself.

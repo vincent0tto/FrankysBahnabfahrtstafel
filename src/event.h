@@ -45,6 +45,7 @@ struct Scene {
 
 struct Event {
   bool on = false;          // the board shows the scenes instead of the departures
+  bool karaoke = false;     // while on: the karaoke list (src/karaoke.h) instead of the scenes
   uint8_t brightness = 0;   // percent (1..100) of BRIGHTNESS_MAX, no dim windows
   Scene scenes[MAX_SCENES];
   uint8_t nScenes = 0;
@@ -74,3 +75,10 @@ void sceneToJson(const Scene& sc, JsonObject out);
 // clamp numbers and cut texts. false only if `in` isn't an object.
 bool eventFromJson(JsonVariantConst in, Event& e);
 bool sceneFromJson(JsonVariantConst in, Scene& sc);
+
+// Also for the karaoke list (src/karaoke.cpp): `in` sanitized into `out`
+// (nullptr: empty), a colour as "#rrggbb" under `key`, and back (`def` if
+// missing or malformed).
+void copyText(char* out, size_t outSize, const char* in);
+void colorToJson(uint32_t rgb, JsonObject o, const char* key);
+uint32_t colorFromJson(JsonVariantConst v, uint32_t def);
