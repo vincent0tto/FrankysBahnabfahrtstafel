@@ -19,9 +19,9 @@ void raceBegin(Race& r, uint32_t seed) {
   for (int i = 0; i < 4; i++) raceRand(rng);  // close seeds give different races
   bool derail = raceRand(rng) % 10 == 0;
   int derailAt = 3 + raceRand(rng) % 6;  // leader's field
-  bool ice = raceRand(rng) % 18 == 0;
+  bool ice = raceRand(rng) % 12 == 0;
   int iceLane = raceRand(rng) % RACE_LANES;
-  bool iceCancelled = raceRand(rng) % 8 == 0;
+  bool iceCancelled = raceRand(rng) % 3 == 0;
   if (ice && !derail) {
     r.iceLane = iceLane;
     r.iceCancelled = iceCancelled;

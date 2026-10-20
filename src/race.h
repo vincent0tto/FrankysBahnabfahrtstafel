@@ -2,8 +2,8 @@
 // Tram race, like the horse race at the fair: four trams (numbers 1-4, one
 // per row) move up field by field at random, now and then one back (rnv
 // trams drive both ways), until one reaches the last field. About one race
-// in ten a tram derails and stays where it is; one in 18 an ICE takes a
-// lane, waits and then runs straight to the finish (or, one time in eight,
+// in ten a tram derails and stays where it is; one in 12 an ICE takes a
+// lane, waits and then runs straight to the finish (or, one time in three,
 // is cancelled and never leaves). The whole race is worked out
 // from a seed at the start, so drawing it (src/race_render.h) needs no
 // state. No Arduino dependency, unit-tested on the host.
@@ -43,8 +43,8 @@ struct Race {
 // field), so each has the same chance and there is always one winner. A
 // race takes ~30 s on average. In 1 of 10 races, once the leader is on
 // field 3-8, a random tram derails; it moves no more and ranks last.
-// Otherwise in 1 of 18 an ICE takes a random lane: it stands until the
-// leader is half-way, then runs to the finish in one go and wins; in 1 of 8
+// Otherwise in 1 of 12 an ICE takes a random lane: it stands until the
+// leader is half-way, then runs to the finish in one go and wins; in 1 of 3
 // of those it is cancelled instead, stands all race and ranks last.
 void raceBegin(Race& r, uint32_t seed);
 

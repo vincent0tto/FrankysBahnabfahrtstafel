@@ -78,7 +78,7 @@ void test_same_seed_same_race() {
 
 // Every number has the same chance (people bet on it), also to derail or
 // be the ICE; ~30 s on average, a derailment in about every 10th race, an
-// ICE in every 18th, one in 8 of them cancelled.
+// ICE in every 12th, one in 3 of them cancelled.
 void test_fair_and_about_30s() {
   const int N = 20000;
   int wins[RACE_LANES] = {}, derails[RACE_LANES] = {}, nDerail = 0, ices[RACE_LANES] = {}, nIce = 0, nCancelled = 0;
@@ -94,8 +94,8 @@ void test_fair_and_about_30s() {
   for (int i = 0; i < RACE_LANES; i++) TEST_ASSERT_INT_WITHIN(nDerail / 8, nDerail / 4, derails[i]);
   TEST_ASSERT_INT_WITHIN(N / 50, N / 10, nDerail);
   for (int i = 0; i < RACE_LANES; i++) TEST_ASSERT_INT_WITHIN(nIce / 6, nIce / 4, ices[i]);
-  TEST_ASSERT_INT_WITHIN(N / 100, N * 9 / 10 / 18, nIce);  // not with a derailment
-  TEST_ASSERT_INT_WITHIN(nIce / 20, nIce / 8, nCancelled);
+  TEST_ASSERT_INT_WITHIN(N / 100, N * 9 / 10 / 12, nIce);  // not with a derailment
+  TEST_ASSERT_INT_WITHIN(nIce / 20, nIce / 3, nCancelled);
   TEST_ASSERT_INT_WITHIN(4000, 30000, (int)(sum / N));
 }
 
