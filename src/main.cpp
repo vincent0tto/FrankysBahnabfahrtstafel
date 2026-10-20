@@ -179,5 +179,11 @@ void loop() {
   const Race* r = racing ? &race : nullptr;
   bool dark = testing ? displayRender(local, settings, test, st, time(nullptr), ms, ms - testStartMs, r, ms - raceStartMs)
                       : displayRender(local, settings, event, st, time(nullptr), ms, ms - eventStartMs, r, ms - raceStartMs);
-  delay(dark ? 500 : 33);  // off time: nothing to draw
+  // a fixed frame rate however long the frame took (off time: nothing to
+  // draw); if one took longer than that, wait a tick anyway and go on from now
+  static TickType_t lastWake = xTaskGetTickCount();
+  if (xTaskDelayUntil(&lastWake, pdMS_TO_TICKS(dark ? 500 : 33)) == pdFALSE) {
+    vTaskDelay(1);
+    lastWake = xTaskGetTickCount();
+  }
 }

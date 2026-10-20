@@ -44,6 +44,26 @@ static void sendJson(JsonDocument& doc) {
   heap_caps_free(buf);
 }
 
+// Parses the request body into `doc`; sends the error and returns false if it can't.
+static bool readBody(JsonDocument& doc) {
+  const String& body = server.arg("plain");
+  if (body.length() == 0 || body.length() > MAX_BODY) {
+    server.send(400, "text/plain", "leere oder zu große Anfrage");
+    return false;
+  }
+  DeserializationError err = deserializeJson(doc, body);
+  if (err) {
+    server.send(400, "text/plain", String("ungültige Daten: ") + err.c_str());
+    return false;
+  }
+  return true;
+}
+
+static void sendConflict() { server.send(409, "text/plain", "inzwischen auf einem anderen Gerät geändert"); }
+static void sendSaveFailed() {
+  server.send(500, "text/plain", "Speichern im Flash fehlgeschlagen (gilt bis zum Neustart)");
+}
+
 // Changes with every save and every start. The page compares it (via
 // /api/status) to notice changes made on another device, and sends it along
 // when saving, so it cannot overwrite those unseen.
@@ -57,25 +77,20 @@ static void sendSettings() {
 }
 
 static void handleSave() {
-  const String& body = server.arg("plain");
-  if (body.length() == 0 || body.length() > MAX_BODY) {
-    server.send(400, "text/plain", "leere oder zu große Anfrage");
-    return;
-  }
   // without ?rev= (a page from older firmware, or "save anyway") it just saves
   if (server.hasArg("rev") && server.arg("rev") != settingsRev()) {
-    server.send(409, "text/plain", "inzwischen auf einem anderen Gerät geändert");
+    sendConflict();
     return;
   }
   JsonDocument doc(&spiRam);
-  DeserializationError err = deserializeJson(doc, body);
+  if (!readBody(doc)) return;
   Settings& s = settingsScratch();
-  if (err || !settingsFromJson(doc.as<JsonVariantConst>(), s)) {
-    server.send(400, "text/plain", String("ungültige Daten: ") + err.c_str());
+  if (!settingsFromJson(doc.as<JsonVariantConst>(), s)) {
+    server.send(400, "text/plain", "ungültige Daten");
     return;
   }
   if (!settingsSave(s)) {
-    server.send(500, "text/plain", "Speichern im Flash fehlgeschlagen (gilt bis zum Neustart)");
+    sendSaveFailed();
     return;
   }
   sendSettings();  // the cleaned-up version, so the page shows what is in use
@@ -93,26 +108,11 @@ static void sendEvent() {
   sendJson(doc);
 }
 
-// Parses the request body into `doc`; sends the error and returns false if it can't.
-static bool readBody(JsonDocument& doc) {
-  const String& body = server.arg("plain");
-  if (body.length() == 0 || body.length() > MAX_BODY) {
-    server.send(400, "text/plain", "leere oder zu große Anfrage");
-    return false;
-  }
-  DeserializationError err = deserializeJson(doc, body);
-  if (err) {
-    server.send(400, "text/plain", String("ungültige Daten: ") + err.c_str());
-    return false;
-  }
-  return true;
-}
-
 // The scenes and brightness from the event page, with ?rev= like
 // handleSave(). Whether it is on stays as it is (/api/event/on).
 static void handleEventSave() {
   if (server.hasArg("rev") && server.arg("rev") != eventRev()) {
-    server.send(409, "text/plain", "inzwischen auf einem anderen Gerät geändert");
+    sendConflict();
     return;
   }
   JsonDocument doc(&spiRam);
@@ -124,7 +124,7 @@ static void handleEventSave() {
   }
   e.on = eventNet().on;
   if (!eventSave(e)) {
-    server.send(500, "text/plain", "Speichern im Flash fehlgeschlagen (gilt bis zum Neustart)");
+    sendSaveFailed();
     return;
   }
   sendEvent();
@@ -142,7 +142,7 @@ static void handleEventOn() {
   e = eventNet();
   e.on = doc["on"];
   if (!eventSave(e)) {
-    server.send(500, "text/plain", "Speichern im Flash fehlgeschlagen (gilt bis zum Neustart)");
+    sendSaveFailed();
     return;
   }
   sendEvent();

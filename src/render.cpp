@@ -9,6 +9,7 @@
 #include "depart_anim.h"
 #include "icons.h"
 #include "parse.h"
+#include "ping_pong.h"
 
 // ---- Layout (192 x 64) ------------------------------------------------------
 // y values are text baselines.
@@ -26,7 +27,6 @@ static const int COL_GAP = 6;            // between line / destination / time
 #define FONT_ROW    u8g2_font_t0_13b_tf
 
 // Destination scrolling: wait, scroll to the end, wait, jump back.
-static const uint32_t DEST_PAUSE_MS = 2500;
 static const int DEST_SPEED_PX_S = 13;
 
 static int ROW_ASCENT, ROW_DESCENT;  // set per frame from the font
@@ -80,17 +80,6 @@ static uint16_t grayColor(uint8_t pct) {
   if (r == 0) r = 1;
   if (g == 0) g = 1;
   return r << 11 | g << 5 | r;
-}
-
-// Pixel offset for a text that is `overflow` px wider than its box.
-static int pingPongOffset(int overflow, uint32_t ms) {
-  uint32_t scrollMs = (uint32_t)overflow * 1000 / DEST_SPEED_PX_S;
-  uint32_t period = DEST_PAUSE_MS + scrollMs + DEST_PAUSE_MS;
-  uint32_t t = ms % period;
-  if (t < DEST_PAUSE_MS) return 0;
-  t -= DEST_PAUSE_MS;
-  if (t < scrollMs) return (int)(t * DEST_SPEED_PX_S / 1000);
-  return overflow;
 }
 
 // ---- Departure animation -----------------------------------------------------
@@ -345,7 +334,7 @@ static void drawPromo(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color
   int box = W - 2 * MARGIN_X;
   int x;
   if (scroll) x = W - MARGIN_X - (int)((uint64_t)t * TICKER_SPEED_PX_S / 1000 % (tw + box));
-  else x = tw <= box ? (W - tw) / 2 : MARGIN_X - pingPongOffset(tw - box, ms);
+  else x = tw <= box ? (W - tw) / 2 : MARGIN_X - pingPongOffset(tw - box, DEST_SPEED_PX_S, ms);
   if (ic) {
     drawIcon(g, color, ic, x, base);
     x += ic.w + (p.text[0] ? ICON_GAP : 0);
@@ -363,7 +352,7 @@ static void drawPromoDep(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t co
                          const Promo& p, int lineW, int destX, uint32_t ms) {
   int rightX = W - MARGIN_X - width(u8, p.right);
   int overflow = width(u8, p.text) - (rightX - COL_GAP - destX);
-  int off = overflow > 0 ? pingPongOffset(overflow, ms) : 0;
+  int off = overflow > 0 ? pingPongOffset(overflow, DEST_SPEED_PX_S, ms) : 0;
   u8.drawUTF8(destX - off, base, p.text);
   clipRow(g, base, destX, rightX - COL_GAP);
   int lineX = MARGIN_X + lineW - promoLineWidth(u8, s, p);  // right-aligned like line numbers
@@ -515,7 +504,7 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
         if (rightX[i] - COL_GAP < destEnd[i]) destEnd[i] = rightX[i] - COL_GAP;
       }
       int overflow = width(u8, rows[i]->dest) - (destEnd[i] - destX);
-      int off = overflow > 0 ? pingPongOffset(overflow, ms) : 0;
+      int off = overflow > 0 ? pingPongOffset(overflow, DEST_SPEED_PX_S, ms) : 0;
       u8.drawUTF8(destX - off, rowBase(i), rows[i]->dest);
     }
     for (int i = 0; i < n; i++) clipRow(g, rowBase(i), destX, destEnd[i]);

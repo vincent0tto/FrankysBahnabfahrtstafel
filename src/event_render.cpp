@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include "config.h"
+#include "ping_pong.h"
 
 static const int W = PANEL_RES_X * PANEL_CHAIN;
 static const int H = PANEL_RES_Y;
@@ -17,21 +18,11 @@ static const uint8_t* const FONTS[] = {
 };
 static const int WAVE_PX[] = {1, 2, 3, 4};  // TextSize order
 
-// Too long texts: wait, scroll to the end, wait, jump back (as the
-// destinations in src/render.cpp).
-static const uint32_t PAUSE_MS = 2500;
+// Too long texts ping-pong (src/ping_pong.h) at this speed
 static const int SPEED_PX_S = 20;
 
 // Typewriter: the whole text stays this long before it starts again
 static const uint32_t TYPE_HOLD_MS = 2500;
-
-static int pingPongOffset(int overflow, uint32_t ms) {
-  uint32_t scrollMs = (uint32_t)overflow * 1000 / SPEED_PX_S;
-  uint32_t t = ms % (PAUSE_MS + scrollMs + PAUSE_MS);
-  if (t < PAUSE_MS) return 0;
-  t -= PAUSE_MS;
-  return t < scrollMs ? (int)(t * SPEED_PX_S / 1000) : overflow;
-}
 
 // Next character of UTF-8 `p` (the texts are sanitized: at most 3 bytes).
 static uint16_t nextChar(const char*& p) {
@@ -70,7 +61,7 @@ static void drawLine(U8G2_FOR_ADAFRUIT_GFX& u8, const EventLine& l, uint32_t ms)
   int box = W - 2 * MARGIN;
   int x;
   if (l.anim == Anim::Scroll) x = W - (int)((uint64_t)ms * (10 + 4 * sp) / 1000 % (tw + W));
-  else if (tw > box) x = MARGIN - pingPongOffset(tw - box, ms);
+  else if (tw > box) x = MARGIN - pingPongOffset(tw - box, SPEED_PX_S, ms);
   else if (l.h == HAlign::Left) x = MARGIN;
   else if (l.h == HAlign::Right) x = W - MARGIN - tw;
   else x = (W - tw) / 2;
