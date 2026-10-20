@@ -1,12 +1,4 @@
-#pragma once
-// The event page served by src/web.cpp at "/event": switches the event mode
-// and edits its scenes and pixel images. Talks to /api/event, /api/event/on,
-// /api/event/preview, /api/event/test(/stop), /api/images, /api/image and
-// /api/status (JSON, format: eventToJson in src/event.cpp; images:
-// src/web.cpp).
-#include <pgmspace.h>
-
-static const char WEB_EVENT_PAGE[] PROGMEM = R"rawliteral(<!doctype html>
+<!doctype html>
 <html lang="de">
 <head>
 <meta charset="utf-8">
@@ -899,4 +891,3 @@ status();setInterval(()=>{if(!document.hidden)status()},15000);
 </script>
 </body>
 </html>
-)rawliteral";

@@ -16,9 +16,7 @@
 #include "psram_alloc.h"
 #include "settings_store.h"
 #include "updater.h"
-#include "web_event_page.h"
-#include "web_icon.h"
-#include "web_page.h"
+#include "web_assets.h"  // generated from src/web/ by tools/web_assets.py
 
 static const size_t MAX_BODY = 16384;  // a full settings JSON is ~5 KB, an event up to ~8 KB
 
@@ -411,13 +409,17 @@ static void sendIcon() {
   server.send_P(200, "image/png", (PGM_P)WEB_ICON_PNG, sizeof(WEB_ICON_PNG));
 }
 
+// A page from src/web/, stored gzipped; every browser unpacks that itself.
+static void sendPage(const uint8_t* gz, size_t len) {
+  server.sendHeader("Cache-Control", "no-store");  // always the page of the running firmware
+  server.sendHeader("Content-Encoding", "gzip");
+  server.send_P(200, "text/html; charset=utf-8", (PGM_P)gz, len);
+}
+
 void webBegin() {
   if (started) return;
   bootTag = esp_random();  // WiFi is up, so this is truly random
-  server.on("/", HTTP_GET, [] {
-    server.sendHeader("Cache-Control", "no-store");  // always the page of the running firmware
-    server.send_P(200, "text/html; charset=utf-8", WEB_PAGE);
-  });
+  server.on("/", HTTP_GET, [] { sendPage(WEB_PAGE_GZ, sizeof(WEB_PAGE_GZ)); });
   for (const char* path : {"/favicon.png", "/favicon.ico", "/apple-touch-icon.png", "/apple-touch-icon-precomposed.png"}) {
     server.on(path, HTTP_GET, sendIcon);
   }
@@ -427,10 +429,7 @@ void webBegin() {
   server.on("/api/restart", HTTP_POST, handleRestart);
   server.on("/api/wifi", HTTP_POST, handleWifi);
   server.on("/api/log", HTTP_GET, handleLog);
-  server.on("/event", HTTP_GET, [] {
-    server.sendHeader("Cache-Control", "no-store");
-    server.send_P(200, "text/html; charset=utf-8", WEB_EVENT_PAGE);
-  });
+  server.on("/event", HTTP_GET, [] { sendPage(WEB_EVENT_PAGE_GZ, sizeof(WEB_EVENT_PAGE_GZ)); });
   server.on("/api/event", HTTP_GET, sendEvent);
   server.on("/api/event", HTTP_POST, handleEventSave);
   server.on("/api/event/on", HTTP_POST, handleEventOn);

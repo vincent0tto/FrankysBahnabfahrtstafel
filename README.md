@@ -329,12 +329,12 @@ vorher einmal `sudo xcodebuild -license` aus.
 | `src/net.cpp` | WLAN-Watchdog, NTP, OTA |
 | `src/settings.cpp` | Einstellungen zur Laufzeit: Standardwerte, Zeitfenster, JSON (auf dem Host getestet) |
 | `src/settings_store.cpp` | Einstellungen im Flash (NVS), Übergabe an die Render-Schleife |
-| `src/web.cpp`, `src/web_page.h` | Einstellungsseite und ihre JSON-API |
+| `src/web.cpp`, `src/web/index.html` | Einstellungsseite und ihre JSON-API |
 | `src/event.cpp` | Event-Modus: Szenen und Zeilen, JSON (auf dem Host getestet) |
 | `src/event_store.cpp` | Event im Flash (LittleFS), Übergabe an die Render-Schleife |
 | `src/event_render.cpp` | zeichnet die Szenen, für das Panel und die Vorschau auf der Seite |
 | `src/image_store.cpp` | Pixelbilder des Events im Flash (LittleFS) und PSRAM |
-| `src/web_event_page.h` | Event-Seite (`/event`) |
+| `src/web/event.html` | Event-Seite (`/event`); beide Seiten packt `tools/web_assets.py` beim Build per gzip in die Firmware |
 | `src/updater.cpp` | Firmware-Update aus den GitHub-Releases |
 | `src/icons.cpp` | eingebaute Promo-Symbole |
 | `src/render.cpp` | rnv-Layout, Laufschrift, Statusbildschirme |

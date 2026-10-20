@@ -1,10 +1,4 @@
-#pragma once
-// The settings page served by src/web.cpp at "/". Talks to /api/settings
-// /api/status, /api/restart, /api/wifi, /api/log, /api/event/on and /api/race (JSON, format: settingsToJson in
-// src/settings.cpp). The event mode has a page of its own (src/web_event_page.h).
-#include <pgmspace.h>
-
-static const char WEB_PAGE[] PROGMEM = R"rawliteral(<!doctype html>
+<!doctype html>
 <html lang="de">
 <head>
 <meta charset="utf-8">
@@ -644,4 +638,3 @@ status();setInterval(()=>{if(!document.hidden)status()},15000);
 </script>
 </body>
 </html>
-)rawliteral";
