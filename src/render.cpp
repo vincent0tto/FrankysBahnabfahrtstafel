@@ -452,8 +452,11 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
                                    haveDisruption ? disruption : nullptr,
                                    haveDisruption ? width(u8, disruption) : 0, minute, day, ms);
   bool showDisruption = promoMsg && promo.disruption;
-  const int nLineW = n;  // the hidden 4th row still reserves its line width
+  // the hidden 4th row still reserves its line width, unless with
+  // promoFullRow the row belongs to the promos anyway
+  int nLineW = n;
   if (promoMsg && n > MAX_ROWS) n = MAX_ROWS;
+  if (s.promoFullRow) nLineW = n;
   bool promoIsDep = promoMsg && !showDisruption && !promo.scroll && isPromoDep(promo.item);
 
   // Now and then the time column shows the platforms instead (also for
