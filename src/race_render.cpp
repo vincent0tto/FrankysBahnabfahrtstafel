@@ -23,6 +23,7 @@ static const int PIVOT = 31;        // the tram's articulation column
 #define FONT_NUM   u8g2_font_t0_13b_tf
 #define FONT_COUNT u8g2_font_logisoso38_tf
 #define FONT_WIN   u8g2_font_helvB14_tf
+#define FONT_WIN_S u8g2_font_helvB10_tf  // when the winner's line is too wide
 
 static uint16_t rgb565(uint32_t rgb) {
   return ((rgb >> 8) & 0xF800) | ((rgb >> 5) & 0x07E0) | ((rgb >> 3) & 0x1F);
@@ -84,9 +85,12 @@ static void drawIce(Adafruit_GFX& g, int nose, int bottom, int clipL, int clipT,
   drawTrain(g, ICE_ROWS, ICE_W, rgb565(ICE_RGB), rgb565(ICE_STRIPE_RGB), nose, bottom, 0, clipL, clipT, clipB);
 }
 
-// Colour and name of a lane's train: the ICE is "ICE 3".
+// Colour and name of a lane's train: "Bahn 3", the ICE always "FRANKY'S ICE".
 static uint16_t laneColor(const Race& r, int lane) { return rgb565(lane == r.iceLane ? ICE_RGB : LANE_RGB[lane]); }
-static const char* laneName(const Race& r, int lane) { return lane == r.iceLane ? "ICE" : "Bahn"; }
+static void laneName(const Race& r, int lane, char* s, size_t n) {
+  if (lane == r.iceLane) snprintf(s, n, "FRANKY'S ICE");
+  else snprintf(s, n, "Bahn %d", lane + 1);
+}
 
 static void centeredText(U8G2_FOR_ADAFRUIT_GFX& u8, int x0, int x1, int base, const char* s) {
   u8.drawUTF8(x0 + (x1 - x0 - u8.getUTF8Width(s) + 1) / 2, base, s);
@@ -192,9 +196,11 @@ static void drawWinner(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Race& r
     int cy = 10 + raceRand(rng) % 12;
     drawBurst(g, rgb565(LANE_RGB[b % RACE_LANES]), cx, cy, age);
   }
-  char text[24];
-  snprintf(text, sizeof(text), "%s %d gewinnt!", laneName(r, r.winner), r.winner + 1);
+  char name[16], text[32];
+  laneName(r, r.winner, name, sizeof(name));
+  snprintf(text, sizeof(text), "%s gewinnt!", name);
   u8.setFont(FONT_WIN);
+  if (u8.getUTF8Width(text) > W - 8) u8.setFont(FONT_WIN_S);
   u8.setForegroundColor(c);
   int tw = u8.getUTF8Width(text), base = 44, asc = u8.getFontAscent();
   g.fillRect((W - tw) / 2 - 3, base - asc - 3, tw + 6, asc + 6, 0);
@@ -217,7 +223,7 @@ static void drawRanking(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t col
     snprintf(s, sizeof(s), "%d.", i + 1);
     u8.setForegroundColor(color);
     u8.drawUTF8(6, base, s);
-    snprintf(s, sizeof(s), "%s %d", laneName(r, lane), lane + 1);
+    laneName(r, lane, s, sizeof(s));
     u8.setForegroundColor(laneColor(r, lane));
     u8.drawUTF8(30, base, s);
     bool out = lane == r.derailLane || (lane == r.iceLane && r.iceCancelled);

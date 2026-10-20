@@ -38,7 +38,7 @@ Schriesheim Bahnhof                     10:42
   wenn er abfährt.
 - **Bahnrennen:** wie das Pferderennen auf der Kirmes. Auf Knopfdruck fahren vier bunte
   Bahnen mit den Nummern 1–4 zufällig Feld für Feld über 12 Felder, manchmal auch eins zurück.
-  Etwa jedes zehnte Rennen entgleist eine Bahn und bleibt stehen, und ab und zu ersetzt ein ICE
+  Etwa jedes zehnte Rennen entgleist eine Bahn und bleibt stehen, und ab und zu ersetzt FRANKY'S ICE
   eine Bahn: Er wartet, bis die anderen halb durch sind, und rauscht dann ins Ziel – wenn er
   nicht ausfällt. Wer zuerst im Ziel ist,
   gewinnt und bekommt eine Ehrenrunde mit Feuerwerk, danach kommt kurz die Rangliste. Setzen
