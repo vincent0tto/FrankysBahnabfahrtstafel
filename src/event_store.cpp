@@ -6,6 +6,7 @@
 #include <new>
 
 #include "log.h"
+#include "race.h"
 #include "psram_alloc.h"
 
 static const char* const EVENT_FILE = "/event.json";
@@ -16,6 +17,10 @@ static volatile uint32_t currentVersion = 1;
 static Scene testScene;  // same
 static bool testActive = false;
 static volatile uint32_t testVersion = 0;
+static uint32_t raceSeed = 0;  // same
+static bool raceActive = false;
+static uint32_t raceEndMs = 0;  // millis() when it is over
+static volatile uint32_t raceVersion = 0;
 static SemaphoreHandle_t mutex;
 static bool mounted = false;
 
@@ -111,6 +116,37 @@ bool eventFetch(Event& out, uint32_t& version) {
   if (version == currentVersion || xSemaphoreTake(mutex, pdMS_TO_TICKS(10)) != pdTRUE) return false;
   out = current;
   version = currentVersion;
+  xSemaphoreGive(mutex);
+  return true;
+}
+
+void raceStart(uint32_t seed) {
+  static Race r;  // only to know how long it takes
+  raceBegin(r, seed);
+  xSemaphoreTake(mutex, portMAX_DELAY);
+  raceSeed = seed;
+  raceActive = true;
+  raceEndMs = millis() + raceTotalMs(r);
+  raceVersion++;
+  xSemaphoreGive(mutex);
+  Log.printf("[race] started, lane %d wins after %u ms\n", r.winner + 1, (unsigned)r.endMs);
+}
+
+void raceStop() {
+  xSemaphoreTake(mutex, portMAX_DELAY);
+  raceActive = false;
+  raceVersion++;
+  xSemaphoreGive(mutex);
+  Log.println("[race] stopped");
+}
+
+bool raceRunning() { return raceActive && (int32_t)(millis() - raceEndMs) < 0; }
+
+bool raceFetch(uint32_t& seed, bool& active, uint32_t& version) {
+  if (version == raceVersion || xSemaphoreTake(mutex, pdMS_TO_TICKS(10)) != pdTRUE) return false;
+  seed = raceSeed;
+  active = raceActive;
+  version = raceVersion;
   xSemaphoreGive(mutex);
   return true;
 }

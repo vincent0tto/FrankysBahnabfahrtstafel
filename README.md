@@ -36,6 +36,10 @@ Schriesheim Bahnhof                     10:42
   zum Beispiel den Instagram-Namen oder ein Angebot, mit einem kleinen Pixel-Symbol.
 - **Kleine Bahnen:** hin und wieder fährt eine kleine Bahn oder ein Bus aus seiner Zeile,
   wenn er abfährt.
+- **Bahnrennen:** wie das Pferderennen auf der Kirmes. Auf Knopfdruck fahren vier kleine
+  Bahnen mit den Nummern 1–4 zufällig Feld für Feld über 12 Felder, manchmal auch eins zurück.
+  Wer zuerst im Ziel ist, gewinnt und bekommt eine Ehrenrunde mit Feuerwerk. Setzen kann man
+  auf eine Nummer.
 - **Nachtruhe:** nachts schaltet sich die Tafel ab, am späten Abend wird sie dunkler.
 - **Event-Modus:** Für eine Party oder einen besonderen Abend übernimmt die Tafel auf Knopfdruck
   ganz eigene Texte und Bilder in Farbe, bis man sie wieder auf die Abfahrten zurückschaltet.
@@ -60,8 +64,8 @@ die nebeneinander montiert sind. Das ergibt 192×64 Pixel.
 Lange Ziele laufen durch (Pause, bis zum Ende schieben, Pause, zurückspringen).
 Schriften und Layout stehen oben in `src/render.cpp`. Um ein Layout ohne Hardware anzusehen,
 `tools/preview/run.sh` ausführen; es schreibt `tools/preview/preview.png`, die Bilder der
-Abfahrtsanimation nach `tools/preview/preview_anim.png` und Beispiele des Event-Modus nach
-`tools/preview/preview_event.png`.
+Abfahrtsanimation nach `tools/preview/preview_anim.png`, Beispiele des Event-Modus nach
+`tools/preview/preview_event.png` und ein Bahnrennen nach `tools/preview/preview_race.png`.
 
 ## Datenquelle
 

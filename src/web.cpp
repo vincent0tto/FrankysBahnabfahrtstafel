@@ -210,6 +210,18 @@ static void handleEventTestStop() {
   server.send(200, "text/plain", "ok");
 }
 
+// ---- Tram race (src/race.h) --------------------------------------------------
+
+static void handleRace() {
+  raceStart(esp_random());
+  server.send(200, "text/plain", "ok");
+}
+
+static void handleRaceStop() {
+  raceStop();
+  server.send(200, "text/plain", "ok");
+}
+
 // ---- Pixel images (src/image_store.h) -------------------------------------------
 
 // The list of images and the space left; `id`: the one just stored.
@@ -334,6 +346,7 @@ static void handleStatus() {
   doc["rev"] = settingsRev();
   doc["event"] = eventNet().on;
   doc["eventRev"] = eventRev();
+  doc["race"] = raceRunning();
   doc["off"] = !eventNet().on && timeValid() && isOffTime(settingsNet(), minuteOfDay(now));
   doc["rssi"] = WiFi.RSSI();
   doc["ssid"] = WiFi.SSID();
@@ -424,6 +437,8 @@ void webBegin() {
   server.on("/api/event/preview", HTTP_POST, handleEventPreview);
   server.on("/api/event/test", HTTP_POST, handleEventTest);
   server.on("/api/event/test/stop", HTTP_POST, handleEventTestStop);
+  server.on("/api/race", HTTP_POST, handleRace);
+  server.on("/api/race/stop", HTTP_POST, handleRaceStop);
   server.on("/api/images", HTTP_GET, [] { sendImages(); });
   server.on("/api/image", HTTP_GET, handleImageGet);
   server.on("/api/image", HTTP_POST, handleImageSave, handleImageUpload);

@@ -1,6 +1,6 @@
 #pragma once
 // The settings page served by src/web.cpp at "/". Talks to /api/settings
-// /api/status, /api/restart, /api/wifi, /api/log and /api/event/on (JSON, format: settingsToJson in
+// /api/status, /api/restart, /api/wifi, /api/log, /api/event/on and /api/race (JSON, format: settingsToJson in
 // src/settings.cpp). The event mode has a page of its own (src/web_event_page.h).
 #include <pgmspace.h>
 
@@ -110,6 +110,12 @@ section.evon{border:2px solid var(--accent)}
 <button class="switch" id="evSwitch" role="switch" aria-checked="false" aria-label="Event-Modus an oder aus"><span></span></button></div>
 <div class="hint" id="evHint"></div>
 <a class="evlink" href="/event">Event bearbeiten ›</a>
+</section>
+
+<section id="raceCard">
+<h2>Bahnrennen</h2>
+<div class="hint">Wie das Pferderennen auf der Kirmes: 4 Bahnen, 12 Felder, wer zuerst im Ziel ist, gewinnt. Setzt auf eine Nummer! Ein Rennen dauert etwa eine halbe Minute, danach zeigt die Tafel wieder die Abfahrten.</div>
+<div class="row"><button id="raceStart">Rennen starten</button><button id="raceStop" disabled>Abbrechen</button><span class="hint" id="raceText"></span></div>
 </section>
 
 <section>
@@ -522,6 +528,7 @@ async function status(){
     $('ssidNow').textContent=s.ssid;
     $('status').textContent=`Firmware ${s.build} · läuft seit ${up} · ${age} · ${s.event?'Event läuft':s.off?'Ruhezeit':'Panel an'} · WLAN ${s.rssi} dBm`;
     renderEvent(s.event);
+    renderRace(s.race);
     if(S)renderTimeline();
     sync(s.rev);
   }catch(e){$('status').textContent='Tafel nicht erreichbar'}
@@ -546,6 +553,24 @@ $('evSwitch').onclick=async()=>{
   }catch(e){$('msg').textContent='Fehler: '+e.message}
   $('evSwitch').disabled=false;
 };
+// Tram race: started here, ends by itself; while it runs the status is asked more often
+let raceTimer=0;
+function renderRace(on){
+  $('raceText').textContent=on?'Rennen läuft …':'';
+  $('raceStop').disabled=!on;
+  $('raceCard').classList.toggle('evon',!!on);
+  clearTimeout(raceTimer);
+  if(on)raceTimer=setTimeout(status,3000);
+}
+async function raceCall(path){
+  try{
+    const r=await fetch(path,{method:'POST'});
+    if(!r.ok)throw new Error(await r.text());
+    renderRace(path==='/api/race');
+  }catch(e){$('msg').textContent='Fehler: '+e.message}
+}
+$('raceStart').onclick=()=>raceCall('/api/race');
+$('raceStop').onclick=()=>raceCall('/api/race/stop');
 // waits for the board to come back after a restart, then reloads the page
 async function afterRestart(msg){
   const t0=Date.now();

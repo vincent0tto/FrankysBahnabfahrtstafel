@@ -1,6 +1,7 @@
 // Host preview of the LED layout: renders a few scenarios with the real
 // render code into PPM images (LED dots, 6x scale): the departures, the
-// departure animation and the event mode. Build/run: tools/preview/run.sh
+// departure animation, the event mode and the tram race.
+// Build/run: tools/preview/run.sh
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,6 +14,7 @@
 #include "config.h"
 #include "event_render.h"
 #include "parse.h"
+#include "race_render.h"
 #include "render.h"
 
 static const int W = PANEL_RES_X * PANEL_CHAIN, H = PANEL_RES_Y, S = 6, GAP = 14;
@@ -284,5 +286,23 @@ int main(int argc, char** argv) {
   ev.scenes[0] = pic;
   event.push_back(renderEventFrame(ev, 0));
   writePpm(argc > 3 ? argv[3] : "preview_event.ppm", event);
+
+  // tram race: countdown, start, mid-race (one gliding), finish, winner
+  // blinking, the lap of honour
+  std::vector<Frame> raceFrames;
+  static Race race;
+  raceBegin(race, 12345);
+  const uint32_t C = RACE_COUNTDOWN_MS, E = C + race.endMs;
+  for (uint32_t t : {100u, C - 300, C + 1000, C + race.endMs / 2, C + race.endMs / 2 + 150, E, E + 300,
+                     E + 2600, E + 5000, E + 8000}) {
+    GFXcanvas16 canvas(W, H);
+    canvas.fillScreen(0);
+    U8G2_FOR_ADAFRUIT_GFX u8;
+    u8.begin(canvas);
+    drawRace(canvas, u8, ((COLOR_R & 0xF8) << 8) | ((COLOR_G & 0xFC) << 3) | (COLOR_B >> 3), race, t);
+    raceFrames.push_back(Frame{std::vector<uint16_t>(canvas.getBuffer(), canvas.getBuffer() + W * H)});
+  }
+  printf("race: winner %d after %u ms, %d moves\n", race.winner + 1, (unsigned)race.endMs, race.nMoves);
+  writePpm(argc > 4 ? argv[4] : "preview_race.ppm", raceFrames);
   return 0;
 }

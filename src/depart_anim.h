@@ -13,3 +13,7 @@ static const uint32_t DEPART_ANIM_MS = 4600;
 // text right of it stays visible. `tram` picks the vehicle sprite.
 void drawDepartAnim(Adafruit_GFX& g, uint16_t color, bool tram, uint32_t t, int top, int bottom,
                     int width);
+
+// Draws the tram (`tram`) or bus sprite with its left edge at `x`, its lowest
+// row at `bottom`, nothing above `top`. Returns its width.
+int drawVehicle(Adafruit_GFX& g, uint16_t color, bool tram, int x, int bottom, int top);

@@ -4,7 +4,8 @@
 //
 // Core 0: netTask   – WiFi, NTP, OTA, settings web page, firmware update
 //                     check after start, API polling
-// Core 1: loop()    – renders ~30 fps from the last good data, or the event
+// Core 1: loop()    – renders ~30 fps from the last good data, the event or
+//                     the tram race
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -139,6 +140,10 @@ void loop() {
   static uint32_t testVersion = 0;
   static uint32_t testStartMs = 0;
   static bool testing = false;
+  static Race race;  // the tram race started on the web page
+  static uint32_t raceVersion = 0;
+  static uint32_t raceStartMs = 0;
+  static bool racing = false;
 
   esp_task_wdt_reset();
   if (boardVersion != localVersion && xSemaphoreTake(boardMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
@@ -159,12 +164,20 @@ void loop() {
     test.nScenes = 1;
   }
 
+  uint32_t raceSeed;
+  if (raceFetch(raceSeed, racing, raceVersion) && racing) {
+    raceBegin(race, raceSeed);
+    raceStartMs = millis();
+  }
+  if (racing && millis() - raceStartMs >= raceTotalMs(race)) racing = false;
+
   DisplayStatus st;
   st.wifi = WiFi.status() == WL_CONNECTED;
   st.timeValid = timeValid();
   st.updating = updateRunning();
   uint32_t ms = millis();
-  bool dark = testing ? displayRender(local, settings, test, st, time(nullptr), ms, ms - testStartMs)
-                      : displayRender(local, settings, event, st, time(nullptr), ms, ms - eventStartMs);
+  const Race* r = racing ? &race : nullptr;
+  bool dark = testing ? displayRender(local, settings, test, st, time(nullptr), ms, ms - testStartMs, r, ms - raceStartMs)
+                      : displayRender(local, settings, event, st, time(nullptr), ms, ms - eventStartMs, r, ms - raceStartMs);
   delay(dark ? 500 : 33);  // off time: nothing to draw
 }

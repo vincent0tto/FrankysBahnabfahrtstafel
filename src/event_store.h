@@ -39,3 +39,17 @@ void eventTestStop();
 // Render loop: if a test started or stopped since `version` (updated),
 // `active` tells which and `out` gets the scene to test. true if changed.
 bool eventTestFetch(Scene& out, bool& active, uint32_t& version);
+
+// Network task: starts the tram race (src/race.h) worked out from `seed`,
+// over everything else, or a new one if one is running; ends by itself.
+void raceStart(uint32_t seed);
+
+// Network task: ends the race at once.
+void raceStop();
+
+// Network task: whether a race is on the board.
+bool raceRunning();
+
+// Render loop: like eventTestFetch() for the race: `seed` of the one to
+// start if `active`.
+bool raceFetch(uint32_t& seed, bool& active, uint32_t& version);
