@@ -48,6 +48,9 @@ Schriesheim Bahnhof                     10:42
 - **Event-Modus:** Für eine Party oder einen besonderen Abend übernimmt die Tafel auf Knopfdruck
   ganz eigene Texte und Bilder in Farbe, bis man sie wieder auf die Abfahrten zurückschaltet.
 - **Karaoke-Liste:** Beim Karaoke-Abend zeigt die Tafel, wer als Nächstes singt und was.
+- **St.-Pauli-Ticker:** Spielt St. Pauli, steht der Spielstand in der untersten Zeile, die
+  Abfahrten bleiben darüber. Bei einem Tor für St. Pauli zeigt die ganze Tafel kurz
+  „TOOOR!“ mit Feuerwerk, nach dem Abpfiff kommt der Endstand noch ein paar Stunden.
 - **Leicht zu ändern:** Nachrichten, Symbole, Helligkeit und Zeiten lassen sich von jedem
   Handy, Tablet oder Laptop im Mitarbeiter-WLAN des Cafés ändern, ganz ohne Kabel.
 - **Kümmert sich um sich selbst:** nach WLAN-Problemen verbindet sie sich neu, und Updates
@@ -71,7 +74,8 @@ Schriften und Layout stehen oben in `src/render.cpp`. Um ein Layout ohne Hardwar
 `tools/preview/run.sh` ausführen; es schreibt `tools/preview/preview.png`, die Bilder der
 Abfahrtsanimation nach `tools/preview/preview_anim.png`, Beispiele des Event-Modus nach
 `tools/preview/preview_event.png`, ein Bahnrennen nach `tools/preview/preview_race.png` und die
-Karaoke-Liste nach `tools/preview/preview_karaoke.png`.
+Karaoke-Liste nach `tools/preview/preview_karaoke.png` und den St.-Pauli-Ticker nach
+`tools/preview/preview_match.png`.
 
 ## Datenquelle
 
@@ -90,6 +94,28 @@ Lizenz: *Datenlizenz Deutschland – Namensnennung*, Quelle **Verkehrsverbund Rh
 Es gelten die [Nutzungsbedingungen](https://opendata.vrn.de/nutzungsbedingungen) des VRN.
 Eine Registrierung ist nicht nötig. Wer möchte, kann sich unter
 <https://opendata.vrn.de/user/register> kostenlos registrieren; einen API-Key gibt es dafür nicht.
+
+### St.-Pauli-Ticker: OpenLigaDB
+
+Die Spiele kommen von [OpenLigaDB](https://www.openligadb.de), kostenlos, ohne Key und
+Login (geprüft am 21.10.2026). Das Zertifikat ist von Let's Encrypt wie beim VRN. Die
+Daten pflegt eine Community, Tore kommen manchmal etwas später.
+
+```
+https://api.openligadb.de/getmatchesbyteamid/98/1/1     Spiele eine Woche zurück und vor
+https://api.openligadb.de/getmatchdata/<matchID>        ein Spiel
+```
+
+Die Liste holt die Tafel stündlich, ab 5 Minuten vor dem Anstoß bis zum Abpfiff den
+Spielstand alle 30 Sekunden (`MATCH_*` in `include/config.h`); nicht in der Ruhezeit, nicht
+im Event-Modus und nur, wenn der Ticker an ist. OpenLigaDB führt manche Spiele doppelt, in
+einer zweiten Liga (`bl2h`) mit anderer Anstoßzeit. Deshalb zählen nur die Ligen in
+`MATCH_LEAGUES` (`bl1,bl2,dfb`, also auch nach einem Auf- oder Abstieg und im Pokal). Eine
+laufende Spielminute liefert OpenLigaDB nicht, die Tafel zeigt deshalb nur die Minute des
+letzten Tors. Kürzel für die Vereine hat OpenLigaDB nicht: Passen die Namen nicht in die Zeile,
+nimmt die Tafel die aus `MATCH_TEAM_ABBREVIATIONS` (die DFL-Kürzel der 2. Liga, `St. Pauli|STP;…`);
+ein Verein ohne Kürzel behält seinen Namen und läuft hin und her. Ein anderer Verein: `MATCH_TEAM_ID`, die Nummer steht in
+`https://api.openligadb.de/getavailableteams/bl1/2026`.
 
 ### Eine andere Haltestelle?
 
@@ -174,7 +200,7 @@ selben WLAN öffnen. Es gibt kein Login. Die Seite hat sechs Tabs; der offene st
 - **Jetzt**: *Was zeigt die Tafel?* – *Abfahrten*, *Event* oder *Karaoke*, immer eins davon, gilt sofort,
   ohne Speichern. Darunter *Zwischendurch* mit dem Knopf für ein **Bahnrennen**: Es unterbricht
   die Tafel nur, die Auswahl oben steht so lange auf „unterbrochen“.
-- **Tafel**: 4. Zeile, Promos und Icons.
+- **Tafel**: 4. Zeile, St.-Pauli-Ticker, Promos und Icons.
 - **Zeitplan**: Ruhezeit und Helligkeit.
 - **Event**: Szenen, Bilder und Helligkeit des Events (siehe *Event-Modus*).
 - **Karaoke**: die Karaoke-Liste (siehe *Karaoke*).
@@ -191,6 +217,14 @@ Im Einzelnen:
   an- und ausschaltbar und löschbar, jeweils mit Symbol, Darstellung (*mittig* oder *wie eine Abfahrt*, dann mit einem
   Text rechts statt der Minuten), Wochentagen und optionalem Zeitfenster. Ein Zeitfenster über
   Mitternacht zählt zum Tag, an dem es beginnt.
+- **St.-Pauli-Ticker**: an/aus (Standard aus) und ob ein Tor die Animation über die ganze
+  Tafel zeigt. Läuft ein Spiel, gehört die 4. Zeile dem Spielstand (Mannschaften und Stand
+  wie eine Abfahrt, zu lange Namen als Kürzel wie `D98 - STP`, in Weiß mit der Helligkeit der weißen Promos); alle 30 s läuft das letzte
+  Tor durch (`MATCH_GOAL_EVERY_S`). Promos und Störmeldungen pausieren so lange, eine gerade
+  laufende darf zu Ende laufen. Nach dem Spiel ist der Endstand 3 Stunden lang
+  (`MATCH_FINAL_H`) eine zusätzliche Promo, auch wenn die Promos aus sind. Darunter steht das
+  nächste bzw. laufende Spiel, und **Tor testen** zeigt die Animation einmal (nicht im Event).
+  Nur im Abfahrten-Modus; ein Bahnrennen geht vor.
 - **Icons**: die eingebauten Symbole (Instagram, Grilled Cheese, Flat White, Kuchen, Bier) und
   bis zu 8 eigene, gezeichnet in einem 12×9-Pixel-Editor. Ein neues Icon lässt sich auch direkt
   aus der Icon-Auswahl einer Promo heraus anlegen.
@@ -334,6 +368,7 @@ vorher einmal `sudo xcodebuild -license` aus.
 | `!` neben der Uhr | kein WLAN, oder die Daten sind älter als 5 Minuten |
 | `Zurzeit keine Abfahrtsinformationen` | keine Abfahrten, oder die Daten sind älter als 60 Minuten |
 | Instagram-Logo + `@frankys_by_coffeetoego` in der 4. Zeile | Promo-Texte: ab und zu, nur solange diese Abfahrt ≥ `PROMO_MIN_MINUTES` entfernt ist (Texte, Symbole und Zeiten auf der Einstellungsseite) |
+| `D98 - STP   0:1` in Weiß in der 4. Zeile | St.-Pauli-Ticker: das laufende Spiel |
 | Bahn/Bus fährt aus einer Zeile | bei 1 von 5 Bahn-Abfahrten und jeder Bus-Abfahrt, nur wenn in derselben Minute keine andere abfährt: die zweiteilige Bahn (oder der Bus) fährt an und aus dem Bild (`DEPART_ANIM_CHANCE`, `DEPART_ANIM_CHANCE_BUS`) |
 
 ## Dauerbetrieb rund um die Uhr
@@ -357,7 +392,11 @@ vorher einmal `sudo xcodebuild -license` aus.
 |---|---|
 | `include/config.h` | Haltestelle, Filter, Pins, Helligkeit, Zeiten |
 | `src/parse.cpp` | JSON → Abfahrten, Umlaute (CP437), Countdown-Text (auf dem Host getestet) |
-| `src/vrn_client.cpp` | HTTPS-Anfrage, Streaming-JSON-Parser mit Filter, PSRAM |
+| `src/https_json.cpp` | HTTPS-Anfrage, Streaming-JSON-Parser mit Filter (VRN und OpenLigaDB) |
+| `src/vrn_client.cpp` | Abfahrten abrufen (Haupt- und Ausweich-Host), PSRAM |
+| `src/match.cpp` | St.-Pauli-Ticker: Spiel aus OpenLigaDB-JSON, Phasen, Tore (auf dem Host getestet) |
+| `src/match_client.cpp` | St.-Pauli-Ticker: Abruf im Netzwerk-Task, Übergabe an die Render-Schleife |
+| `src/goal_render.cpp` | Tor-Animation |
 | `src/net.cpp` | WLAN-Watchdog, NTP, OTA |
 | `src/settings.cpp` | Einstellungen zur Laufzeit: Standardwerte, Zeitfenster, JSON (auf dem Host getestet) |
 | `src/settings_store.cpp` | Einstellungen im Flash (LittleFS), Übergabe an die Render-Schleife |

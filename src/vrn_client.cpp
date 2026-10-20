@@ -2,73 +2,23 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include <HTTPClient.h>
-#include <WiFiClientSecure.h>
 #include <esp_task_wdt.h>
 
-#include "certs.h"
 #include "config.h"
 #include "log.h"
 #include "parse.h"
 #include "psram_alloc.h"
-
-const char* fetchResultName(FetchResult r) {
-  switch (r) {
-    case FetchResult::Ok: return "ok";
-    case FetchResult::NetworkError: return "network error";
-    case FetchResult::HttpError: return "http error";
-    case FetchResult::ParseError: return "parse error";
-  }
-  return "?";
-}
 
 static FetchResult fetchFrom(const char* baseUrl, Board& out) {
   String url = String(baseUrl) +
                "?outputFormat=rapidJSON&type_dm=any&mode=direct&useRealtime=1&depType=stopEvents"
                "&name_dm=" STOP_ID "&limit=" + String(API_LIMIT);
 
-  WiFiClientSecure client;
-  client.setCACert(VRN_ROOT_CA);
-  client.setHandshakeTimeout(HTTP_TIMEOUT_MS / 1000);
-  // WiFiClientSecure::setTimeout() (also called by HTTPClient) only sets the
-  // socket timeout; Stream's read timeout used by the JSON parser stays at
-  // 1 s, so a short server pause ended in "IncompleteInput".
-  static_cast<Stream&>(client).setTimeout(HTTP_TIMEOUT_MS);
-
-  HTTPClient http;
-  http.useHTTP10(true);  // no chunked encoding -> stream straight into the parser
-  http.setReuse(false);
-  http.setConnectTimeout(HTTP_TIMEOUT_MS);
-  http.setTimeout(HTTP_TIMEOUT_MS);
-  http.setUserAgent("FrankysBahnabfahrtstafel/1.0 (ESP32)");
-
-  if (!http.begin(client, url)) return FetchResult::NetworkError;
-  int code = http.GET();
-  if (code <= 0) {
-    char err[96] = "";
-    client.lastError(err, sizeof(err));
-    Log.printf("[vrn] %s: %s (tls: %s)\n", baseUrl, http.errorToString(code).c_str(), err);
-    http.end();
-    return FetchResult::NetworkError;
-  }
-  if (code != HTTP_CODE_OK) {
-    Log.printf("[vrn] %s: HTTP %d\n", baseUrl, code);
-    http.end();
-    return FetchResult::HttpError;
-  }
-
   JsonDocument filter;
   buildFilter(filter);
   JsonDocument doc(&spiRam);
-  DeserializationError err = deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));
-  // The server closes the socket right after the body; stop TLS ourselves so
-  // http.end() doesn't try to drain a dead connection (logs mbedTLS -76).
-  client.stop();
-  http.end();
-  if (err) {
-    Log.printf("[vrn] %s: JSON %s\n", baseUrl, err.c_str());
-    return FetchResult::ParseError;
-  }
+  FetchResult r = httpsGetJson(url.c_str(), filter, doc, "vrn");
+  if (r != FetchResult::Ok) return r;
 
   ParseOptions opt;
   opt.filterLines = FILTER_LINES;

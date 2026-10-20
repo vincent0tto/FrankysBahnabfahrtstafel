@@ -6,6 +6,7 @@
 #include <time.h>
 
 #include "departure.h"
+#include "match.h"
 #include "settings.h"
 
 struct DisplayStatus {
@@ -27,5 +28,7 @@ void setPromoIndex(int idx);
 // `g` must be cleared beforehand. `ms` drives the scrolling texts and the
 // departure animation, so call it continuously with a monotonic clock.
 // `s`: promos, their icons and timing (brightness is the caller's job).
+// `m`: the St.-Pauli-Ticker's match (id 0: none), live in the 4th row,
+// afterwards its final score as one more promo.
 void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const Board& b,
-                 const Settings& s, const DisplayStatus& st, time_t now, uint32_t ms);
+                 const Settings& s, const DisplayStatus& st, time_t now, uint32_t ms, const Match& m = Match());

@@ -218,6 +218,15 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 </section>
 
 <section>
+<h2>St.-Pauli-Ticker</h2>
+<div class="hint">Während eines Spiels von St. Pauli zeigt die 4. Zeile den Spielstand, ab und zu läuft das letzte Tor durch. Promos und Störmeldungen pausieren so lange. Danach kommt der Endstand noch ein paar Stunden als Promo. Die Spiele findet die Tafel selbst (Daten: OpenLigaDB, Tore manchmal etwas später).</div>
+<div class="row"><label><input type="checkbox" id="matchOn">Ticker an</label>
+<label><input type="checkbox" id="goalAnim">bei einem Tor „TOOOR!“ über die ganze Tafel</label></div>
+<div class="note" id="matchInfo" hidden></div>
+<div class="row"><button id="goalTest">⚽ Tor testen</button><span class="hint" style="margin:0">zeigt die Animation einmal auf der Tafel (nicht im Event)</span></div>
+</section>
+
+<section>
 <h2>Promos</h2>
 <div class="hint">Kleine Nachrichten vom Café in der 4. Zeile. Auf eine Promo tippen, um sie zu bearbeiten.</div>
 <div class="note" id="promoOff" hidden>Promos sind gerade aus (oben unter „4. Zeile“ einschalten).</div>
@@ -631,6 +640,7 @@ for(const k of ['animChance','animChanceBus'])$(k).oninput=e=>S[k]=+e.target.val
 
 function render(){
   $('animChance').value=S.animChance;$('animChanceBus').value=S.animChanceBus;
+  $('matchOn').checked=S.matchOn;$('goalAnim').checked=S.goalAnim;
   $('offOn').checked=S.off.on;$('offFrom').value=time(S.off.from);$('offTo').value=time(S.off.to);
   setBright(S.brightnessPct);
   renderRow();renderDim();renderPromos();renderIcons();
@@ -647,6 +657,7 @@ function collect(){
     brightnessPct:S.brightnessPct,dim:S.dim.filter(d=>d.from&&d.to),
     promoShowS:S.promoShowS,promoIntervalS:S.mode==='off'?0:S.interval,promoFullRow:S.mode==='scroll',promoWhite:S.promoWhite,promoWhitePct:S.promoWhitePct,
     disruptOn:S.disruptOn,disruptPasses:S.disruptPasses,animChance:S.animChance,animChanceBus:S.animChanceBus,
+    matchOn:$('matchOn').checked,goalAnim:$('goalAnim').checked,
     promos,icons:S.icons};
 }
 
@@ -659,7 +670,7 @@ function updateSave(){
   renderTimeline();markTabs();
 }
 // which tab holds which settings, for the dot at a tab with unsaved changes
-const TAB_KEYS={tafel:['promos','icons','promoShowS','promoIntervalS','promoFullRow','promoWhite','promoWhitePct','disruptOn','disruptPasses'],
+const TAB_KEYS={tafel:['promos','icons','promoShowS','promoIntervalS','promoFullRow','promoWhite','promoWhitePct','disruptOn','disruptPasses','matchOn','goalAnim'],
   zeitplan:['off','brightnessPct','dim'],technik:['animChance','animChanceBus']};
 function markTabs(){
   const c=S&&collect(),b=S&&JSON.parse(base);
@@ -729,12 +740,28 @@ async function status(){
     $('ssidNow').textContent=s.ssid;
     $('status').textContent=`Firmware ${s.build} · läuft seit ${up} · ${age} · ${s.race?'Bahnrennen':s.karaoke?'Karaoke läuft':s.event?'Event läuft':s.off?'Ruhezeit':'Panel an'} · WLAN ${s.rssi} dBm`;
     shown=s.karaoke?'karaoke':s.event?'event':'dep';raceOn=!!s.race;renderModes();
+    renderMatch(s.match);
     if(S)renderTimeline();
     sync(s.rev);
     EV.sync(s.eventRev);
     KA.sync(s.karaokeRev);
   }catch(e){$('status').textContent='Tafel nicht erreichbar'}
 }
+// The St.-Pauli-Ticker's match as the board knows it (only while it is on)
+function renderMatch(m){
+  const box=$('matchInfo');
+  box.hidden=!m;
+  if(!m)return;
+  const score=m.home+' '+m.goalsHome+':'+m.goalsAway+' '+m.away;
+  const when=()=>new Date(m.kickoff*1000).toLocaleString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  const text={
+    next:()=>'Nächstes Spiel: '+when()+' Uhr, '+m.home+' – '+m.away,
+    live:()=>'Läuft gerade: '+score+(m.lastGoal?' · Tor: '+m.lastGoal:''),
+    final:()=>'Endstand: '+score}[m.phase];
+  box.textContent=text?text():'Gerade kein Spiel in Sicht (die Tafel schaut eine Woche voraus).';
+}
+$('goalTest').onclick=()=>act(()=>post('/api/goal/test'));
+
 // What the board shows: the departures, the event or the karaoke list
 // ('dep', 'event', 'karaoke'), switched at once (no saving). A race only
 // interrupts that for a while, then it shows again.

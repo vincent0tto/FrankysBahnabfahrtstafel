@@ -59,7 +59,6 @@ static const char* const BI_ICON[] = {  // beer mug
     "#.#.#.#.#...",
     "#########...",
 };
-
 // The Instagram logo is 2px taller, it sits 1px lower so it looks centred
 // next to the letters; the others stand on the baseline like digits.
 const PresetIcon PRESET_ICONS[] = {

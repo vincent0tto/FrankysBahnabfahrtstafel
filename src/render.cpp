@@ -209,6 +209,33 @@ static int forcedPromo = -1;
 static int promoCursor = -1;  // last promo shown with promoFullRow
 void setPromoIndex(int idx) { forcedPromo = idx; }
 
+// The St.-Pauli-Ticker's final score: one more promo after those of the
+// settings (index nPromos), also while those are off.
+static Promo finalPromo;
+static bool haveFinal = false;
+
+// The match's teams (`line`: with the score between them) in `out`, with
+// the team codes if the names are wider than `maxW`.
+static void fitMatchText(U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, bool line, const char* prefix, int maxW,
+                         char* out, size_t outSize) {
+  for (bool codes : {false, true}) {
+    char t[56];
+    if (line) matchLineText(m, codes, t, sizeof(t));
+    else matchTeamsText(m, codes, t, sizeof(t));
+    snprintf(out, outSize, "%s%s", prefix, t);
+    if (width(u8, out) <= maxW) return;
+  }
+}
+
+static void setFinalPromo(U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, bool show) {
+  haveFinal = show;
+  if (!show) return;
+  finalPromo = Promo();
+  fitMatchText(u8, m, true, "Endstand: ", W - 2 * MARGIN_X, finalPromo.text, sizeof(finalPromo.text));
+}
+
+static const Promo& promoAt(const Settings& s, int i) { return i < s.nPromos ? s.promos[i] : finalPromo; }
+
 static uint32_t promoPause(const Settings& s) {  // promoIntervalS +-50 %
   // without promos this still paces the disruption texts
   uint32_t base = (s.promoIntervalS ? s.promoIntervalS : 60) * 1000UL;
@@ -218,18 +245,20 @@ static uint32_t promoPause(const Settings& s) {  // promoIntervalS +-50 %
 // A promo switched on and open at `minute` of `day`, or nullptr; with
 // promoFullRow the next one in the list, else a random one.
 static const Promo* pickPromo(const Settings& s, int minute, int32_t day) {
-  if (s.promoIntervalS == 0 && !s.promoFullRow) return nullptr;
-  int open[MAX_PROMOS], nOpen = 0;
-  for (int i = 0; i < s.nPromos; i++)
+  bool promosOn = s.promoIntervalS != 0 || s.promoFullRow;
+  int open[MAX_PROMOS + 1], nOpen = 0;
+  for (int i = 0; i < s.nPromos && promosOn; i++)
     if (promoOpen(s.promos[i], minute, day)) open[nOpen++] = i;
+  if (haveFinal) open[nOpen++] = s.nPromos;
   if (nOpen == 0) return nullptr;
-  bool forced = forcedPromo >= 0 && forcedPromo < s.nPromos && promoOpen(s.promos[forcedPromo], minute, day);
-  if (forced) return &s.promos[forcedPromo];
-  if (!s.promoFullRow) return &s.promos[open[rand() % nOpen]];
+  bool forced = forcedPromo >= 0 && forcedPromo < s.nPromos + haveFinal &&
+                promoOpen(promoAt(s, forcedPromo), minute, day);
+  if (forced) return &promoAt(s, forcedPromo);
+  if (!s.promoFullRow) return &promoAt(s, open[rand() % nOpen]);
   int k = 0;
   while (k < nOpen && open[k] <= promoCursor) k++;
   promoCursor = open[k < nOpen ? k : 0];
-  return &s.promos[promoCursor];
+  return &promoAt(s, promoCursor);
 }
 
 // How long a scrolling text `tw` px wide stays: `passes` scroll passes,
@@ -385,7 +414,7 @@ static void drawHeader(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t colo
 }
 
 void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const Board& b,
-                 const Settings& s, const DisplayStatus& st, time_t now, uint32_t ms) {
+                 const Settings& s, const DisplayStatus& st, time_t now, uint32_t ms, const Match& m) {
   u8.setFontMode(1);
   u8.setForegroundColor(color);
 
@@ -411,6 +440,13 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
   else if (stale && haveData) tickerMsg = "Daten nicht aktuell";
   int maxRows = tickerMsg ? MAX_ROWS : MAX_ROWS + 1;
 
+  // St.-Pauli-Ticker: while the match runs the 4th row shows its score (no
+  // promos or disruption texts meanwhile, a running one ends first); after
+  // it the final score is one more promo
+  MatchPhase phase = st.timeValid ? matchPhase(m, now) : MatchPhase::None;
+  bool live = phase == MatchPhase::Live;
+  setFinalPromo(u8, m, phase == MatchPhase::Final);
+
   const Departure* rows[MAX_ROWS + 1];
   int n = 0;
   if (haveData)
@@ -420,7 +456,7 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
   // While the animation runs, the departed trip keeps its row. A running
   // promo / disruption keeps the 4th row: a trip hidden behind it doesn't
   // animate, and an animation stays in the rows above.
-  int animMaxRows = promo.active ? MAX_ROWS : maxRows;
+  int animMaxRows = promo.active || (live && !tickerMsg) ? MAX_ROWS : maxRows;
   checkDeparted(s, rows, n < animMaxRows ? n : animMaxRows, now, ms);
   int animRow = -1;
   if (anim.active && (!haveData || ms - anim.startMs >= DEPART_ANIM_MS)) anim.active = false;
@@ -445,8 +481,8 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
   bool haveDisruption = haveData && b.ticker[0] && s.disruptOn;
   if (haveDisruption) snprintf(disruption, sizeof(disruption), "+++ %s +++", b.ticker);
   long rowMins = n == MAX_ROWS + 1 ? minutesUntil(rows[MAX_ROWS]->when, now) : -1;
-  const char* promoMsg = promoText(u8, s, haveData && (s.promoFullRow || rowMins >= PROMO_MIN_MINUTES),
-                                   n <= MAX_ROWS || rowMins >= DISRUPTION_MIN_MINUTES,
+  const char* promoMsg = promoText(u8, s, !live && haveData && (s.promoFullRow || rowMins >= PROMO_MIN_MINUTES),
+                                   !live && (n <= MAX_ROWS || rowMins >= DISRUPTION_MIN_MINUTES),
                                    tickerMsg || animRow == MAX_ROWS,
                                    haveDisruption ? disruption : nullptr,
                                    haveDisruption ? width(u8, disruption) : 0, minute, day, ms);
@@ -458,6 +494,26 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
   if (s.promoFullRow) nLineW = n;
   bool promoIsDep = promoMsg && !showDisruption && !promo.scroll && isPromoDep(promo.item);
 
+  // The match's row: like a departure (teams, score), every
+  // MATCH_GOAL_EVERY_S the last goal scrolls through instead
+  bool matchRow = live && !tickerMsg && !promoMsg;
+  if (matchRow && n > MAX_ROWS) n = MAX_ROWS;
+  static char goalLine[64];
+  snprintf(goalLine, sizeof(goalLine), "Tor: %s", m.lastGoal);
+  bool matchScroll = false;
+  uint32_t scrollT = 0;
+  if (matchRow && m.lastGoal[0]) {
+    uint32_t every = MATCH_GOAL_EVERY_S * 1000UL;
+    uint32_t t = ms % (every + tickerMs(width(u8, goalLine), 1));
+    matchScroll = t >= every;
+    scrollT = t - every;
+  }
+  Promo matchPromo;  // the teams are fitted in where it is drawn
+  if (n > 0) matchScoreText(m, matchPromo.right, sizeof(matchPromo.right));
+  bool matchDep = matchRow && !matchScroll && n > 0;
+  const Promo* depRow = promoIsDep ? &promo.item : matchDep ? &matchPromo : nullptr;
+  uint16_t white = grayColor(s.promoWhitePct);
+
   // Now and then the time column shows the platforms instead (also for
   // cancelled trips, not without a platform)
   const uint32_t platformEveryMs = PLATFORM_EVERY_S * 1000UL;
@@ -468,7 +524,7 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
     showPlatforms |= rows[i]->platformLabel[0] != 0;
 
   if (n == 0) {
-    int mid = (RULE_Y + (tickerMsg || showDisruption ? rowBase(MAX_ROWS) - ROW_ASCENT : H)) / 2;
+    int mid = (RULE_Y + (tickerMsg || showDisruption || matchRow ? rowBase(MAX_ROWS) - ROW_ASCENT : H)) / 2;
     if (!st.timeValid || (b.fetchedAt == 0 && st.wifi)) {
       centered(u8, mid + ROW_ASCENT / 2, st.wifi ? "Lade Abfahrten ..." : "Verbinde mit WLAN ...");
     } else {
@@ -481,7 +537,7 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
       int w = width(u8, rows[i]->line);
       if (w > lineW) lineW = w;
     }
-    if (promoIsDep && promoLineWidth(u8, s, promo.item) > lineW) lineW = promoLineWidth(u8, s, promo.item);
+    if (depRow && promoLineWidth(u8, s, *depRow) > lineW) lineW = promoLineWidth(u8, s, *depRow);
     const int destX = MARGIN_X + lineW + COL_GAP;
     // Platforms are centred (by their ink) under the header's PLATFORM_HEADER
     u8.setFont(FONT_HEADER);
@@ -518,6 +574,23 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
       drawDepartAnim(g, color, anim.dep.cls <= 4, ms - anim.startMs, rowTop(base), rowBottom(base), W);
     }
     if (promoIsDep) drawPromoDep(g, u8, color, s, rowBase(MAX_ROWS), promo.item, lineW, destX, ms);
+    if (matchDep) {
+      int maxW = W - MARGIN_X - width(u8, matchPromo.right) - COL_GAP - destX;
+      fitMatchText(u8, m, false, "", maxW, matchPromo.text, sizeof(matchPromo.text));
+      u8.setForegroundColor(white);
+      drawPromoDep(g, u8, white, s, rowBase(MAX_ROWS), matchPromo, lineW, destX, ms);
+      u8.setForegroundColor(color);
+    }
+  }
+  if (matchRow && !matchDep) {
+    u8.setForegroundColor(white);
+    if (matchScroll) {
+      drawTicker(g, u8, goalLine, scrollT, true);
+    } else {  // no departures: one line in the middle
+      fitMatchText(u8, m, true, "", W - 2 * MARGIN_X, matchPromo.text, sizeof(matchPromo.text));
+      drawPromo(g, u8, white, s, rowBase(MAX_ROWS), matchPromo, ms, false, 0);
+    }
+    u8.setForegroundColor(color);
   }
   // with promoFullRow and promoWhite the promos are white (the disruption
   // texts stay amber)

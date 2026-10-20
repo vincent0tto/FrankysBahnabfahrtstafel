@@ -172,8 +172,8 @@ static void drawDerail(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Race& r
   centeredText(u8, 0, W, 20, text);
 }
 
-// A firework burst `age` ms old (of 1200) around (cx, cy).
-static void drawBurst(Adafruit_GFX& g, uint16_t color, int cx, int cy, uint32_t age) {
+// A firework burst `age` ms old (of 1200) around (cx, cy); also for the goal (src/goal_render.cpp).
+void drawFireworkBurst(Adafruit_GFX& g, uint16_t color, int cx, int cy, uint32_t age) {
   static const int8_t DIR[12][2] = {{16, 0}, {14, 8}, {8, 14}, {0, 16}, {-8, 14}, {-14, 8},
                                     {-16, 0}, {-14, -8}, {-8, -14}, {0, -16}, {8, -14}, {14, -8}};
   int r = 2 + (int)(age * 12 / 1200);
@@ -194,7 +194,7 @@ static void drawWinner(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Race& r
     raceRand(rng);
     int cx = 14 + raceRand(rng) % (W - 28);
     int cy = 10 + raceRand(rng) % 12;
-    drawBurst(g, rgb565(LANE_RGB[b % RACE_LANES]), cx, cy, age);
+    drawFireworkBurst(g, rgb565(LANE_RGB[b % RACE_LANES]), cx, cy, age);
   }
   char name[16], text[32];
   laneName(r, r.winner, name, sizeof(name));

@@ -45,6 +45,8 @@ void test_defaults() {
   TEST_ASSERT_EQUAL(DEPART_ANIM_CHANCE, s.animChance);
   TEST_ASSERT_EQUAL(DEPART_ANIM_CHANCE_BUS, s.animChanceBus);
   TEST_ASSERT_FALSE(s.promoFullRow);
+  TEST_ASSERT_FALSE(s.matchOn);
+  TEST_ASSERT_TRUE(s.goalAnim);
   TEST_ASSERT_EQUAL(BRIGHTNESS_MAX, brightnessToPanel(100));
   TEST_ASSERT_EQUAL(151, brightnessToPanel(85));
   TEST_ASSERT_EQUAL(BRIGHTNESS_MAX, brightnessToPanel(200));
@@ -89,6 +91,8 @@ void test_json_roundtrip() {
   s.disruptPasses = 4;
   s.animChance = 0;
   s.animChanceBus = 1;
+  s.matchOn = true;
+  s.goalAnim = false;
   promoFromText("[ig]@frankys", s.promos[s.nPromos]);
   s.promos[s.nPromos++].on = false;
   Promo own;
@@ -120,6 +124,8 @@ void test_json_roundtrip() {
   TEST_ASSERT_EQUAL(4, t.disruptPasses);
   TEST_ASSERT_EQUAL(0, t.animChance);
   TEST_ASSERT_EQUAL(1, t.animChanceBus);
+  TEST_ASSERT_TRUE(t.matchOn);
+  TEST_ASSERT_FALSE(t.goalAnim);
   TEST_ASSERT_EQUAL(s.nPromos, t.nPromos);
   TEST_ASSERT_FALSE(t.promos[0].on);
   TEST_ASSERT_EQUAL_STRING("@frankys", t.promos[0].text);
@@ -185,6 +191,8 @@ void test_json_clamps_and_rejects() {
   TEST_ASSERT_FALSE(t.promoFullRow);
   TEST_ASSERT_FALSE(t.promoWhite);
   TEST_ASSERT_EQUAL(100, t.promoWhitePct);
+  TEST_ASSERT_FALSE(t.matchOn);         // missing: default
+  TEST_ASSERT_TRUE(t.goalAnim);
   TEST_ASSERT_EQUAL(s.off.from, t.off.from);  // malformed times keep the default
   TEST_ASSERT_EQUAL(1, t.nDim);
   TEST_ASSERT_EQUAL(1, t.dim[0].value);

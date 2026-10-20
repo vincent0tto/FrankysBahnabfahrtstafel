@@ -12,6 +12,7 @@
 #include "image_store.h"
 #include "karaoke_render.h"
 #include "log.h"
+#include "match_client.h"
 #include "net.h"
 #include "parse.h"
 #include "psram_alloc.h"
@@ -285,6 +286,27 @@ static void handleRaceStop() {
   server.send(200, "text/plain", "ok");
 }
 
+// ---- St.-Pauli-Ticker (src/match.h) -------------------------------------------
+
+static void handleGoalTest() {
+  goalTest();
+  server.send(200, "text/plain", "ok");
+}
+
+// The ticker's match for the page: phase "next", "live", "final" or "none".
+static void matchToJson(time_t now, JsonObject o) {
+  const Match& m = matchNet();
+  static const char* const PHASES[] = {"none", "next", "live", "final"};
+  o["phase"] = timeValid() ? PHASES[(int)matchPhase(m, now)] : "none";
+  if (!m.id) return;
+  o["home"] = (const char*)m.home;
+  o["away"] = (const char*)m.away;
+  o["goalsHome"] = m.goalsHome;
+  o["goalsAway"] = m.goalsAway;
+  o["kickoff"] = (long)m.kickoff;
+  o["lastGoal"] = (const char*)m.lastGoal;
+}
+
 // ---- Pixel images (src/image_store.h) -------------------------------------------
 
 // The list of images and the space left; `id`: the one just stored.
@@ -412,6 +434,7 @@ static void handleStatus() {
   doc["karaokeRev"] = karaokeRev();
   doc["eventRev"] = eventRev();
   doc["race"] = raceRunning();
+  if (settingsNet().matchOn) matchToJson(now, doc["match"].to<JsonObject>());
   doc["off"] = !eventNet().on && timeValid() && isOffTime(settingsNet(), minuteOfDay(now));
   doc["rssi"] = WiFi.RSSI();
   doc["ssid"] = WiFi.SSID();
@@ -511,6 +534,7 @@ void webBegin() {
   server.on("/api/karaoke/preview", HTTP_GET, handleKaraokePreview);
   server.on("/api/race", HTTP_POST, handleRace);
   server.on("/api/race/stop", HTTP_POST, handleRaceStop);
+  server.on("/api/goal/test", HTTP_POST, handleGoalTest);
   server.on("/api/images", HTTP_GET, [] { sendImages(); });
   server.on("/api/image", HTTP_GET, handleImageGet);
   server.on("/api/image", HTTP_POST, handleImageSave, handleImageUpload);

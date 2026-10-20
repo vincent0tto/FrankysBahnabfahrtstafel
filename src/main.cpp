@@ -3,9 +3,9 @@
 // Data: Verkehrsverbund Rhein-Neckar (VRN), Datenlizenz Deutschland – Namensnennung.
 //
 // Core 0: netTask   – WiFi, NTP, OTA, settings web page, firmware update
-//                     check after start, API polling
-// Core 1: loop()    – renders ~30 fps from the last good data, the event or
-//                     the tram race
+//                     check after start, API polling, the St.-Pauli-Ticker
+// Core 1: loop()    – renders ~30 fps from the last good data, the event,
+//                     the tram race or a goal
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -16,8 +16,10 @@
 #include "config.h"
 #include "display.h"
 #include "event_store.h"
+#include "goal_render.h"
 #include "image_store.h"
 #include "log.h"
+#include "match_client.h"
 #include "net.h"
 #include "settings_store.h"
 #include "updater.h"
@@ -99,6 +101,8 @@ static void netTask(void*) {
       }
       nextFetchMs = millis() + (r == FetchResult::Ok ? POLL_INTERVAL_S : POLL_RETRY_S) * 1000UL;
     }
+    esp_task_wdt_reset();
+    matchMaintain(online && timeValid() && !sleeping && !event && s.matchOn);
 
     rebootChecks();
     vTaskDelay(pdMS_TO_TICKS(100));
@@ -115,6 +119,7 @@ void setup() {
   settingsBegin();
   eventBegin();
   imageBegin();
+  matchBegin();
   esp_task_wdt_init(WDT_TIMEOUT_S, true);  // panic -> reboot on hang
   esp_task_wdt_add(nullptr);               // loop task
 
@@ -146,6 +151,11 @@ void loop() {
   static uint32_t raceVersion = 0;
   static uint32_t raceStartMs = 0;
   static bool racing = false;
+  static Match match;  // St.-Pauli-Ticker
+  static uint32_t matchVersion = 0;
+  static uint32_t goalVersion = 0;
+  static uint32_t goalStartMs = 0;
+  static bool goal = false;
 
   esp_task_wdt_reset();
   if (boardVersion != localVersion && xSemaphoreTake(boardMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
@@ -174,16 +184,25 @@ void loop() {
   }
   if (racing && millis() - raceStartMs >= raceTotalMs(race)) racing = false;
 
+  // a goal interrupts the departures only, not the event
+  matchFetch(match, matchVersion);
+  if (goalFetch(goalVersion) && !event.on) {
+    goal = true;
+    goalStartMs = millis();
+  }
+  if (goal && millis() - goalStartMs >= GOAL_ANIM_MS) goal = false;
+
   DisplayStatus st;
   st.wifi = WiFi.status() == WL_CONNECTED;
   st.timeValid = timeValid();
   st.updating = updateRunning();
   uint32_t ms = millis();
   const Race* r = racing ? &race : nullptr;
-  bool dark = testing ? displayRender(local, settings, test, karaoke, st, time(nullptr), ms, ms - testStartMs, r,
-                                      ms - raceStartMs)
-                      : displayRender(local, settings, event, karaoke, st, time(nullptr), ms, ms - eventStartMs, r,
-                                      ms - raceStartMs);
+  uint32_t goalMs = goal ? ms - goalStartMs : NO_GOAL;
+  bool dark = testing ? displayRender(local, settings, test, karaoke, match, st, time(nullptr), ms, ms - testStartMs, r,
+                                      ms - raceStartMs, goalMs)
+                      : displayRender(local, settings, event, karaoke, match, st, time(nullptr), ms, ms - eventStartMs, r,
+                                      ms - raceStartMs, goalMs);
   // a fixed frame rate however long the frame took (off time: nothing to
   // draw); if one took longer than that, wait a tick anyway and go on from now
   static TickType_t lastWake = xTaskGetTickCount();

@@ -8,6 +8,7 @@
 
 #include "config.h"
 #include "event_render.h"
+#include "goal_render.h"
 #include "karaoke_render.h"
 #include "log.h"
 #include "race_render.h"
@@ -54,13 +55,15 @@ static void updateBrightness(const Settings& s, const Event& ev, const DisplaySt
   }
 }
 
-bool displayRender(const Board& b, const Settings& s, const Event& ev, const Karaoke& k, const DisplayStatus& st,
-                   time_t now, uint32_t ms, uint32_t eventMs, const Race* race, uint32_t raceMs) {
+bool displayRender(const Board& b, const Settings& s, const Event& ev, const Karaoke& k, const Match& m,
+                   const DisplayStatus& st, time_t now, uint32_t ms, uint32_t eventMs, const Race* race,
+                   uint32_t raceMs, uint32_t goalMs) {
   if (!matrix) return false;
   // Off time: blank both buffers once and switch the LEDs off (also while
   // the nightly update installs). Never while the time is unknown, nor
-  // while the event is on or a race runs.
-  bool off = !ev.on && !race && st.timeValid && isOffTime(s, minuteOfDay(now));
+  // while the event is on, a race runs or a goal is shown.
+  bool goal = goalMs != NO_GOAL;
+  bool off = !ev.on && !race && !goal && st.timeValid && isOffTime(s, minuteOfDay(now));
   if (off) {
     if (!asleep) {
       Log.println("[display] off time, panel dark");
@@ -81,9 +84,10 @@ bool displayRender(const Board& b, const Settings& s, const Event& ev, const Kar
   updateBrightness(s, ev, st, now);
   matrix->clearScreen();
   if (race) drawRace(*matrix, u8, amber, *race, raceMs);
+  else if (goal) drawGoal(*matrix, u8, m, goalMs);
   else if (ev.on && ev.karaoke) renderKaraoke(*matrix, u8, k, ms);
   else if (ev.on) renderEvent(*matrix, u8, ev, eventMs);
-  else renderFrame(*matrix, u8, amber, b, s, st, now, ms);
+  else renderFrame(*matrix, u8, amber, b, s, st, now, ms, m);
   matrix->flipDMABuffer();
   return false;
 }

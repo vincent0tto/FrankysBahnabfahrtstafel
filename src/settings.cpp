@@ -241,6 +241,8 @@ void settingsToJson(const Settings& s, JsonObject out, bool forWeb) {
   out["disruptPasses"] = s.disruptPasses;
   out["animChance"] = s.animChance;
   out["animChanceBus"] = s.animChanceBus;
+  out["matchOn"] = s.matchOn;
+  out["goalAnim"] = s.goalAnim;
 
   JsonArray promos = out["promos"].to<JsonArray>();
   for (int i = 0; i < s.nPromos; i++) {
@@ -305,6 +307,8 @@ bool settingsFromJson(JsonVariantConst in, Settings& s) {
   s.disruptPasses = (uint8_t)clampU(in["disruptPasses"], 1, 10, s.disruptPasses);
   s.animChance = (uint8_t)clampU(in["animChance"], 0, 100, s.animChance);
   s.animChanceBus = (uint8_t)clampU(in["animChanceBus"], 0, 100, s.animChanceBus);
+  s.matchOn = in["matchOn"] | s.matchOn;
+  s.goalAnim = in["goalAnim"] | s.goalAnim;
 
   if (in["promos"].is<JsonArrayConst>()) {
     for (JsonVariantConst o : in["promos"].as<JsonArrayConst>()) {

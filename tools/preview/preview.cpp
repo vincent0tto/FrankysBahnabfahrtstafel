@@ -1,6 +1,7 @@
 // Host preview of the LED layout: renders a few scenarios with the real
 // render code into PPM images (LED dots, 6x scale): the departures, the
-// departure animation, the event mode, the tram race and the karaoke list.
+// departure animation, the event mode, the tram race, the karaoke list and
+// the St.-Pauli-Ticker.
 // Build/run: tools/preview/run.sh
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,6 +14,7 @@
 
 #include "config.h"
 #include "event_render.h"
+#include "goal_render.h"
 #include "karaoke_render.h"
 #include "parse.h"
 #include "race_render.h"
@@ -46,13 +48,13 @@ struct Frame { std::vector<uint16_t> px; };
 
 static Settings settings;  // config.h defaults
 
-static Frame render(const Board& b, DisplayStatus st, time_t now, uint32_t ms) {
+static Frame render(const Board& b, DisplayStatus st, time_t now, uint32_t ms, const Match& m = Match()) {
   GFXcanvas16 canvas(W, H);
   canvas.fillScreen(0);
   U8G2_FOR_ADAFRUIT_GFX u8;
   u8.begin(canvas);
   uint16_t amber = ((COLOR_R & 0xF8) << 8) | ((COLOR_G & 0xFC) << 3) | (COLOR_B >> 3);
-  renderFrame(canvas, u8, amber, b, settings, st, now, ms);
+  renderFrame(canvas, u8, amber, b, settings, st, now, ms, m);
   Frame f;
   f.px.assign(canvas.getBuffer(), canvas.getBuffer() + W * H);
   return f;
@@ -360,5 +362,39 @@ int main(int argc, char** argv) {
   snprintf(k.title, sizeof(k.title), "Karaoke – als Nächstes");
   for (uint32_t ms : {0u, 6000u}) karaokeFrame(ms);
   writePpm(argc > 5 ? argv[5] : "preview_karaoke.ppm", kFrames);
+
+  // St.-Pauli-Ticker: live in the 4th row, the last goal scrolling through,
+  // live without departures, the final score as a promo; the goal
+  // animation growing, blinking, with the score, and as "Tor testen"
+  std::vector<Frame> mFrames;
+  Match m;
+  m.id = 1;
+  m.kickoff = now - 30 * 60;
+  strcpy(m.home, "Darmstadt");
+  strcpy(m.away, "St. Pauli");
+  teamCode(MATCH_TEAM_ABBREVIATIONS, m.home, m.homeCode, sizeof(m.homeCode));
+  teamCode(MATCH_TEAM_ABBREVIATIONS, m.away, m.awayCode, sizeof(m.awayCode));
+  m.goalsAway = 1;
+  strcpy(m.lastGoal, "23' A. Ceesay");
+  mFrames.push_back(render(normal, ok, now, 1000, m));
+  mFrames.push_back(render(normal, ok, now, MATCH_GOAL_EVERY_S * 1000 + 4000, m));
+  mFrames.push_back(render(empty, ok, now, 1000, m));
+  m.finished = true;
+  setPromoIndex(0);  // no promos in the defaults: the final score
+  render(normal, ok, now, 7000000, m);  // starts a promo (due long ago)
+  render(normal, ok, now, 7500000, m);  // ends it
+  mFrames.push_back(render(normal, ok, now, 8000000, m));
+  setPromoIndex(-1);
+  auto goalFrame = [&](const Match& gm, uint32_t t) {
+    GFXcanvas16 canvas(W, H);
+    canvas.fillScreen(0);
+    U8G2_FOR_ADAFRUIT_GFX u8;
+    u8.begin(canvas);
+    drawGoal(canvas, u8, gm, t);
+    mFrames.push_back(Frame{std::vector<uint16_t>(canvas.getBuffer(), canvas.getBuffer() + W * H)});
+  };
+  for (uint32_t t : {100u, 800u, 1300u, 3000u, 5500u}) goalFrame(m, t);
+  goalFrame(Match(), 4000);
+  writePpm(argc > 6 ? argv[6] : "preview_match.ppm", mFrames);
   return 0;
 }
