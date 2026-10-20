@@ -56,7 +56,7 @@ static const char* const ICE_ROWS[TRAM_H] = {
 static const uint32_t COUNT_STEP_MS = RACE_COUNTDOWN_MS / 4;
 static const uint32_t BLINK_MS = 2000;  // winner blinks at the finish
 static const uint32_t LAP_MS = RACE_WIN_MS - BLINK_MS;  // lap of honour
-// derailment: drive to the middle, derail, then the text
+// derailment: come in from the left on the rail, brake to the middle, derail, then the text
 static const uint32_t DRIVE_MS = 1600, CRASH_MS = 1200;
 static const int RAIL_Y = 47;
 static const int CRASH_TILT = 8;  // px the front car's nose ends up below the rail
@@ -129,24 +129,20 @@ static void drawTrack(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Race& r,
   }
 }
 
-static int ease(int x, int span) {  // 0..256 for x in 0..span, 3x^2 - 2x^3
-  int64_t p = (int64_t)x * 256 / span;
-  return (int)((3 * p * p * 256 - 2 * p * p * p) / (256 * 256));
+static int easeOut(int x, int span) {  // 0..256 for x in 0..span, braking: 1 - (1 - x)^2
+  int64_t q = 256 - (int64_t)x * 256 / span;
+  return (int)(256 - q * q / 256);
 }
 
 // The derailing tram alone on the board, `u` ms into RACE_DERAIL_MS.
 static void drawDerail(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Race& r, uint32_t u) {
   int lane = r.derailLane;
-  int32_t pos[RACE_LANES];
-  racePositions(r, r.derailMs, pos);
-  int nose0 = noseX(pos[lane]), bottom0 = lane * LANE_H + LANE_H - 3;
   int noseC = (W + TRAM_W) / 2, bottomC = RAIL_Y - 1;
   uint16_t red = rgb565(DERAIL_RGB);
   g.drawFastHLine(0, RAIL_Y, W, rgb565(LINE_RGB));
 
   if (u < DRIVE_MS) {
-    int p = ease(u, DRIVE_MS);
-    drawTram(g, red, nose0 + (noseC - nose0) * p / 256, bottom0 + (bottomC - bottom0) * p / 256, 0, 0, 0, H - 1);
+    drawTram(g, red, -1 + (noseC + 1) * easeOut(u, DRIVE_MS) / 256, bottomC, 0, 0, 0, H - 1);
     return;
   }
   if (u < DRIVE_MS + CRASH_MS) {

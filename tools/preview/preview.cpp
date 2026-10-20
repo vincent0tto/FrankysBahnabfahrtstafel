@@ -291,7 +291,7 @@ int main(int argc, char** argv) {
   writePpm(argc > 3 ? argv[3] : "preview_event.ppm", event);
 
   // tram race with a derailment: countdown, start, mid-race (one gliding),
-  // the derailment (driving to the middle, derailing, the text), the
+  // the derailment (coming in from the left, derailing, the text), the
   // derailed one in its lane, finish, winner blinking, the lap of honour,
   // the ranking
   std::vector<Frame> raceFrames;
@@ -300,7 +300,7 @@ int main(int argc, char** argv) {
   do raceBegin(race, ++seed);
   while (race.derailLane < 0 || race.derailMs < 8000);
   const uint32_t C = RACE_COUNTDOWN_MS, D = C + race.derailMs, E = C + race.endMs;
-  for (uint32_t t : {100u, C - 300, C + 1000, D - 600, D - 450, D + 800, D + 2000, D + 4000, D + RACE_DERAIL_MS + 500,
+  for (uint32_t t : {100u, C - 300, C + 1000, D - 600, D - 450, D + 400, D + 2000, D + 4000, D + RACE_DERAIL_MS + 500,
                      E, E + 300, E + 2600, E + 5000, E + RACE_WIN_MS + 1500}) {
     GFXcanvas16 canvas(W, H);
     canvas.fillScreen(0);
