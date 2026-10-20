@@ -84,6 +84,7 @@ void test_json_roundtrip() {
   s.promoShowS = 12;
   s.promoFullRow = true;
   s.promoWhite = true;
+  s.promoWhitePct = 40;
   s.disruptOn = false;
   s.disruptPasses = 4;
   s.animChance = 0;
@@ -114,6 +115,7 @@ void test_json_roundtrip() {
   TEST_ASSERT_EQUAL(12, t.promoShowS);
   TEST_ASSERT_TRUE(t.promoFullRow);
   TEST_ASSERT_TRUE(t.promoWhite);
+  TEST_ASSERT_EQUAL(40, t.promoWhitePct);
   TEST_ASSERT_FALSE(t.disruptOn);
   TEST_ASSERT_EQUAL(4, t.disruptPasses);
   TEST_ASSERT_EQUAL(0, t.animChance);
@@ -182,6 +184,7 @@ void test_json_clamps_and_rejects() {
   TEST_ASSERT_TRUE(t.disruptOn);        // missing: default
   TEST_ASSERT_FALSE(t.promoFullRow);
   TEST_ASSERT_FALSE(t.promoWhite);
+  TEST_ASSERT_EQUAL(100, t.promoWhitePct);
   TEST_ASSERT_EQUAL(s.off.from, t.off.from);  // malformed times keep the default
   TEST_ASSERT_EQUAL(1, t.nDim);
   TEST_ASSERT_EQUAL(1, t.dim[0].value);

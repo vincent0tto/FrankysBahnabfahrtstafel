@@ -236,6 +236,7 @@ void settingsToJson(const Settings& s, JsonObject out, bool forWeb) {
   out["promoIntervalS"] = s.promoIntervalS;
   out["promoFullRow"] = s.promoFullRow;
   out["promoWhite"] = s.promoWhite;
+  out["promoWhitePct"] = s.promoWhitePct;
   out["disruptOn"] = s.disruptOn;
   out["disruptPasses"] = s.disruptPasses;
   out["animChance"] = s.animChance;
@@ -299,6 +300,7 @@ bool settingsFromJson(JsonVariantConst in, Settings& s) {
   s.promoIntervalS = (uint16_t)clampU(in["promoIntervalS"], 0, 3600, s.promoIntervalS);
   s.promoFullRow = in["promoFullRow"] | s.promoFullRow;
   s.promoWhite = in["promoWhite"] | s.promoWhite;
+  s.promoWhitePct = (uint8_t)clampU(in["promoWhitePct"], 1, 100, s.promoWhitePct);
   s.disruptOn = in["disruptOn"] | s.disruptOn;
   s.disruptPasses = (uint8_t)clampU(in["disruptPasses"], 1, 10, s.disruptPasses);
   s.animChance = (uint8_t)clampU(in["animChance"], 0, 100, s.animChance);

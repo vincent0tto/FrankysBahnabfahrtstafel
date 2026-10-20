@@ -21,7 +21,6 @@ static const int ROW_BASE0 = 24;         // first departure row
 static const int ROW_PITCH = 12;
 static const int MAX_ROWS = 3;           // last row is replaced by the ticker
 static const int COL_GAP = 6;            // between line / destination / time
-static const uint16_t PROMO_WHITE = 0xFFFF;  // RGB565, see Settings::promoWhite
 
 #define FONT_HEADER u8g2_font_helvB08_tf
 #define FONT_ROW    u8g2_font_t0_13b_tf
@@ -73,6 +72,14 @@ static void clipRow(Adafruit_GFX& g, int base, int x0, int x1) {
   int h = rowBottom(base) + 1 - top;
   if (x0 > 0) g.fillRect(0, top, x0, h, 0);
   if (x1 < W) g.fillRect(x1, top, W - x1, h, 0);
+}
+
+// RGB565 white dimmed to `pct` percent (never quite black).
+static uint16_t grayColor(uint8_t pct) {
+  uint16_t r = (31 * pct + 50) / 100, g = (63 * pct + 50) / 100;
+  if (r == 0) r = 1;
+  if (g == 0) g = 1;
+  return r << 11 | g << 5 | r;
 }
 
 // Pixel offset for a text that is `overflow` px wider than its box.
@@ -525,7 +532,7 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
   }
   // with promoFullRow and promoWhite the promos are white (the disruption
   // texts stay amber)
-  uint16_t promoColor = s.promoFullRow && s.promoWhite ? PROMO_WHITE : color;
+  uint16_t promoColor = s.promoFullRow && s.promoWhite ? grayColor(s.promoWhitePct) : color;
   u8.setForegroundColor(promoColor);
   for (const PromoShow& t : tails)
     if (promoMsg && t.active) drawPromo(g, u8, promoColor, s, rowBase(MAX_ROWS), t.item, ms, true, ms - t.start);

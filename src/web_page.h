@@ -285,8 +285,16 @@ function renderRow(){
   if(S.mode==='mix')box.append(el('div',{className:'row'},
     el('label',{},'Eine Promo bleibt',num('promoShowS',3,600),'s'),
     el('label',{},'Pause dazwischen ca.',num('interval',1,3600),'s')));
-  if(S.mode==='scroll')box.append(el('div',{className:'row'},
-    el('label',{},el('input',{type:'checkbox',checked:S.promoWhite,onchange:e=>S.promoWhite=e.target.checked}),'Promos in Weiß statt Orange')));
+  if(S.mode==='scroll'){
+    const row=el('div',{className:'row'},
+      el('label',{},el('input',{type:'checkbox',checked:S.promoWhite,onchange:e=>{S.promoWhite=e.target.checked;renderRow()}}),'Promos in Weiß statt Orange'));
+    if(S.promoWhite){
+      const val=el('span',{className:'val',textContent:S.promoWhitePct+' %'});
+      row.append(el('label',{},'Helligkeit',el('input',{type:'range',min:1,max:100,value:S.promoWhitePct,
+        oninput:e=>{S.promoWhitePct=+e.target.value;val.textContent=S.promoWhitePct+' %'}}),val));
+    }
+    box.append(row);
+  }
   box.append(el('h3',{textContent:'VRN-Störmeldungen'}));
   const row=el('div',{className:'row'},el('label',{},el('input',{type:'checkbox',checked:S.disruptOn,onchange:e=>{S.disruptOn=e.target.checked;renderRow()}}),'anzeigen'));
   if(S.disruptOn){
@@ -455,7 +463,7 @@ function collect(){
   }).filter(p=>p.text||p.icon);
   return {off:{on:$('offOn').checked,from:$('offFrom').value||'02:00',to:$('offTo').value||'06:00'},
     brightnessPct:S.brightnessPct,dim:S.dim.filter(d=>d.from&&d.to),
-    promoShowS:S.promoShowS,promoIntervalS:S.mode==='off'?0:S.interval,promoFullRow:S.mode==='scroll',promoWhite:S.promoWhite,
+    promoShowS:S.promoShowS,promoIntervalS:S.mode==='off'?0:S.interval,promoFullRow:S.mode==='scroll',promoWhite:S.promoWhite,promoWhitePct:S.promoWhitePct,
     disruptOn:S.disruptOn,disruptPasses:S.disruptPasses,animChance:S.animChance,animChanceBus:S.animChanceBus,
     promos,icons:S.icons};
 }
