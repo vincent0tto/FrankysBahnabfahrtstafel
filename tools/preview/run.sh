@@ -11,7 +11,7 @@ CC=${CC:-clang}
 INC="-DARDUINO=100 -DARDUINOJSON_ENABLE_ARDUINO_STRING=0 -DARDUINOJSON_ENABLE_ARDUINO_STREAM=0 -DARDUINOJSON_ENABLE_ARDUINO_PRINT=0 -DARDUINOJSON_ENABLE_PROGMEM=0 -Itools/preview/shim -Iinclude -Isrc -I$L/ArduinoJson/src -I$L/Adafruit\ GFX\ Library -I$L/U8g2_for_Adafruit_GFX/src"
 eval $CC $CFLAGS -c $INC $L/U8g2_for_Adafruit_GFX/src/u8g2_fonts.c -o $OUT/u8g2_fonts.o
 eval $CXX -std=c++17 $CXXFLAGS $INC $LDFLAGS -Wno-macro-redefined \
-  tools/preview/preview.cpp src/render.cpp src/depart_anim.cpp src/parse.cpp src/settings.cpp src/icons.cpp src/event.cpp src/event_render.cpp src/race.cpp src/race_render.cpp src/karaoke.cpp src/karaoke_render.cpp src/match.cpp src/goal_render.cpp \
+  tools/preview/preview.cpp src/display/render.cpp src/display/depart_anim.cpp src/departures/parse.cpp src/core/settings.cpp src/display/icons.cpp src/event/event.cpp src/event/event_render.cpp src/race/race.cpp src/race/race_render.cpp src/karaoke/karaoke.cpp src/karaoke/karaoke_render.cpp src/match/match.cpp src/match/goal_render.cpp \
   \"$L/Adafruit GFX Library/Adafruit_GFX.cpp\" $L/U8g2_for_Adafruit_GFX/src/U8g2_for_Adafruit_GFX.cpp \
   $OUT/u8g2_fonts.o -o $OUT/preview
 $OUT/preview $OUT/preview.ppm $OUT/preview_anim.ppm $OUT/preview_event.ppm $OUT/preview_race.ppm $OUT/preview_karaoke.ppm $OUT/preview_match.ppm

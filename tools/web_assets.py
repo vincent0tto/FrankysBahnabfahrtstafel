@@ -1,5 +1,5 @@
 # PlatformIO pre-script: turns the web pages in src/web/ into byte arrays for
-# src/web.cpp. The HTML is gzipped (~65 % smaller, served with
+# src/web/web.cpp. The HTML is gzipped (~65 % smaller, served with
 # "Content-Encoding: gzip"), the icon is a PNG and stays as it is. The
 # header lands in the build directory and is only rewritten when it changes,
 # so web.cpp isn't rebuilt every time.

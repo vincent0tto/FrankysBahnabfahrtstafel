@@ -4,7 +4,7 @@
 
 #include <string>
 
-#include "log_ring.h"
+#include "core/log_ring.h"
 
 void setUp() {}
 void tearDown() {}

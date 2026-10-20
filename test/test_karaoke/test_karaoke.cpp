@@ -2,7 +2,7 @@
 #include <string.h>
 #include <unity.h>
 
-#include "karaoke.h"
+#include "karaoke/karaoke.h"
 
 static Karaoke k, t;
 

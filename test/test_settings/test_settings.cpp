@@ -3,7 +3,7 @@
 #include <unity.h>
 
 #include "config.h"
-#include "settings.h"
+#include "core/settings.h"
 
 static Settings s, t;  // big, keep them off the stack
 

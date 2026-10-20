@@ -8,7 +8,7 @@
 #include <sstream>
 #include <string>
 
-#include "parse.h"
+#include "departures/parse.h"
 
 static time_t iso(const char* s) {
   time_t t = 0;

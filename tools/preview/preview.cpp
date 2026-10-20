@@ -13,12 +13,12 @@
 #include <vector>
 
 #include "config.h"
-#include "event_render.h"
-#include "goal_render.h"
-#include "karaoke_render.h"
-#include "parse.h"
-#include "race_render.h"
-#include "render.h"
+#include "departures/parse.h"
+#include "display/render.h"
+#include "event/event_render.h"
+#include "karaoke/karaoke_render.h"
+#include "match/goal_render.h"
+#include "race/race_render.h"
 
 static const int W = PANEL_RES_X * PANEL_CHAIN, H = PANEL_RES_Y, S = 6, GAP = 14;
 

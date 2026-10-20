@@ -8,8 +8,8 @@
 #include <string>
 
 #include "config.h"
-#include "match.h"
-#include "parse.h"
+#include "departures/parse.h"
+#include "match/match.h"
 
 static JsonDocument doc;
 static Match m, before;

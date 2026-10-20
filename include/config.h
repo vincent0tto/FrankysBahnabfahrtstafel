@@ -59,7 +59,7 @@
 // After each start the board asks GitHub for the newest release (built by
 // .github/workflows/firmware.yml on every push to main) and installs it if
 // it is newer than the running firmware. Repo and releases are public, the
-// firmware there contains no passwords (src/credentials.cpp).
+// firmware there contains no passwords (src/core/credentials.cpp).
 #define AUTO_UPDATE   1   // 0 = off
 #define GITHUB_REPO   "vincent0tto/FrankysBahnabfahrtstafel"
 #define UPDATE_ASSET  "firmware.bin"
@@ -119,13 +119,13 @@
 #define EVENT_TEST_S       30       // "Auf der Tafel testen" on the event page shows a scene this long
 
 // When a departure leaves, 1 in N times its tram/bus drives out of the row
-// (src/depart_anim.cpp). Only if no other shown row leaves in the same minute.
+// (src/display/depart_anim.cpp). Only if no other shown row leaves in the same minute.
 // 0 = never, 1 = always. Defaults, changeable on the web page (Technik).
 #define DEPART_ANIM_CHANCE 10
 #define DEPART_ANIM_CHANCE_BUS 3   // same for buses (line 628 etc.)
 
 // Promo texts shown now and then instead of the 4th row are set up on the
-// web page; there are none built in. Icons: src/icons.cpp.
+// web page; there are none built in. Icons: src/display/icons.cpp.
 #define PROMO_INTERVAL_S   75   // average pause between showings (+-50 %), 0 = off
 #define PROMO_SHOW_S         25   // how long one text stays
 #define PROMO_MIN_MINUTES   7   // only if the 4th row's departure is this far away

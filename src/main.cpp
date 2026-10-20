@@ -14,17 +14,17 @@
 #include <esp_task_wdt.h>
 
 #include "config.h"
-#include "display.h"
-#include "event_store.h"
-#include "goal_render.h"
-#include "image_store.h"
-#include "log.h"
-#include "match_client.h"
-#include "net.h"
-#include "settings_store.h"
-#include "updater.h"
-#include "vrn_client.h"
-#include "web.h"
+#include "core/log.h"
+#include "core/net.h"
+#include "core/settings_store.h"
+#include "core/updater.h"
+#include "departures/vrn_client.h"
+#include "display/display.h"
+#include "event/event_store.h"
+#include "event/image_store.h"
+#include "match/goal_render.h"
+#include "match/match_client.h"
+#include "web/web.h"
 
 static Board sharedBoard;            // guarded by boardMutex
 static volatile uint32_t boardVersion = 0;

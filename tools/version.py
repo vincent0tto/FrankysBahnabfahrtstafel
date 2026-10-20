@@ -3,7 +3,7 @@
 # the Actions tab. In CI it comes from GITHUB_RUN_NUMBER. Locally it is taken
 # from the newest build-* tag in HEAD's history (git pull fetches it), so a
 # build from the same commit as GitHub's release counts as up to date
-# (src/updater.cpp).
+# (src/core/updater.cpp).
 import os
 import subprocess
 

@@ -70,7 +70,7 @@ Ein ESP32-S3-DEV-KIT-N8R8 steuert drei Waveshare-22100-Panels (64×64, P3, HUB75
 die nebeneinander montiert sind. Das ergibt 192×64 Pixel.
 
 Lange Ziele laufen durch (Pause, bis zum Ende schieben, Pause, zurückspringen).
-Schriften und Layout stehen oben in `src/render.cpp`. Um ein Layout ohne Hardware anzusehen,
+Schriften und Layout stehen oben in `src/display/render.cpp`. Um ein Layout ohne Hardware anzusehen,
 `tools/preview/run.sh` ausführen; es schreibt `tools/preview/preview.png`, die Bilder der
 Abfahrtsanimation nach `tools/preview/preview_anim.png`, Beispiele des Event-Modus nach
 `tools/preview/preview_event.png`, ein Bahnrennen nach `tools/preview/preview_race.png` und die
@@ -158,7 +158,7 @@ pio run -e esp32s3 -t upload -t monitor
 Zum Flashen und für das serielle Log den **UART**-USB-C-Anschluss (CH343) nehmen.
 
 Die Firmware selbst enthält keine Passwörter. Beim ersten Start kopiert die Tafel die Werte aus
-`secrets.h` in ihren Flash (NVS, `src/credentials.cpp`) und nimmt sie ab dann von dort, auch
+`secrets.h` in ihren Flash (NVS, `src/core/credentials.cpp`) und nimmt sie ab dann von dort, auch
 nach Updates von GitHub. Neu übernommen werden sie nur, wenn sich `secrets.h` ändert. Später
 lässt sich das WLAN auf der Einstellungsseite ändern; kann sich die Tafel nicht mit einem neuen
 WLAN verbinden, nimmt sie wieder das vorherige. Ist auch das alte WLAN weg, einmal über USB mit
@@ -327,7 +327,7 @@ sind die dunkelsten, die noch leuchten.
 Das Event liegt als `/event.json`, jedes Bild als `/img<N>.bin` in einem eigenen Dateisystem
 (LittleFS auf der Partition `spiffs`, 1,5 MB), das Firmware-Updates nicht anrühren. Beim
 allerersten Start mit dieser Firmware formatiert die Tafel die Partition einmal. Formate:
-`eventToJson` in `src/event.cpp`, `FileHeader` in `src/image_store.cpp`. Beim Start lädt die
+`eventToJson` in `src/event/event.cpp`, `FileHeader` in `src/event/image_store.cpp`. Beim Start lädt die
 Tafel alle Bilder ins PSRAM.
 
 ### Karaoke
@@ -345,7 +345,7 @@ in der Liste, schiebt sie mit ▲/▼ um und nimmt sie mit ✕ heraus; beim erst
 seiner neuen Zeile. Jede Änderung speichert sofort (`POST /api/karaoke`, als `/karaoke.json` im
 selben Dateisystem wie das Event); hat ein anderes Gerät die Liste inzwischen geändert, wiederholt
 die Seite die Änderung auf der neuen Liste, so gehen gleichzeitige Einträge nicht verloren.
-Format: `karaokeToJson` in `src/karaoke.cpp`.
+Format: `karaokeToJson` in `src/karaoke/karaoke.cpp`.
 
 ### Tests (Parser, laufen auf dem Mac)
 
@@ -391,26 +391,26 @@ vorher einmal `sudo xcodebuild -license` aus.
 | Datei | Zweck |
 |---|---|
 | `include/config.h` | Haltestelle, Filter, Pins, Helligkeit, Zeiten |
-| `src/parse.cpp` | JSON → Abfahrten, Umlaute (CP437), Countdown-Text (auf dem Host getestet) |
-| `src/https_json.cpp` | HTTPS-Anfrage, Streaming-JSON-Parser mit Filter (VRN und OpenLigaDB) |
-| `src/vrn_client.cpp` | Abfahrten abrufen (Haupt- und Ausweich-Host), PSRAM |
-| `src/match.cpp` | St.-Pauli-Ticker: Spiel aus OpenLigaDB-JSON, Phasen, Tore (auf dem Host getestet) |
-| `src/match_client.cpp` | St.-Pauli-Ticker: Abruf im Netzwerk-Task, Übergabe an die Render-Schleife |
-| `src/goal_render.cpp` | Tor-Animation |
-| `src/net.cpp` | WLAN-Watchdog, NTP, OTA |
-| `src/settings.cpp` | Einstellungen zur Laufzeit: Standardwerte, Zeitfenster, JSON (auf dem Host getestet) |
-| `src/settings_store.cpp` | Einstellungen im Flash (LittleFS), Übergabe an die Render-Schleife |
-| `src/web.cpp`, `src/web/index.html` | die Webseite (alle Tabs, auch der Event-Editor) und ihre JSON-API; `tools/web_assets.py` packt sie beim Build per gzip in die Firmware |
-| `src/event.cpp` | Event-Modus: Szenen und Zeilen, JSON (auf dem Host getestet) |
-| `src/event_store.cpp` | Event und Karaoke-Liste im Flash (LittleFS), Übergabe an die Render-Schleife |
-| `src/event_render.cpp` | zeichnet die Szenen, für das Panel und die Vorschau auf der Seite |
-| `src/karaoke.cpp` | Karaoke-Liste: Einträge, Farben, JSON (auf dem Host getestet) |
-| `src/karaoke_render.cpp` | zeichnet die Karaoke-Liste, für das Panel und die Vorschau auf der Seite |
-| `src/image_store.cpp` | Pixelbilder des Events im Flash (LittleFS) und PSRAM |
-| `src/updater.cpp` | Firmware-Update aus den GitHub-Releases |
-| `src/icons.cpp` | eingebaute Promo-Symbole |
-| `src/render.cpp` | rnv-Layout, Laufschrift, Statusbildschirme |
-| `src/depart_anim.cpp` | Abfahrtsanimation (Sprites + Zeitablauf) |
-| `src/display.cpp` | Panel-Einrichtung, Dimmen |
+| `src/departures/parse.cpp` | JSON → Abfahrten, Umlaute (CP437), Countdown-Text (auf dem Host getestet) |
+| `src/core/https_json.cpp` | HTTPS-Anfrage, Streaming-JSON-Parser mit Filter (VRN und OpenLigaDB) |
+| `src/departures/vrn_client.cpp` | Abfahrten abrufen (Haupt- und Ausweich-Host), PSRAM |
+| `src/match/match.cpp` | St.-Pauli-Ticker: Spiel aus OpenLigaDB-JSON, Phasen, Tore (auf dem Host getestet) |
+| `src/match/match_client.cpp` | St.-Pauli-Ticker: Abruf im Netzwerk-Task, Übergabe an die Render-Schleife |
+| `src/match/goal_render.cpp` | Tor-Animation |
+| `src/core/net.cpp` | WLAN-Watchdog, NTP, OTA |
+| `src/core/settings.cpp` | Einstellungen zur Laufzeit: Standardwerte, Zeitfenster, JSON (auf dem Host getestet) |
+| `src/core/settings_store.cpp` | Einstellungen im Flash (LittleFS), Übergabe an die Render-Schleife |
+| `src/web/web.cpp`, `src/web/index.html` | die Webseite (alle Tabs, auch der Event-Editor) und ihre JSON-API; `tools/web_assets.py` packt sie beim Build per gzip in die Firmware |
+| `src/event/event.cpp` | Event-Modus: Szenen und Zeilen, JSON (auf dem Host getestet) |
+| `src/event/event_store.cpp` | Event und Karaoke-Liste im Flash (LittleFS), Übergabe an die Render-Schleife |
+| `src/event/event_render.cpp` | zeichnet die Szenen, für das Panel und die Vorschau auf der Seite |
+| `src/karaoke/karaoke.cpp` | Karaoke-Liste: Einträge, Farben, JSON (auf dem Host getestet) |
+| `src/karaoke/karaoke_render.cpp` | zeichnet die Karaoke-Liste, für das Panel und die Vorschau auf der Seite |
+| `src/event/image_store.cpp` | Pixelbilder des Events im Flash (LittleFS) und PSRAM |
+| `src/core/updater.cpp` | Firmware-Update aus den GitHub-Releases |
+| `src/display/icons.cpp` | eingebaute Promo-Symbole |
+| `src/display/render.cpp` | rnv-Layout, Laufschrift, Statusbildschirme |
+| `src/display/depart_anim.cpp` | Abfahrtsanimation (Sprites + Zeitablauf) |
+| `src/display/display.cpp` | Panel-Einrichtung, Dimmen |
 | `src/main.cpp` | Netzwerk-Task (Core 0) und Render-Schleife (Core 1, ~30 fps) |
 | `.github/workflows/firmware.yml` | CI: Tests, Build, Release |

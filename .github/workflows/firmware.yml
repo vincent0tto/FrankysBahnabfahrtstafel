@@ -1,7 +1,7 @@
 # Builds the firmware on every push to main and publishes it as release
 # "build-<run number>", the number shown in the Actions tab. The board installs
-# it after its next start (src/updater.cpp). Built without include/secrets.h: the releases are public,
-# the board keeps its passwords in flash (src/credentials.cpp).
+# it after its next start (src/core/updater.cpp). Built without include/secrets.h: the releases are public,
+# the board keeps its passwords in flash (src/core/credentials.cpp).
 name: firmware
 
 on:

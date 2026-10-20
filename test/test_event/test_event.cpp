@@ -3,7 +3,7 @@
 #include <unity.h>
 
 #include "config.h"
-#include "event.h"
+#include "event/event.h"
 
 static Event e, t;  // big, keep them off the stack
 

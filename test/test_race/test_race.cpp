@@ -1,7 +1,7 @@
 // Host tests: pio test -e native
 #include <unity.h>
 
-#include "race.h"
+#include "race/race.h"
 
 void setUp() {}
 void tearDown() {}
