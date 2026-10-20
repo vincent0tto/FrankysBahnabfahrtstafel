@@ -35,20 +35,21 @@ static const uint32_t GO_RGB = 0x30E830;
 static const uint32_t LINE_RGB = 0xD8D8D8;  // lanes, fields, start, finish: white
 static const uint32_t ICE_RGB = 0xFFFFFF, ICE_STRIPE_RGB = 0xFF1010;
 
-// ICE power car and the end of the next car, as long as the tram: '#' white,
-// 'r' its red stripe.
+// ICE: power car, a middle car and the second power car facing back, twice
+// as long as the tram: '#' white, 'r' its red stripe.
+static const int ICE_W = 2 * TRAM_W;
 static const char* const ICE_ROWS[TRAM_H] = {
-    ".....................................####......................",
-    "......................................#........................",
-    "#####################.#########################................",
-    "#####################.############################.............",
-    "#.....#.....#.....#.....#.....#.....#.....#..##....##..........",
-    "#####################.###################################......",
-    "#############################################################..",
-    "rrrrrrrrrrrrrrrrrrrrr.rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr##",
-    "#####################.######################################...",
-    "....###.......###.........###.......###.........###............",
-    ".....#.........#...........#.........#...........#.............",
+    "......................####..........................................................................####......................",
+    "........................#............................................................................#........................",
+    "................#########################.##########################################.#########################................",
+    ".............############################.##########################################.############################.............",
+    "..........##....##..#.....#.....#.....#.....#.....#.....#.....##.....#.....#.....#.....#.....#.....#.....#..##....##..........",
+    "......###################################.##########################################.###################################......",
+    "..##########################################################################################################################..",
+    "##rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr##",
+    "...######################################.##########################################.######################################...",
+    "............###.........###.......###.........###.......###........###.......###.........###.......###.........###............",
+    ".............#...........#.........#...........#.........#..........#.........#...........#.........#...........#.............",
 };
 
 static const uint32_t COUNT_STEP_MS = RACE_COUNTDOWN_MS / 4;
@@ -59,28 +60,28 @@ static const uint32_t DRIVE_MS = 1600, CRASH_MS = 1200;
 static const int RAIL_Y = 47;
 static const int CRASH_TILT = 8;  // px the front car's nose ends up below the rail
 
-// A train (`rows`: '#' `color`, 'r' `stripe`) with its front column at
+// A train (`rows`, `w` columns: '#' `color`, 'r' `stripe`) with its front column at
 // `nose`, its wheels on `bottom`; the front car tilted `tilt` px at its nose
 // (down, negative: up). Nothing left of `clipL` or outside rows [clipT, clipB].
-static void drawTrain(Adafruit_GFX& g, const char* const* rows, uint16_t color, uint16_t stripe, int nose,
+static void drawTrain(Adafruit_GFX& g, const char* const* rows, int w, uint16_t color, uint16_t stripe, int nose,
                       int bottom, int tilt, int clipL, int clipT, int clipB) {
-  int left = nose - (TRAM_W - 1);
+  int left = nose - (w - 1);
   for (int r = 0; r < TRAM_H; r++)
-    for (int c = 0; c < TRAM_W; c++) {
+    for (int c = 0; c < w; c++) {
       if (rows[r][c] == '.') continue;
       int x = left + c;
-      int y = bottom - (TRAM_H - 1) + r + (c > PIVOT ? (c - PIVOT) * tilt / (TRAM_W - 1 - PIVOT) : 0);
+      int y = bottom - (TRAM_H - 1) + r + (c > PIVOT ? (c - PIVOT) * tilt / (w - 1 - PIVOT) : 0);
       if (x >= clipL && x < W && y >= clipT && y <= clipB) g.drawPixel(x, y, rows[r][c] == 'r' ? stripe : color);
     }
 }
 
 static void drawTram(Adafruit_GFX& g, uint16_t color, int nose, int bottom, int tilt, int clipL, int clipT,
                      int clipB) {
-  drawTrain(g, TRAM_ROWS, color, color, nose, bottom, tilt, clipL, clipT, clipB);
+  drawTrain(g, TRAM_ROWS, TRAM_W, color, color, nose, bottom, tilt, clipL, clipT, clipB);
 }
 
 static void drawIce(Adafruit_GFX& g, int nose, int bottom, int clipL, int clipT, int clipB) {
-  drawTrain(g, ICE_ROWS, rgb565(ICE_RGB), rgb565(ICE_STRIPE_RGB), nose, bottom, 0, clipL, clipT, clipB);
+  drawTrain(g, ICE_ROWS, ICE_W, rgb565(ICE_RGB), rgb565(ICE_STRIPE_RGB), nose, bottom, 0, clipL, clipT, clipB);
 }
 
 // Colour and name of a lane's train: the ICE is "ICE 3".
@@ -116,7 +117,8 @@ static void drawTrack(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Race& r,
     centeredText(u8, 0, NUM_W, bottom, num);
     if (i == hide) continue;
     int nose = noseX(pos[i]);
-    int left = nose - (TRAM_W - 1) > NUM_W + 1 ? nose - (TRAM_W - 1) : NUM_W + 1;
+    int w = i == r.iceLane ? ICE_W : TRAM_W;
+    int left = nose - (w - 1) > NUM_W + 1 ? nose - (w - 1) : NUM_W + 1;
     g.fillRect(left, bottom - 8, nose - left + 1, 7, 0);  // no lines through the windows
     if (i == r.iceLane) drawIce(g, nose, bottom, NUM_W + 1, top, top + LANE_H - 1);
     else drawTram(g, c, nose, bottom, i == derailed ? -3 : 0, NUM_W + 1, top, top + LANE_H - 1);
@@ -199,7 +201,7 @@ static void drawWinner(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Race& r
   centeredText(u8, 0, W, base, text);
 
   g.fillRect(0, H - 12, W, 12, 0);
-  int nose = -1 + (int)((uint64_t)u * (W + TRAM_W) / LAP_MS);
+  int nose = -1 + (int)((uint64_t)u * (W + (r.winner == r.iceLane ? ICE_W : TRAM_W)) / LAP_MS);
   if (r.winner == r.iceLane) drawIce(g, nose, H - 1, 0, H - 12, H - 1);
   else drawTram(g, c, nose, H - 1, 0, 0, H - 12, H - 1);
 }
