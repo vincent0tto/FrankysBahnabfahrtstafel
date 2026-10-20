@@ -36,10 +36,11 @@ Schriesheim Bahnhof                     10:42
   zum Beispiel den Instagram-Namen oder ein Angebot, mit einem kleinen Pixel-Symbol.
 - **Kleine Bahnen:** hin und wieder fährt eine kleine Bahn oder ein Bus aus seiner Zeile,
   wenn er abfährt.
-- **Bahnrennen:** wie das Pferderennen auf der Kirmes. Auf Knopfdruck fahren vier kleine
+- **Bahnrennen:** wie das Pferderennen auf der Kirmes. Auf Knopfdruck fahren vier bunte
   Bahnen mit den Nummern 1–4 zufällig Feld für Feld über 12 Felder, manchmal auch eins zurück.
-  Wer zuerst im Ziel ist, gewinnt und bekommt eine Ehrenrunde mit Feuerwerk. Setzen kann man
-  auf eine Nummer.
+  Etwa jedes zehnte Rennen entgleist eine Bahn und bleibt stehen. Wer zuerst im Ziel ist,
+  gewinnt und bekommt eine Ehrenrunde mit Feuerwerk, danach kommt kurz die Rangliste. Setzen
+  kann man auf eine Nummer.
 - **Nachtruhe:** nachts schaltet sich die Tafel ab, am späten Abend wird sie dunkler.
 - **Event-Modus:** Für eine Party oder einen besonderen Abend übernimmt die Tafel auf Knopfdruck
   ganz eigene Texte und Bilder in Farbe, bis man sie wieder auf die Abfahrten zurückschaltet.

@@ -287,14 +287,18 @@ int main(int argc, char** argv) {
   event.push_back(renderEventFrame(ev, 0));
   writePpm(argc > 3 ? argv[3] : "preview_event.ppm", event);
 
-  // tram race: countdown, start, mid-race (one gliding), finish, winner
-  // blinking, the lap of honour
+  // tram race with a derailment: countdown, start, mid-race (one gliding),
+  // the derailment (driving to the middle, derailing, the text), the
+  // derailed one in its lane, finish, winner blinking, the lap of honour,
+  // the ranking
   std::vector<Frame> raceFrames;
   static Race race;
-  raceBegin(race, 12345);
-  const uint32_t C = RACE_COUNTDOWN_MS, E = C + race.endMs;
-  for (uint32_t t : {100u, C - 300, C + 1000, C + race.endMs / 2, C + race.endMs / 2 + 150, E, E + 300,
-                     E + 2600, E + 5000, E + 8000}) {
+  uint32_t seed = 1;
+  do raceBegin(race, ++seed);
+  while (race.derailLane < 0 || race.derailMs < 8000);
+  const uint32_t C = RACE_COUNTDOWN_MS, D = C + race.derailMs, E = C + race.endMs;
+  for (uint32_t t : {100u, C - 300, C + 1000, D - 600, D - 450, D + 800, D + 2000, D + 4000, D + RACE_DERAIL_MS + 500,
+                     E, E + 300, E + 2600, E + 5000, E + RACE_WIN_MS + 1500}) {
     GFXcanvas16 canvas(W, H);
     canvas.fillScreen(0);
     U8G2_FOR_ADAFRUIT_GFX u8;
@@ -302,7 +306,8 @@ int main(int argc, char** argv) {
     drawRace(canvas, u8, ((COLOR_R & 0xF8) << 8) | ((COLOR_G & 0xFC) << 3) | (COLOR_B >> 3), race, t);
     raceFrames.push_back(Frame{std::vector<uint16_t>(canvas.getBuffer(), canvas.getBuffer() + W * H)});
   }
-  printf("race: winner %d after %u ms, %d moves\n", race.winner + 1, (unsigned)race.endMs, race.nMoves);
+  printf("race (seed %u): lane %d derails at %u ms, lane %d wins after %u ms, %d moves\n", (unsigned)seed,
+         race.derailLane + 1, (unsigned)race.derailMs, race.winner + 1, (unsigned)race.endMs, race.nMoves);
   writePpm(argc > 4 ? argv[4] : "preview_race.ppm", raceFrames);
   return 0;
 }

@@ -9,7 +9,8 @@ void tearDown() {}
 static Race r;
 
 // Replays the moves: never behind the start or past the finish, only the
-// winner reaches the finish, and only with the last move.
+// winner reaches the finish, and only with the last move; a derailed tram
+// moves no more and the derailment pauses the race.
 static void checkRace(uint32_t seed) {
   raceBegin(r, seed);
   TEST_ASSERT_TRUE(r.nMoves > 0 && r.nMoves <= RACE_MAX_MOVES);
@@ -20,12 +21,29 @@ static void checkRace(uint32_t seed) {
     TEST_ASSERT_TRUE(m.lane < RACE_LANES);
     TEST_ASSERT_TRUE(m.delta >= -1 && m.delta <= 2 && m.delta != 0);
     TEST_ASSERT_TRUE(m.at10ms > prev);
+    if (r.derailLane >= 0 && m.at10ms * 10u > r.derailMs) {
+      TEST_ASSERT_NOT_EQUAL(r.derailLane, m.lane);
+      if (prev * 10u <= r.derailMs) TEST_ASSERT_TRUE(m.at10ms * 10u >= r.derailMs + RACE_DERAIL_MS);
+    }
     prev = m.at10ms;
     pos[m.lane] += m.delta;
     TEST_ASSERT_TRUE(pos[m.lane] >= 0 && pos[m.lane] <= RACE_FIELDS);
     TEST_ASSERT_EQUAL(i == r.nMoves - 1, pos[m.lane] == RACE_FIELDS);
   }
   TEST_ASSERT_EQUAL(RACE_FIELDS, pos[r.winner]);
+  if (r.derailLane >= 0) TEST_ASSERT_TRUE(r.derailMs < r.endMs);
+
+  int order[RACE_LANES], field[RACE_LANES];
+  raceRanking(r, order, field);
+  TEST_ASSERT_EQUAL(r.winner, order[0]);
+  if (r.derailLane >= 0) TEST_ASSERT_EQUAL(r.derailLane, order[RACE_LANES - 1]);
+  int seen = 0;
+  for (int i = 0; i < RACE_LANES; i++) {
+    seen |= 1 << order[i];
+    TEST_ASSERT_EQUAL(pos[i], field[i]);
+    if (i > 0 && order[i] != r.derailLane) TEST_ASSERT_TRUE(field[order[i - 1]] >= field[order[i]]);
+  }
+  TEST_ASSERT_EQUAL(0xF, seen);
   TEST_ASSERT_EQUAL(r.moves[r.nMoves - 1].at10ms * 10u + RACE_SLIDE_MS, r.endMs);
 }
 
@@ -44,17 +62,21 @@ void test_same_seed_same_race() {
   TEST_ASSERT_EQUAL(end, r.endMs);
 }
 
-// Every number has the same chance (people bet on it), ~30 s on average.
+// Every number has the same chance (people bet on it), also to derail;
+// ~30 s on average, a derailment in about every 10th race.
 void test_fair_and_about_30s() {
-  const int N = 10000;
-  int wins[RACE_LANES] = {};
+  const int N = 20000;
+  int wins[RACE_LANES] = {}, derails[RACE_LANES] = {}, nDerail = 0;
   double sum = 0;
   for (uint32_t s = 1; s <= N; s++) {
     raceBegin(r, s);
     wins[r.winner]++;
-    sum += r.endMs;
+    sum += r.endMs - (r.derailLane >= 0 ? RACE_DERAIL_MS : 0);
+    if (r.derailLane >= 0) derails[r.derailLane]++, nDerail++;
   }
   for (int i = 0; i < RACE_LANES; i++) TEST_ASSERT_INT_WITHIN(N / 50, N / 4, wins[i]);
+  for (int i = 0; i < RACE_LANES; i++) TEST_ASSERT_INT_WITHIN(nDerail / 8, nDerail / 4, derails[i]);
+  TEST_ASSERT_INT_WITHIN(N / 50, N / 10, nDerail);
   TEST_ASSERT_INT_WITHIN(4000, 30000, (int)(sum / N));
 }
 

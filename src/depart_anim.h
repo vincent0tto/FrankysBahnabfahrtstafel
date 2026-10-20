@@ -14,6 +14,7 @@ static const uint32_t DEPART_ANIM_MS = 4600;
 void drawDepartAnim(Adafruit_GFX& g, uint16_t color, bool tram, uint32_t t, int top, int bottom,
                     int width);
 
-// Draws the tram (`tram`) or bus sprite with its left edge at `x`, its lowest
-// row at `bottom`, nothing above `top`. Returns its width.
-int drawVehicle(Adafruit_GFX& g, uint16_t color, bool tram, int x, int bottom, int top);
+// The tram sprite, also for the tram race: '#' = lit LED, facing right,
+// standing on its last row, TRAM_W columns.
+static const int TRAM_H = 11, TRAM_W = 63;
+extern const char* const TRAM_ROWS[TRAM_H];

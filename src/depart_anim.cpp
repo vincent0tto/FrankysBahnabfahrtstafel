@@ -9,7 +9,7 @@ static const int VEH_H = 11;
 
 // Two-car tram: rear car, articulation, front car with pantograph and a
 // sloped windscreen.
-static const char* const TRAM[VEH_H] = {
+const char* const TRAM_ROWS[TRAM_H] = {
     "............................................#####..............",
     ".............................................#.#...............",
     "..###########################.....########################.....",
@@ -61,15 +61,9 @@ static int vehicleX(uint32_t t, int vehW) {
   return -vehW + (int)((VEH_V0 * dt * 1000 + (int64_t)VEH_ACCEL * dt * dt / 2) / 1000000);
 }
 
-int drawVehicle(Adafruit_GFX& g, uint16_t color, bool tram, int x, int bottom, int top) {
-  const char* const* veh = tram ? TRAM : BUS;
-  drawSprite(g, color, veh, VEH_H, x, bottom, top);
-  return (int)strlen(veh[0]);
-}
-
 void drawDepartAnim(Adafruit_GFX& g, uint16_t color, bool tram, uint32_t t, int top, int bottom,
                     int width) {
-  const char* const* veh = tram ? TRAM : BUS;
+  const char* const* veh = tram ? TRAM_ROWS : BUS;
   int vehW = (int)strlen(veh[0]);
   int vx = vehicleX(t, vehW);
 
