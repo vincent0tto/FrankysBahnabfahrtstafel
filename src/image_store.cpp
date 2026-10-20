@@ -4,6 +4,7 @@
 #include <LittleFS.h>
 
 #include "event_render.h"
+#include "json_file.h"
 #include "log.h"
 
 // File: this header, then the frames.
@@ -56,7 +57,7 @@ static void load(int id) {
 
 void imageBegin() {
   mutex = xSemaphoreCreateMutex();
-  mounted = LittleFS.begin(true);  // mounted already by eventBegin()
+  mounted = jsonFsBegin();  // mounted already by settingsBegin()
   int n = 0;
   for (int id = 0; mounted && id < MAX_IMAGES; id++) {
     load(id);

@@ -1,11 +1,14 @@
 #pragma once
-// Owner of the settings at run time: loaded from flash (NVS) at start,
-// changed by the web page in the network task, copied by the render loop.
+// Owner of the settings at run time: loaded from the flash file system
+// (src/json_file.h) at start, changed by the web page in the network task,
+// copied by the render loop.
 #include <stdint.h>
 
 #include "settings.h"
 
-// Loads the stored settings (defaults if none or broken). Call once in setup().
+// Mounts the file system and loads the stored settings (defaults if none or
+// broken; those of older firmware are moved over from NVS). Call once in
+// setup(), first of the stores.
 void settingsBegin();
 
 // The current settings. Network task only (it is the only writer).

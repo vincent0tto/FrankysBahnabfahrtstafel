@@ -5,9 +5,12 @@
 
 #include <new>
 
+#include "json_file.h"
 #include "log.h"
 #include "psram_alloc.h"
 
+static const char* const SETTINGS_FILE = "/settings.json";
+// Older firmware kept them in NVS; taken over from there once.
 static const char* const NVS_NAMESPACE = "tafel";
 static const char* const NVS_KEY = "settings";
 
@@ -20,29 +23,65 @@ Settings& settingsScratch() {
   return *s;
 }
 
+// The settings as older firmware stored them in NVS, into `doc`; n = 0 if
+// there are none.
+static DeserializationError readNvs(JsonDocument& doc, size_t& n) {
+  n = 0;
+  Preferences prefs;
+  if (!prefs.begin(NVS_NAMESPACE, true)) return DeserializationError::EmptyInput;  // never stored
+  n = prefs.getBytesLength(NVS_KEY);
+  char* buf = n ? (char*)heap_caps_malloc(n, MALLOC_CAP_SPIRAM) : nullptr;
+  DeserializationError err = DeserializationError::EmptyInput;
+  if (buf && prefs.getBytes(NVS_KEY, buf, n) == n) err = deserializeJson(doc, buf, n);
+  heap_caps_free(buf);
+  prefs.end();
+  return err;
+}
+
+static void removeNvs() {
+  Preferences prefs;
+  if (prefs.begin(NVS_NAMESPACE, false)) {
+    prefs.remove(NVS_KEY);
+    prefs.end();
+  }
+}
+
+// Writes `s` to the file; `n`: its size.
+static bool store(const Settings& s, size_t& n) {
+  JsonDocument doc(&spiRam);
+  settingsToJson(s, doc.to<JsonObject>(), false);
+  return jsonFileWrite(SETTINGS_FILE, doc, n);
+}
+
 void settingsBegin() {
   mutex = xSemaphoreCreateMutex();
   settingsDefaults(current);
-  Preferences prefs;
-  if (!prefs.begin(NVS_NAMESPACE, true)) {  // fails if nothing was ever stored
+  bool fs = jsonFsBegin();
+  if (!fs) Log.println("[settings] file system not available, settings can't be stored");
+  JsonDocument doc(&spiRam);
+  size_t n;
+  DeserializationError err = jsonFileRead(SETTINGS_FILE, doc, n);
+  bool fromNvs = !n;
+  if (fromNvs) {
+    doc.clear();
+    err = readNvs(doc, n);
+  }
+  if (!n) {
     Log.println("[settings] none stored, using defaults");
     return;
   }
-  size_t n = prefs.getBytesLength(NVS_KEY);
-  char* buf = n ? (char*)heap_caps_malloc(n, MALLOC_CAP_SPIRAM) : nullptr;
-  if (buf && prefs.getBytes(NVS_KEY, buf, n) == n) {
-    JsonDocument doc(&spiRam);
-    DeserializationError err = deserializeJson(doc, buf, n);
-    Settings& loaded = settingsScratch();
-    if (!err && settingsFromJson(doc.as<JsonVariantConst>(), loaded)) {
-      current = loaded;
-      Log.printf("[settings] loaded (%u bytes)\n", (unsigned)n);
-    } else {
-      Log.printf("[settings] stored data broken (%s), using defaults\n", err.c_str());
-    }
+  Settings& loaded = settingsScratch();
+  if (err || !settingsFromJson(doc.as<JsonVariantConst>(), loaded)) {
+    Log.printf("[settings] stored data broken (%s), using defaults\n", err.c_str());
+    return;
   }
-  heap_caps_free(buf);
-  prefs.end();
+  current = loaded;
+  Log.printf("[settings] loaded (%u bytes)%s\n", (unsigned)n, fromNvs ? " from NVS" : "");
+  if (fromNvs && fs) {
+    bool ok = store(current, n);
+    if (ok) removeNvs();
+    Log.printf("[settings] moved to the file system: %s\n", ok ? "ok" : "FAILED, NVS kept");
+  }
 }
 
 const Settings& settingsNet() { return current; }
@@ -55,18 +94,8 @@ bool settingsSave(const Settings& s) {
   currentVersion++;
   xSemaphoreGive(mutex);
 
-  JsonDocument doc(&spiRam);
-  settingsToJson(s, doc.to<JsonObject>(), false);
-  size_t n = measureJson(doc);
-  char* buf = (char*)heap_caps_malloc(n + 1, MALLOC_CAP_SPIRAM);
-  bool ok = false;
-  Preferences prefs;
-  if (buf && prefs.begin(NVS_NAMESPACE, false)) {
-    serializeJson(doc, buf, n + 1);
-    ok = prefs.putBytes(NVS_KEY, buf, n) == n;
-    prefs.end();
-  }
-  heap_caps_free(buf);
+  size_t n;
+  bool ok = store(s, n);
   Log.printf("[settings] %s (%u bytes)\n", ok ? "saved" : "saving FAILED", (unsigned)n);
   return ok;
 }

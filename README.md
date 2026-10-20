@@ -205,7 +205,8 @@ selbst noch ungespeicherte Änderungen, erscheint stattdessen ein Hinweis mit **
 inzwischen jemand anderes gespeichert hat (die Tafel lehnt das ab, technisch über eine
 Versionsnummer `rev`).
 
-Die Tafel speichert die Einstellungen im Flash (NVS), in einer Partition, die Firmware-Updates
+Die Tafel speichert die Einstellungen im Flash (Datei `/settings.json` im LittleFS, wie das
+Event; ältere Firmware nutzte NVS, von dort werden sie einmalig übernommen), in einer Partition, die Firmware-Updates
 (von GitHub, per OTA oder ein normaler USB-Upload) nicht anrühren. So überstehen sie Neustarts
 und Updates. Nur das Löschen des ganzen Flashs (`pio run -t erase`) setzt sie zurück. Die Werte
 in `config.h` sind nur die Standardwerte. Die früher eingebauten Promo-Texte übernimmt neue
@@ -328,7 +329,7 @@ vorher einmal `sudo xcodebuild -license` aus.
 | `src/vrn_client.cpp` | HTTPS-Anfrage, Streaming-JSON-Parser mit Filter, PSRAM |
 | `src/net.cpp` | WLAN-Watchdog, NTP, OTA |
 | `src/settings.cpp` | Einstellungen zur Laufzeit: Standardwerte, Zeitfenster, JSON (auf dem Host getestet) |
-| `src/settings_store.cpp` | Einstellungen im Flash (NVS), Übergabe an die Render-Schleife |
+| `src/settings_store.cpp` | Einstellungen im Flash (LittleFS), Übergabe an die Render-Schleife |
 | `src/web.cpp`, `src/web/index.html` | Einstellungsseite und ihre JSON-API |
 | `src/event.cpp` | Event-Modus: Szenen und Zeilen, JSON (auf dem Host getestet) |
 | `src/event_store.cpp` | Event im Flash (LittleFS), Übergabe an die Render-Schleife |
