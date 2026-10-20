@@ -3,8 +3,7 @@
 # "Content-Encoding: gzip"), the icon is a PNG and stays as it is. The
 # header lands in the build directory and is only rewritten when it changes,
 # so web.cpp isn't rebuilt every time.
-#   src/web/index.html  -> WEB_PAGE_GZ        settings page at "/"
-#   src/web/event.html  -> WEB_EVENT_PAGE_GZ  event page at "/event"
+#   src/web/index.html  -> WEB_PAGE_GZ        the web page at "/"
 #   src/web/icon.png    -> WEB_ICON_PNG       favicon and iOS home-screen icon
 import gzip
 import os
@@ -13,7 +12,6 @@ Import("env")
 
 ASSETS = [
     ("index.html", "WEB_PAGE_GZ", True),
-    ("event.html", "WEB_EVENT_PAGE_GZ", True),
     ("icon.png", "WEB_ICON_PNG", False),
 ]
 

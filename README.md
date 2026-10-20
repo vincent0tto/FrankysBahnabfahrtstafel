@@ -42,7 +42,8 @@ Schriesheim Bahnhof                     10:42
   eine Bahn: Er wartet, bis die anderen halb durch sind, und rauscht dann ins Ziel – wenn er
   nicht ausfällt. Wer zuerst im Ziel ist,
   gewinnt und bekommt eine Ehrenrunde mit Feuerwerk, danach kommt kurz die Rangliste. Setzen
-  kann man auf eine Nummer.
+  kann man auf eine Nummer. Das Rennen unterbricht nur, was gerade läuft: Danach zeigt die
+  Tafel wieder die Abfahrten oder das Event.
 - **Nachtruhe:** nachts schaltet sich die Tafel ab, am späten Abend wird sie dunkler.
 - **Event-Modus:** Für eine Party oder einen besonderen Abend übernimmt die Tafel auf Knopfdruck
   ganz eigene Texte und Bilder in Farbe, bis man sie wieder auf die Abfahrten zurückschaltet.
@@ -165,7 +166,18 @@ CI nur Builds, die die Tests bestehen.
 ### Einstellungsseite
 
 `http://abfahrtstafel.local` (oder die IP aus dem seriellen Log) von einem beliebigen Gerät im
-selben WLAN öffnen. Es gibt kein Login. Auf der Seite lässt sich einstellen:
+selben WLAN öffnen. Es gibt kein Login. Die Seite hat fünf Tabs; der offene steht in der Adresse
+(`/#zeitplan`), so lässt sich jeder direkt aufrufen:
+
+- **Jetzt**: *Was zeigt die Tafel?* – *Abfahrten* oder *Event*, immer eins davon, gilt sofort,
+  ohne Speichern. Darunter *Zwischendurch* mit dem Knopf für ein **Bahnrennen**: Es unterbricht
+  die Tafel nur, die Auswahl oben steht so lange auf „unterbrochen“.
+- **Tafel**: 4. Zeile, Promos und Icons.
+- **Zeitplan**: Ruhezeit und Helligkeit.
+- **Event**: Szenen, Bilder und Helligkeit des Events (siehe *Event-Modus*).
+- **Technik**: Abfahrts-Animation, WLAN, Log, Neustart.
+
+Im Einzelnen:
 
 <p align="center">
   <img src="docs/img/einstellungen.jpg" alt="Screenshot der Einstellungsseite mit Ruhezeit, Helligkeit, Promo-Texten, Icons und WLAN" width="450">
@@ -187,15 +199,14 @@ selben WLAN öffnen. Es gibt kein Login. Auf der Seite lässt sich einstellen:
   2 Minuten vor dem Ende holt sie neue, `WAKE_FETCH_LEAD_S`) und die **Helligkeit** in Prozent:
   ein Normalwert (85 %, ↺ setzt ihn zurück) und bis zu 4 Zeitfenster mit eigener Helligkeit.
   100 % entsprechen 70 % der Hardware-Helligkeit des Panels (`BRIGHTNESS_MAX`).
-- **Technik** (eingeklappt): **WLAN**, Name und Passwort, gilt nach einem Neustart (siehe
+- **Technik**: **WLAN**, Name und Passwort, gilt nach einem Neustart (siehe
   oben); **Log**, die letzten Meldungen der Tafel (dieselben wie am USB-Anschluss, mit Uhrzeit),
   alle 10 Sekunden ergänzt, solange es angezeigt wird und der Tab im Vordergrund ist (die Tafel
   hält etwa 32 KB davon im PSRAM, `LOG_BUFFER_BYTES`; nach einem Neustart beginnt es von vorn);
   **Neu starten**.
 
-Ganz oben steht der Schalter für den **Event-Modus** (siehe unten); er gilt sofort, ohne Speichern.
-
-Der Knopf unten zeigt, ob es ungespeicherte Änderungen gibt; verlässt man die Seite mit
+Der Knopf unten zeigt, ob es ungespeicherte Änderungen gibt, auf dem Tab *Event* für das Event,
+sonst für die Einstellungen; ein Punkt am Tab zeigt, wo sie sind. Verlässt man die Seite mit
 welchen, fragt der Browser nach.
 
 Ändert jemand die Einstellungen auf einem anderen Gerät, übernimmt eine offene Seite das von
@@ -214,8 +225,8 @@ Firmware als normale, löschbare Promos.
 
 ### Event-Modus
 
-Der Schalter auf der Einstellungsseite (oder auf `http://abfahrtstafel.local/event`) übergibt die
-ganze Tafel an das Event, bis man ihn wieder ausschaltet. Solange:
+*Event* unter **Jetzt** übergibt die
+ganze Tafel an das Event, bis man wieder *Abfahrten* wählt. Solange:
 
 - zeigt die Tafel nur die Szenen des Events, keine Abfahrten, Promos oder Störmeldungen,
 - ruft sie keine Abfahrten ab und sucht nicht nach Firmware-Updates (das holt sie nach, sobald
@@ -225,7 +236,7 @@ ganze Tafel an das Event, bis man ihn wieder ausschaltet. Solange:
 
 Ein- und Ausschalten überstehen Neustarts, auch den täglichen um 04:00.
 
-Auf `/event` bearbeitet man bis zu 8 **Szenen**, die der Reihe nach in einer Schleife laufen. Jede
+Auf dem Tab **Event** (`/#event`, die alte Adresse `/event` leitet dorthin) bearbeitet man bis zu 8 **Szenen**, die der Reihe nach in einer Schleife laufen. Jede
 hat eine Anzeigedauer, einen Hintergrund (Schwarz oder eine Farbe, darauf optional ein **Bild**,
 siehe unten), einen **Übergang** zur
 nächsten Szene (*Schnitt*, *Schieben* oder *Wischen*, je 0,6 s, `TRANSITION_MS`) und bis zu 4
@@ -249,7 +260,7 @@ wieder mit der ersten Szene.
 
 **Bilder** sind Pixelgrafiken über die ganze Tafel (192 × 64), die eine Szene unter ihren Texten
 zeigt; schwarze Pixel sind durchsichtig, dort scheint die Hintergrundfarbe durch. Unter
-„Bilder“ auf `/event` zeichnet man sie selbst:
+„Bilder“ auf dem Tab Event zeichnet man sie selbst:
 
 - *Stift* und *Radierer* mit Stärke 1–4, *Füllen*, *Pipette*,
 - *Linie* (rastet waagerecht, senkrecht und diagonal ein), *Rechteck* und *Kreis*, auch gefüllt,
@@ -272,7 +283,7 @@ die es zeigen.
 **Farben auf dem Panel:** Mit `PIXEL_COLOR_DEPTH_BITS=4` hat jede Grundfarbe nur 16 Stufen, und die
 Bibliothek legt sie über eine Helligkeitskurve (CIE 1931, `cie_luts.h`): Ein Kanal unter 55 von 255
 bleibt ganz aus, darüber kommen die Stufen grob (z. B. 120 und 96 sind dieselbe). Dunkle Töne
-und weiche Verläufe gehen dabei verloren. Alle Vorschauen auf `/event` (Szene, Editor, Bilder)
+und weiche Verläufe gehen dabei verloren. Alle Vorschauen auf dem Tab Event (Szene, Editor, Bilder)
 rechnen genau so und zeigen deshalb, was das Panel zeigt; die Hintergrundfarben zur Auswahl
 sind die dunkelsten, die noch leuchten.
 
@@ -330,12 +341,11 @@ vorher einmal `sudo xcodebuild -license` aus.
 | `src/net.cpp` | WLAN-Watchdog, NTP, OTA |
 | `src/settings.cpp` | Einstellungen zur Laufzeit: Standardwerte, Zeitfenster, JSON (auf dem Host getestet) |
 | `src/settings_store.cpp` | Einstellungen im Flash (LittleFS), Übergabe an die Render-Schleife |
-| `src/web.cpp`, `src/web/index.html` | Einstellungsseite und ihre JSON-API |
+| `src/web.cpp`, `src/web/index.html` | die Webseite (alle Tabs, auch der Event-Editor) und ihre JSON-API; `tools/web_assets.py` packt sie beim Build per gzip in die Firmware |
 | `src/event.cpp` | Event-Modus: Szenen und Zeilen, JSON (auf dem Host getestet) |
 | `src/event_store.cpp` | Event im Flash (LittleFS), Übergabe an die Render-Schleife |
 | `src/event_render.cpp` | zeichnet die Szenen, für das Panel und die Vorschau auf der Seite |
 | `src/image_store.cpp` | Pixelbilder des Events im Flash (LittleFS) und PSRAM |
-| `src/web/event.html` | Event-Seite (`/event`); beide Seiten packt `tools/web_assets.py` beim Build per gzip in die Firmware |
 | `src/updater.cpp` | Firmware-Update aus den GitHub-Releases |
 | `src/icons.cpp` | eingebaute Promo-Symbole |
 | `src/render.cpp` | rnv-Layout, Laufschrift, Statusbildschirme |

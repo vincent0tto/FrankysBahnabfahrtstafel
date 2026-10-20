@@ -429,7 +429,10 @@ void webBegin() {
   server.on("/api/restart", HTTP_POST, handleRestart);
   server.on("/api/wifi", HTTP_POST, handleWifi);
   server.on("/api/log", HTTP_GET, handleLog);
-  server.on("/event", HTTP_GET, [] { sendPage(WEB_EVENT_PAGE_GZ, sizeof(WEB_EVENT_PAGE_GZ)); });
+  server.on("/event", HTTP_GET, [] {  // the old event page, now a tab
+    server.sendHeader("Location", "/#event");
+    server.send(302, "text/plain", "");
+  });
   server.on("/api/event", HTTP_GET, sendEvent);
   server.on("/api/event", HTTP_POST, handleEventSave);
   server.on("/api/event/on", HTTP_POST, handleEventOn);
