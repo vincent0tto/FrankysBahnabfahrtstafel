@@ -180,7 +180,7 @@ selben WLAN öffnen. Es gibt kein Login. Auf der Seite lässt sich einstellen:
   bis zu 8 eigene, gezeichnet in einem 12×9-Pixel-Editor. Ein neues Icon lässt sich auch direkt
   aus der Icon-Auswahl einer Promo heraus anlegen.
 - **4. Zeile**: *Ab und zu Promo* (die Abfahrt, ab und zu eine Promo; mit Anzeigedauer und
-  Pause), *Nur Promos* (die Promos laufen der Reihe nach als Laufschrift durch) oder *Keine
+  Pause), *Nur Promos* (die Promos laufen der Reihe nach als Laufschrift durch, wahlweise in Weiß) oder *Keine
   Promos*. Dazu die VRN-Störmeldungen: an/aus und wie oft sie am Stück durchlaufen.
 - **Zeitplan**: Eine Leiste zeigt, wie hell die Tafel über den Tag ist. Darunter die
   **Ruhezeit** (Standard 02:00–06:00; das Panel ist dunkel und die Tafel ruft keine Daten ab,

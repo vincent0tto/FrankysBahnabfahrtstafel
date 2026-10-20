@@ -21,6 +21,7 @@ static const int ROW_BASE0 = 24;         // first departure row
 static const int ROW_PITCH = 12;
 static const int MAX_ROWS = 3;           // last row is replaced by the ticker
 static const int COL_GAP = 6;            // between line / destination / time
+static const uint16_t PROMO_WHITE = 0xFFFF;  // RGB565, see Settings::promoWhite
 
 #define FONT_HEADER u8g2_font_helvB08_tf
 #define FONT_ROW    u8g2_font_t0_13b_tf
@@ -522,11 +523,16 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
     }
     if (promoIsDep) drawPromoDep(g, u8, color, s, rowBase(MAX_ROWS), promo.item, lineW, destX, ms);
   }
+  // with promoFullRow and promoWhite the promos are white (the disruption
+  // texts stay amber)
+  uint16_t promoColor = s.promoFullRow && s.promoWhite ? PROMO_WHITE : color;
+  u8.setForegroundColor(promoColor);
   for (const PromoShow& t : tails)
-    if (promoMsg && t.active) drawPromo(g, u8, color, s, rowBase(MAX_ROWS), t.item, ms, true, ms - t.start);
+    if (promoMsg && t.active) drawPromo(g, u8, promoColor, s, rowBase(MAX_ROWS), t.item, ms, true, ms - t.start);
+  if (promoMsg && !showDisruption && !promoIsDep)
+    drawPromo(g, u8, promoColor, s, rowBase(MAX_ROWS), promo.item, ms, promo.scroll, ms - promo.start);
+  u8.setForegroundColor(color);
   if (showDisruption) drawTicker(g, u8, promoMsg, ms - promo.start, true);
-  else if (promoMsg && !promoIsDep)
-    drawPromo(g, u8, color, s, rowBase(MAX_ROWS), promo.item, ms, promo.scroll, ms - promo.start);
 
   if (tickerMsg) drawTicker(g, u8, tickerMsg, ms, false);
 

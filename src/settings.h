@@ -51,6 +51,7 @@ struct Settings {
   uint16_t promoIntervalS = 0;  // average pause between promos, 0 = no promos
   bool promoFullRow = false;    // 4th row shows promos back to back (no pause) instead of
                                 // its departure, as long as one is open
+  bool promoWhite = false;      // with promoFullRow the promos are white instead of amber
   bool disruptOn = true;        // VRN disruption texts
   uint8_t disruptPasses = 0;    // how often one showing scrolls through them (1..10)
   uint8_t animChance = 0;       // 1 in N tram departures plays the departure animation, 0 = never
