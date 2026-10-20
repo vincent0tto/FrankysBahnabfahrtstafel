@@ -308,6 +308,26 @@ int main(int argc, char** argv) {
   }
   printf("race (seed %u): lane %d derails at %u ms, lane %d wins after %u ms, %d moves\n", (unsigned)seed,
          race.derailLane + 1, (unsigned)race.derailMs, race.winner + 1, (unsigned)race.endMs, race.nMoves);
+  // with an ICE: waiting at the start, its run half-way and done, the lap
+  // of honour; then a cancelled one in the ranking
+  for (bool cancelled : {false, true}) {
+    seed = 1;
+    do raceBegin(race, ++seed);
+    while (race.iceLane < 0 || race.iceCancelled != cancelled);
+    const uint32_t E2 = RACE_COUNTDOWN_MS + race.endMs, R = E2 + RACE_WIN_MS + 1500;
+    std::vector<uint32_t> times = {R};
+    if (!cancelled) times = {100u, E2 - RACE_ICE_MS - 200, E2 - RACE_ICE_MS / 3, E2 + 300, E2 + 5000, R};
+    for (uint32_t t : times) {
+      GFXcanvas16 canvas(W, H);
+      canvas.fillScreen(0);
+      U8G2_FOR_ADAFRUIT_GFX u8;
+      u8.begin(canvas);
+      drawRace(canvas, u8, ((COLOR_R & 0xF8) << 8) | ((COLOR_G & 0xFC) << 3) | (COLOR_B >> 3), race, t);
+      raceFrames.push_back(Frame{std::vector<uint16_t>(canvas.getBuffer(), canvas.getBuffer() + W * H)});
+    }
+    printf("race (seed %u): ICE on lane %d%s, lane %d wins\n", (unsigned)seed, race.iceLane + 1,
+           cancelled ? " cancelled" : "", race.winner + 1);
+  }
   writePpm(argc > 4 ? argv[4] : "preview_race.ppm", raceFrames);
   return 0;
 }
