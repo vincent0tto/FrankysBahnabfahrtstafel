@@ -276,9 +276,17 @@ static void handleKaraokePreview() {
 
 // ---- Tram race (src/race/race.h) --------------------------------------------------
 
+// For the iPad shortcut that plays the music: whether the Mexican comes,
+// and in seconds from now when, how long, and when the lap of honour ends.
+// ?fiesta=1: he surely comes.
 static void handleRace() {
-  raceStart(esp_random());
-  server.send(200, "text/plain", "ok");
+  const Race& r = raceStart(esp_random(), server.arg("fiesta") == "1");
+  JsonDocument doc(&spiRam);
+  doc["fiesta"] = r.fiesta;
+  doc["fiestaIn"] = r.fiesta ? (RACE_COUNTDOWN_MS + r.fiestaMs) / 1000.0 : 0;
+  doc["fiestaFor"] = RACE_FIESTA_MS / 1000.0;
+  doc["end"] = (RACE_COUNTDOWN_MS + r.endMs + RACE_WIN_MS) / 1000.0;
+  sendJson(doc);
 }
 
 static void handleRaceStop() {

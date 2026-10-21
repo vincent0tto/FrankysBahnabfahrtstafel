@@ -4,7 +4,9 @@
 // trams drive both ways), until one reaches the last field. About one race
 // in ten a tram derails and stays where it is; one in 12 an ICE takes a
 // lane, waits and then runs straight to the finish (or, one time in three,
-// is cancelled and never leaves). The whole race is worked out
+// is cancelled and never leaves). About one race in four (never with a
+// derailment) the race pauses early for a dancing Mexican with a guitar,
+// "¡FIESTA!". The whole race is worked out
 // from a seed at the start, so drawing it (src/race/race_render.h) needs no
 // state. No Arduino dependency, unit-tested on the host.
 #include <stdint.h>
@@ -17,6 +19,7 @@ static const uint32_t RACE_COUNTDOWN_MS = 3200;  // "3", "2", "1", "LOS!"
 static const uint32_t RACE_SLIDE_MS = 300;       // a tram gliding to its new field
 static const uint32_t RACE_ICE_MS = 1800;        // the ICE's run to the finish
 static const uint32_t RACE_DERAIL_MS = 6000;     // the race pauses for the derailment
+static const uint32_t RACE_FIESTA_MS = 10000;    // ... and for the dancing Mexican
 static const uint32_t RACE_WIN_MS = 8500;        // winner blinks, then the lap of honour
 static const uint32_t RACE_RANK_MS = 5000;       // the ranking
 
@@ -36,6 +39,8 @@ struct Race {
   uint32_t derailMs = 0; // after the countdown: the derailment starts (RACE_DERAIL_MS long)
   int iceLane = -1;      // the ICE's lane, -1: none
   bool iceCancelled = false;  // it never leaves and ranks last
+  bool fiesta = false;   // the dancing Mexican
+  uint32_t fiestaMs = 0; // after the countdown: he comes (RACE_FIESTA_MS long)
 };
 
 // Works out the race for `seed`. Every 600-950 ms exactly one tram, picked
@@ -45,7 +50,9 @@ struct Race {
 // field 3-8, a random tram derails; it moves no more and ranks last.
 // Otherwise in 1 of 12 an ICE takes a random lane: it stands until the
 // leader is half-way, then runs to the finish in one go and wins; in 1 of 3
-// of those it is cancelled instead, stands all race and ranks last.
+// of those it is cancelled instead, stands all race and ranks last. In 1 of
+// 4 races without a derailment, once the leader is on field 2-5, the race
+// pauses for the Mexican.
 void raceBegin(Race& r, uint32_t seed);
 
 // Countdown + race + winner animation + ranking.

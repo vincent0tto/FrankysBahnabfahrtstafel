@@ -7,8 +7,10 @@
 #include "race/race.h"
 
 // `g` must be cleared beforehand. `t`: ms since the race was started
-// (0..raceTotalMs): countdown, race, winner.
-void drawRace(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const Race& r, uint32_t t);
+// (0..raceTotalMs): countdown, race, winner. `fiesta1`, `fiesta2`: the texts
+// over the dancing Mexican (Settings::fiestaText1/2).
+void drawRace(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const Race& r, uint32_t t,
+              const char* fiesta1, const char* fiesta2);
 
 // A firework burst `age` ms old (it lasts 1200) around (cx, cy).
 void drawFireworkBurst(Adafruit_GFX& g, uint16_t color, int cx, int cy, uint32_t age);

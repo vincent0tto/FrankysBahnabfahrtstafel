@@ -180,6 +180,107 @@ void drawFireworkBurst(Adafruit_GFX& g, uint16_t color, int cx, int cy, uint32_t
   }
 }
 
+// ---- Fiesta: a Mexican with his guitar dances over the board ----------------
+static const int MEX_W = 37, MEX_H = 44, MEX_HEAD_H = 15;
+// Sombrero and face: 'Y' straw, 'R' red, 'K' skin, 'm' hair and moustache.
+static const char* const MEX_HEAD[MEX_HEAD_H] = {
+    "..............YYYYYYYYY..............",
+    ".............YYYYYYYYYYY.............",
+    "............YYYYYYYYYYYYY............",
+    "............YYYYYYYYYYYYY............",
+    "............RRRRRRRRRRRRR............",
+    "...YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY...",
+    "YYRYYRYYRYYRYYRYYRYYRYYRYYRYYRYYRYYRY",
+    ".YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY.",
+    "..............mKKKKKKKm..............",
+    "..............KKmKKKmKK..............",
+    "..............KKKKKKKKK..............",
+    "..............KmmmmmmmK..............",
+    ".............mmKKKKKKKmm.............",
+    "...............KKKKKKK...............",
+    ".................KKK.................",
+};
+static const uint32_t MEX_RGB_Y = 0xFFC800, MEX_RGB_K = 0xD88850, MEX_RGB_M = 0x603010;
+static const uint32_t PANTS_RGB = 0x3050FF, BOOT_RGB = 0x804010;
+static const uint32_t GUITAR_RGB = 0xC86010, NECK_RGB = 0xE8B060;
+// the poncho's stripes, also the colours of the confetti, notes and text
+static const uint32_t SARAPE_RGB[] = {0xFF1010, 0xFF8000, 0xFFD800, 0x30E830, 0x00B4FF, 0xFF30C8};
+static const int SARAPE_N = sizeof(SARAPE_RGB) / sizeof(SARAPE_RGB[0]);
+static const uint32_t FIESTA_IN_MS = 1500, FIESTA_OUT_MS = 1500, FIESTA_STEP_MS = 250;
+
+// A leg, 3 px wide, from the hip down to its boot, which points outwards.
+static void drawLeg(Adafruit_GFX& g, int hx, int hy, int fx, int fy, int out) {
+  for (int d = 0; d < 3; d++) g.drawLine(hx + d, hy, fx + d, fy, rgb565(PANTS_RGB));
+  g.fillRect(out < 0 ? fx - 2 : fx, fy, 5, 2, rgb565(BOOT_RGB));
+}
+
+// The Mexican, top left at (x, y): `frame` 0/2 standing, 1 left leg out, 3
+// right leg out; his strumming hand up or down.
+static void drawMexican(Adafruit_GFX& g, int x, int y, int frame, bool strumUp) {
+  int foot = y + MEX_H - 2;
+  drawLeg(g, x + 13, y + 28, frame == 1 ? x + 5 : x + 11, frame == 1 ? foot - 5 : foot, -1);
+  drawLeg(g, x + 21, y + 28, frame == 3 ? x + 29 : x + 23, frame == 3 ? foot - 5 : foot, 1);
+  for (int r = 0; r < MEX_HEAD_H; r++)
+    for (int c = 0; c < MEX_W; c++) {
+      char p = MEX_HEAD[r][c];
+      if (p == '.') continue;
+      uint32_t rgb = p == 'Y' ? MEX_RGB_Y : p == 'R' ? SARAPE_RGB[0] : p == 'K' ? MEX_RGB_K : MEX_RGB_M;
+      g.drawPixel(x + c, y + r, rgb565(rgb));
+    }
+  // the poncho, wider row by row, striped, a fringe at the bottom
+  for (int i = 0; i < 13; i++) {
+    int half = 6 + i;
+    g.drawFastHLine(x + MEX_W / 2 - half, y + MEX_HEAD_H + i, 2 * half + 1, rgb565(SARAPE_RGB[(i / 2) % SARAPE_N]));
+  }
+  for (int c = 0; c < MEX_W; c += 2) g.drawPixel(x + c, y + MEX_HEAD_H + 13, rgb565(SARAPE_RGB[0]));
+  // the guitar: body, sound hole, neck up to the right, headstock, his hands
+  g.fillCircle(x + 11, y + 25, 5, rgb565(GUITAR_RGB));
+  g.fillCircle(x + 15, y + 21, 4, rgb565(GUITAR_RGB));
+  g.fillCircle(x + 13, y + 23, 1, 0);
+  g.drawLine(x + 18, y + 19, x + 31, y + 12, rgb565(NECK_RGB));
+  g.drawLine(x + 18, y + 20, x + 31, y + 13, rgb565(NECK_RGB));
+  g.fillRect(x + 31, y + 10, 3, 3, rgb565(GUITAR_RGB));
+  g.fillRect(x + 27, y + 13, 2, 2, rgb565(MEX_RGB_K));
+  g.fillRect(x + 15, y + (strumUp ? 21 : 24), 2, 2, rgb565(MEX_RGB_K));
+}
+
+// A note, 4 x 5 px, top left at (x, y).
+static void drawNote(Adafruit_GFX& g, int x, int y, uint16_t color) {
+  g.fillRect(x, y + 3, 2, 2, color);
+  g.drawFastVLine(x + 2, y, 5, color);
+  g.drawPixel(x + 3, y + 1, color);
+}
+
+// The Mexican dancing in from the left, `text1` ("¡FIESTA!") over him,
+// confetti and notes, then `text2` ("Mexikaner-Shots!") and out to the right,
+// `u` ms into RACE_FIESTA_MS.
+static void drawFiesta(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Race& r, uint32_t u, const char* text1,
+                       const char* text2) {
+  for (int i = 0; i < 48; i++) {  // confetti falling at its own speed
+    uint32_t rng = r.seed ^ (i * 0x9E3779B9u + 3);
+    raceRand(rng);
+    int cx = raceRand(rng) % W, y0 = raceRand(rng) % H, speed = 8 + raceRand(rng) % 16;  // px per s
+    g.drawPixel(cx, (y0 + (int)(u * speed / 1000)) % H, rgb565(SARAPE_RGB[i % SARAPE_N]));
+  }
+  int mid = (W - MEX_W) / 2, x = mid;
+  if (u < FIESTA_IN_MS) x = -MEX_W + (int)((mid + MEX_W) * u / FIESTA_IN_MS);
+  else if (u > RACE_FIESTA_MS - FIESTA_OUT_MS) x = mid + (int)((W - mid) * (u - (RACE_FIESTA_MS - FIESTA_OUT_MS)) / FIESTA_OUT_MS);
+  uint32_t step = u / FIESTA_STEP_MS;
+  int frame = step % 4, y = H - MEX_H - (frame % 2 ? 2 : 0);  // hops when kicking
+  for (int k = 0; k < 3; k++) {  // notes rising from the guitar, drifting left
+    uint32_t age = (u + k * 600) % 1800;
+    int nx = x + 6 - (int)(age * 24 / 1800), ny = y + 18 - (int)(age * 30 / 1800);
+    drawNote(g, nx, ny, rgb565(SARAPE_RGB[(k * 2 + u / 1800) % SARAPE_N]));
+  }
+  drawMexican(g, x, y, frame, step % 2);
+
+  const char* text = u < 6000 ? text1 : text2;
+  u8.setFont(FONT_WIN);
+  if (u8.getUTF8Width(text) > W - 4) u8.setFont(FONT_WIN_S);
+  u8.setForegroundColor(rgb565(SARAPE_RGB[(u / 200) % SARAPE_N]));
+  centeredText(u8, 0, W, 16, text);
+}
+
 // Fireworks, "Bahn N gewinnt!" and the winner driving through, `u` ms in.
 static void drawWinner(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Race& r, uint32_t u) {
   uint16_t c = laneColor(r, r.winner);
@@ -233,7 +334,8 @@ static void drawRanking(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t col
   }
 }
 
-void drawRace(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const Race& r, uint32_t t) {
+void drawRace(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const Race& r, uint32_t t,
+              const char* fiesta1, const char* fiesta2) {
   u8.setFontMode(1);
   int32_t pos[RACE_LANES] = {};
 
@@ -251,6 +353,10 @@ void drawRace(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const 
     return;
   }
   t -= RACE_COUNTDOWN_MS;
+  if (r.fiesta && t >= r.fiestaMs && t < r.fiestaMs + RACE_FIESTA_MS) {
+    drawFiesta(g, u8, r, t - r.fiestaMs, fiesta1, fiesta2);
+    return;
+  }
   if (r.derailLane >= 0 && t >= r.derailMs && t < r.derailMs + RACE_DERAIL_MS) {
     drawDerail(g, u8, r, t - r.derailMs);
     return;

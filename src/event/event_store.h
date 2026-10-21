@@ -7,6 +7,7 @@
 
 #include "event/event.h"
 #include "karaoke/karaoke.h"
+#include "race/race.h"
 
 // Mounts the file system (formats it on the very first start) and loads the
 // stored event (defaults if none or broken). Call once in setup().
@@ -50,8 +51,10 @@ Karaoke& karaokeScratch();
 bool karaokeFetch(Karaoke& out, uint32_t& version);
 
 // Network task: starts the tram race (src/race/race.h) worked out from `seed`,
-// over everything else, or a new one if one is running; ends by itself.
-void raceStart(uint32_t seed);
+// over everything else, or a new one if one is running; ends by itself. With
+// `fiesta` the next seed from `seed` on whose race has the dancing Mexican.
+// Returns the race, valid until the next call.
+const Race& raceStart(uint32_t seed, bool fiesta = false);
 
 // Network task: ends the race at once.
 void raceStop();

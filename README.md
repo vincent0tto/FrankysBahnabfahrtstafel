@@ -40,7 +40,8 @@ Schriesheim Bahnhof                     10:42
   Bahnen mit den Nummern 1–4 zufällig Feld für Feld über 12 Felder, manchmal auch eins zurück.
   Etwa jedes zehnte Rennen entgleist eine Bahn und bleibt stehen, und ab und zu ersetzt FRANKY'S ICE
   eine Bahn: Er wartet, bis die anderen halb durch sind, und rauscht dann ins Ziel – wenn er
-  nicht ausfällt. Wer zuerst im Ziel ist,
+  nicht ausfällt. In etwa jedem vierten Rennen tanzt mittendrin ein Mexikaner mit Gitarre über
+  die Tafel („¡FIESTA!“), und auf dem iPad läuft dazu „Fiesta Mexicana“. Wer zuerst im Ziel ist,
   gewinnt und bekommt eine Ehrenrunde mit Feuerwerk, danach kommt kurz die Rangliste. Setzen
   kann man auf eine Nummer. Das Rennen unterbricht nur, was gerade läuft: Danach zeigt die
   Tafel wieder die Abfahrten oder das Event.
@@ -346,6 +347,27 @@ seiner neuen Zeile. Jede Änderung speichert sofort (`POST /api/karaoke`, als `/
 selben Dateisystem wie das Event); hat ein anderes Gerät die Liste inzwischen geändert, wiederholt
 die Seite die Änderung auf der neuen Liste, so gehen gleichzeitige Einträge nicht verloren.
 Format: `karaokeToJson` in `src/karaoke/karaoke.cpp`.
+
+### Bahnrennen mit Fiesta-Musik (Kurzbefehl fürs iPad)
+
+`POST /api/race` startet ein Rennen und antwortet, ob der Mexikaner kommt und wann (Sekunden ab
+jetzt): `{"fiesta":true,"fiestaIn":12.4,"fiestaFor":10,"end":47.9}`. `end` ist das Ende der
+Ehrenrunde. Mit `?fiesta=1` kommt er sicher (Knopf **🌮 Mit Mexikaner** auf der Webseite). Die beiden
+Texte über ihm („¡FIESTA!“, „Mexikaner-Shots!“) stellt man auf dem Tab **Tafel** unter *Bahnrennen:
+Mexikaner* ein. Die
+Tafel kann dem iPad nichts schicken, deshalb startet ein Kurzbefehl auf dem iPad das Rennen und
+spielt die Musik selbst. So legt man ihn an (Kurzbefehle-App, dann zum Home-Bildschirm hinzufügen):
+
+1. **Inhalte von URL abrufen**: `http://abfahrtstafel.local/api/race`, Methode **POST**
+2. **Wörterbuchwert abrufen**: `fiesta` → **Wenn** *ist wahr*:
+   1. **Wörterbuchwert abrufen** `fiestaIn` → **Warten** so viele Sekunden
+   2. **Musik suchen**: Titel ist „Fiesta Mexicana“, Limit 1 (das Lied muss in der Mediathek sein)
+   3. **Zur Warteliste hinzufügen**: *Als Nächstes*, dann **Vorwärts springen**
+   4. **Warten** `end` − `fiestaIn` Sekunden (**Berechnen**), dann **Vorwärts springen**
+
+Das Lied wird so nur eingeschoben. Nach der Ehrenrunde läuft die Playlist weiter, die vorher lief.
+Wechselt jemand während des Rennens das Lied von Hand, überspringt der letzte Schritt ein anderes.
+Startet man das Rennen über die Webseite, kommt der Mexikaner trotzdem, es läuft aber keine Musik.
 
 ### Tests (Parser, laufen auf dem Mac)
 

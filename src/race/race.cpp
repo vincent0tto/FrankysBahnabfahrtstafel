@@ -15,6 +15,8 @@ void raceBegin(Race& r, uint32_t seed) {
   r.derailMs = 0;
   r.iceLane = -1;
   r.iceCancelled = false;
+  r.fiesta = false;
+  r.fiestaMs = 0;
   uint32_t rng = seed;
   for (int i = 0; i < 4; i++) raceRand(rng);  // close seeds give different races
   bool derail = raceRand(rng) % 10 == 0;
@@ -22,6 +24,8 @@ void raceBegin(Race& r, uint32_t seed) {
   bool ice = raceRand(rng) % 12 == 0;
   int iceLane = raceRand(rng) % RACE_LANES;
   bool iceCancelled = raceRand(rng) % 3 == 0;
+  bool fiesta = raceRand(rng) % 4 == 0 && !derail;
+  int fiestaAt = 2 + raceRand(rng) % 4;  // leader's field
   if (ice && !derail) {
     r.iceLane = iceLane;
     r.iceCancelled = iceCancelled;
@@ -35,6 +39,12 @@ void raceBegin(Race& r, uint32_t seed) {
       r.derailLane = raceRand(rng) % RACE_LANES;
       r.derailMs = at;
       at += RACE_DERAIL_MS;
+      continue;
+    }
+    if (fiesta && !r.fiesta && lead >= fiestaAt) {
+      r.fiesta = true;
+      r.fiestaMs = at;
+      at += RACE_FIESTA_MS;
       continue;
     }
     if (r.iceLane >= 0 && !r.iceCancelled && lead >= RACE_FIELDS / 2) {

@@ -69,6 +69,8 @@ void settingsDefaults(Settings& s) {
   s.disruptPasses = DISRUPTION_PASSES;
   s.animChance = DEPART_ANIM_CHANCE;
   s.animChanceBus = DEPART_ANIM_CHANCE_BUS;
+  snprintf(s.fiestaText1, sizeof(s.fiestaText1), "%s", "¡FIESTA!");
+  snprintf(s.fiestaText2, sizeof(s.fiestaText2), "%s", "Mexikaner-Shots!");
 }
 
 bool inWindow(const TimeWindow& w, int m) {
@@ -243,6 +245,8 @@ void settingsToJson(const Settings& s, JsonObject out, bool forWeb) {
   out["animChanceBus"] = s.animChanceBus;
   out["matchOn"] = s.matchOn;
   out["goalAnim"] = s.goalAnim;
+  out["fiestaText1"] = (const char*)s.fiestaText1;
+  out["fiestaText2"] = (const char*)s.fiestaText2;
 
   JsonArray promos = out["promos"].to<JsonArray>();
   for (int i = 0; i < s.nPromos; i++) {
@@ -309,6 +313,8 @@ bool settingsFromJson(JsonVariantConst in, Settings& s) {
   s.animChanceBus = (uint8_t)clampU(in["animChanceBus"], 0, 100, s.animChanceBus);
   s.matchOn = in["matchOn"] | s.matchOn;
   s.goalAnim = in["goalAnim"] | s.goalAnim;
+  if (in["fiestaText1"].is<const char*>()) copyText(s.fiestaText1, sizeof(s.fiestaText1), in["fiestaText1"]);
+  if (in["fiestaText2"].is<const char*>()) copyText(s.fiestaText2, sizeof(s.fiestaText2), in["fiestaText2"]);
 
   if (in["promos"].is<JsonArrayConst>()) {
     for (JsonVariantConst o : in["promos"].as<JsonArrayConst>()) {

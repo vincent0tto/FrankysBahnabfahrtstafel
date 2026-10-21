@@ -156,16 +156,19 @@ bool eventFetch(Event& out, uint32_t& version) {
   return true;
 }
 
-void raceStart(uint32_t seed) {
-  static Race r;  // only to know how long it takes
+const Race& raceStart(uint32_t seed, bool fiesta) {
+  static Race r;  // to know how long it takes and when the Mexican comes
   raceBegin(r, seed);
+  while (fiesta && !r.fiesta) raceBegin(r, raceRand(seed));
   xSemaphoreTake(mutex, portMAX_DELAY);
   raceSeed = seed;
   raceActive = true;
   raceEndMs = millis() + raceTotalMs(r);
   raceVersion++;
   xSemaphoreGive(mutex);
-  Log.printf("[race] started, lane %d wins after %u ms\n", r.winner + 1, (unsigned)r.endMs);
+  Log.printf("[race] started, lane %d wins after %u ms%s\n", r.winner + 1, (unsigned)r.endMs,
+             r.fiesta ? ", with fiesta" : "");
+  return r;
 }
 
 void raceStop() {

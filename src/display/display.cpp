@@ -83,7 +83,7 @@ bool displayRender(const Board& b, const Settings& s, const Event& ev, const Kar
   }
   updateBrightness(s, ev, st, now);
   matrix->clearScreen();
-  if (race) drawRace(*matrix, u8, amber, *race, raceMs);
+  if (race) drawRace(*matrix, u8, amber, *race, raceMs, s.fiestaText1, s.fiestaText2);
   else if (goal) drawGoal(*matrix, u8, m, goalMs);
   else if (ev.on && ev.karaoke) renderKaraoke(*matrix, u8, k, ms);
   else if (ev.on) renderEvent(*matrix, u8, ev, eventMs);

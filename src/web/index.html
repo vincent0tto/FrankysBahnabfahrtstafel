@@ -205,8 +205,8 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 <div class="hint">Unterbricht die Tafel kurz, danach zeigt sie wieder, was oben gewählt ist.</div>
 <div class="show" id="raceCard">
 <h3>Bahnrennen</h3>
-<div class="hint">Wie das Pferderennen auf der Kirmes: 4 Bahnen, 12 Felder, wer zuerst im Ziel ist, gewinnt. Setzt auf eine Nummer! Dauert etwa eine halbe Minute.</div>
-<div class="row"><button class="primary" id="raceStart">▶ Rennen starten</button><button id="raceStop" hidden>Abbrechen</button><span class="hint" id="raceText" style="margin:0"></span></div>
+<div class="hint">Wie das Pferderennen auf der Kirmes: 4 Bahnen, 12 Felder, wer zuerst im Ziel ist, gewinnt. Setzt auf eine Nummer! Dauert etwa eine halbe Minute. Ab und zu tanzt mittendrin ein Mexikaner mit Gitarre; mit dem Kurzbefehl auf dem iPad läuft dazu „Fiesta Mexicana“.</div>
+<div class="row"><button class="primary" id="raceStart">▶ Rennen starten</button><button id="raceFiesta">🌮 Mit Mexikaner</button><button id="raceStop" hidden>Abbrechen</button><span class="hint" id="raceText" style="margin:0"></span></div>
 </div>
 </section>
 </div>
@@ -224,6 +224,13 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 <label><input type="checkbox" id="goalAnim">bei einem Tor „TOOOR!“ über die ganze Tafel</label></div>
 <div class="note" id="matchInfo" hidden></div>
 <div class="row"><button id="goalTest">⚽ Tor testen</button><span class="hint" style="margin:0">zeigt die Animation einmal auf der Tafel (nicht im Event)</span></div>
+</section>
+
+<section>
+<h2>Bahnrennen: Mexikaner</h2>
+<div class="hint">Die Texte über dem tanzenden Mexikaner, erst der eine, dann der andere. Leer lassen: kein Text. Testen mit „🌮 Mit Mexikaner“ unter Jetzt.</div>
+<div class="field"><span class="flabel">Zuerst</span><div class="fctl"><input type="text" id="fiestaText1" maxlength="20" placeholder="z. B. ¡FIESTA!"></div></div>
+<div class="field"><span class="flabel">Danach</span><div class="fctl"><input type="text" id="fiestaText2" maxlength="20" placeholder="z. B. Mexikaner-Shots!"></div></div>
 </section>
 
 <section>
@@ -641,6 +648,7 @@ for(const k of ['animChance','animChanceBus'])$(k).oninput=e=>S[k]=+e.target.val
 function render(){
   $('animChance').value=S.animChance;$('animChanceBus').value=S.animChanceBus;
   $('matchOn').checked=S.matchOn;$('goalAnim').checked=S.goalAnim;
+  $('fiestaText1').value=S.fiestaText1;$('fiestaText2').value=S.fiestaText2;
   $('offOn').checked=S.off.on;$('offFrom').value=time(S.off.from);$('offTo').value=time(S.off.to);
   setBright(S.brightnessPct);
   renderRow();renderDim();renderPromos();renderIcons();
@@ -658,6 +666,7 @@ function collect(){
     promoShowS:S.promoShowS,promoIntervalS:S.mode==='off'?0:S.interval,promoFullRow:S.mode==='scroll',promoWhite:S.promoWhite,promoWhitePct:S.promoWhitePct,
     disruptOn:S.disruptOn,disruptPasses:S.disruptPasses,animChance:S.animChance,animChanceBus:S.animChanceBus,
     matchOn:$('matchOn').checked,goalAnim:$('goalAnim').checked,
+    fiestaText1:$('fiestaText1').value,fiestaText2:$('fiestaText2').value,
     promos,icons:S.icons};
 }
 
@@ -670,7 +679,7 @@ function updateSave(){
   renderTimeline();markTabs();
 }
 // which tab holds which settings, for the dot at a tab with unsaved changes
-const TAB_KEYS={tafel:['promos','icons','promoShowS','promoIntervalS','promoFullRow','promoWhite','promoWhitePct','disruptOn','disruptPasses','matchOn','goalAnim'],
+const TAB_KEYS={tafel:['promos','icons','promoShowS','promoIntervalS','promoFullRow','promoWhite','promoWhitePct','disruptOn','disruptPasses','matchOn','goalAnim','fiestaText1','fiestaText2'],
   zeitplan:['off','brightnessPct','dim'],technik:['animChance','animChanceBus']};
 function markTabs(){
   const c=S&&collect(),b=S&&JSON.parse(base);
@@ -776,7 +785,7 @@ function renderModes(){
   set('mEvent',shown==='event');
   set('mKaraoke',shown==='karaoke');
   $('raceCard').classList.toggle('on',raceOn);
-  $('raceStart').hidden=raceOn;$('raceStop').hidden=!raceOn;
+  $('raceStart').hidden=$('raceFiesta').hidden=raceOn;$('raceStop').hidden=!raceOn;
   $('raceText').textContent=raceOn?'Rennen läuft …':'';
   EV.setShown(shown);KA.setShown(shown);
   clearTimeout(raceTimer);
@@ -807,6 +816,7 @@ $('mDep').querySelector('.pick').onclick=()=>pick('dep');
 $('mEvent').querySelector('.pick').onclick=()=>pick('event');
 $('mKaraoke').querySelector('.pick').onclick=()=>pick('karaoke');
 $('raceStart').onclick=()=>act(async()=>{await post('/api/race');raceOn=true});
+$('raceFiesta').onclick=()=>act(async()=>{await post('/api/race?fiesta=1');raceOn=true});
 $('raceStop').onclick=()=>act(async()=>{await post('/api/race/stop');raceOn=false});
 // waits for the board to come back after a restart, then reloads the page
 async function afterRestart(msg){

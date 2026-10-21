@@ -306,7 +306,8 @@ int main(int argc, char** argv) {
     canvas.fillScreen(0);
     U8G2_FOR_ADAFRUIT_GFX u8;
     u8.begin(canvas);
-    drawRace(canvas, u8, ((COLOR_R & 0xF8) << 8) | ((COLOR_G & 0xFC) << 3) | (COLOR_B >> 3), race, t);
+    drawRace(canvas, u8, ((COLOR_R & 0xF8) << 8) | ((COLOR_G & 0xFC) << 3) | (COLOR_B >> 3), race, t,
+             settings.fiestaText1, settings.fiestaText2);
     raceFrames.push_back(Frame{std::vector<uint16_t>(canvas.getBuffer(), canvas.getBuffer() + W * H)});
   }
   printf("race (seed %u): lane %d derails at %u ms, lane %d wins after %u ms, %d moves\n", (unsigned)seed,
@@ -325,12 +326,29 @@ int main(int argc, char** argv) {
       canvas.fillScreen(0);
       U8G2_FOR_ADAFRUIT_GFX u8;
       u8.begin(canvas);
-      drawRace(canvas, u8, ((COLOR_R & 0xF8) << 8) | ((COLOR_G & 0xFC) << 3) | (COLOR_B >> 3), race, t);
+      drawRace(canvas, u8, ((COLOR_R & 0xF8) << 8) | ((COLOR_G & 0xFC) << 3) | (COLOR_B >> 3), race, t,
+             settings.fiestaText1, settings.fiestaText2);
       raceFrames.push_back(Frame{std::vector<uint16_t>(canvas.getBuffer(), canvas.getBuffer() + W * H)});
     }
     printf("race (seed %u): ICE on lane %d%s, lane %d wins\n", (unsigned)seed, race.iceLane + 1,
            cancelled ? " cancelled" : "", race.winner + 1);
   }
+  // with the fiesta: the Mexican dancing in, each dance step, the shots, dancing out
+  seed = 1;
+  do raceBegin(race, ++seed);
+  while (!race.fiesta);
+  const uint32_t F = RACE_COUNTDOWN_MS + race.fiestaMs;
+  for (uint32_t t : {F + 700, F + 2000, F + 2250, F + 2500, F + 2750, F + 7000, F + RACE_FIESTA_MS - 700}) {
+    GFXcanvas16 canvas(W, H);
+    canvas.fillScreen(0);
+    U8G2_FOR_ADAFRUIT_GFX u8;
+    u8.begin(canvas);
+    drawRace(canvas, u8, ((COLOR_R & 0xF8) << 8) | ((COLOR_G & 0xFC) << 3) | (COLOR_B >> 3), race, t,
+             settings.fiestaText1, settings.fiestaText2);
+    raceFrames.push_back(Frame{std::vector<uint16_t>(canvas.getBuffer(), canvas.getBuffer() + W * H)});
+  }
+  printf("race (seed %u): fiesta at %u ms, lane %d wins after %u ms\n", (unsigned)seed, (unsigned)race.fiestaMs,
+         race.winner + 1, (unsigned)race.endMs);
   writePpm(argc > 4 ? argv[4] : "preview_race.ppm", raceFrames);
 
   // karaoke list: empty, two entries, more than fit (a long name and song

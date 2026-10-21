@@ -59,6 +59,8 @@ struct Settings {
   uint8_t animChanceBus = 0;    // same for buses
   bool matchOn = false;         // St.-Pauli-Ticker (src/match/match.h)
   bool goalAnim = true;         // with it: the goal animation over the whole board
+  char fiestaText1[32] = "";    // the race's dancing Mexican (src/race/race.h): over him first,
+  char fiestaText2[32] = "";    // then this; "" shows nothing
   Promo promos[MAX_PROMOS];
   uint8_t nPromos = 0;
   CustomIcon icons[MAX_CUSTOM_ICONS];  // index = number in the tag

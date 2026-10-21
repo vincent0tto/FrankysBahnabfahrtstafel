@@ -31,6 +31,8 @@ static void checkRace(uint32_t seed) {
       TEST_ASSERT_NOT_EQUAL(r.derailLane, m.lane);
       if (prev * 10u <= r.derailMs) TEST_ASSERT_TRUE(m.at10ms * 10u >= r.derailMs + RACE_DERAIL_MS);
     }
+    if (r.fiesta && m.at10ms * 10u > r.fiestaMs && prev * 10u <= r.fiestaMs)  // nobody moves while he dances
+      TEST_ASSERT_TRUE(m.at10ms * 10u >= r.fiestaMs + RACE_FIESTA_MS);
     prev = m.at10ms;
     pos[m.lane] += m.delta;
     TEST_ASSERT_TRUE(pos[m.lane] >= 0 && pos[m.lane] <= RACE_FIELDS);
@@ -38,6 +40,10 @@ static void checkRace(uint32_t seed) {
   }
   TEST_ASSERT_EQUAL(RACE_FIELDS, pos[r.winner]);
   if (r.derailLane >= 0) TEST_ASSERT_TRUE(r.derailMs < r.endMs);
+  if (r.fiesta) {
+    TEST_ASSERT_EQUAL(-1, r.derailLane);
+    TEST_ASSERT_TRUE(r.fiestaMs > 0 && r.fiestaMs < r.endMs);
+  }
   if (r.iceLane >= 0) {
     TEST_ASSERT_EQUAL(-1, r.derailLane);
     TEST_ASSERT_EQUAL(!r.iceCancelled, r.winner == r.iceLane);
@@ -78,15 +84,17 @@ void test_same_seed_same_race() {
 
 // Every number has the same chance (people bet on it), also to derail or
 // be the ICE; ~30 s on average, a derailment in about every 10th race, an
-// ICE in every 12th, one in 3 of them cancelled.
+// ICE in every 12th, one in 3 of them cancelled, the fiesta in every 4th
+// without a derailment.
 void test_fair_and_about_30s() {
   const int N = 20000;
-  int wins[RACE_LANES] = {}, derails[RACE_LANES] = {}, nDerail = 0, ices[RACE_LANES] = {}, nIce = 0, nCancelled = 0;
+  int wins[RACE_LANES] = {}, derails[RACE_LANES] = {}, nDerail = 0, ices[RACE_LANES] = {}, nIce = 0, nCancelled = 0, nFiesta = 0;
   double sum = 0;
   for (uint32_t s = 1; s <= N; s++) {
     raceBegin(r, s);
     wins[r.winner]++;
-    sum += r.endMs - (r.derailLane >= 0 ? RACE_DERAIL_MS : 0);
+    sum += r.endMs - (r.derailLane >= 0 ? RACE_DERAIL_MS : 0) - (r.fiesta ? RACE_FIESTA_MS : 0);
+    nFiesta += r.fiesta;
     if (r.derailLane >= 0) derails[r.derailLane]++, nDerail++;
     if (r.iceLane >= 0) ices[r.iceLane]++, nIce++, nCancelled += r.iceCancelled;
   }
@@ -96,6 +104,7 @@ void test_fair_and_about_30s() {
   for (int i = 0; i < RACE_LANES; i++) TEST_ASSERT_INT_WITHIN(nIce / 6, nIce / 4, ices[i]);
   TEST_ASSERT_INT_WITHIN(N / 100, N * 9 / 10 / 12, nIce);  // not with a derailment
   TEST_ASSERT_INT_WITHIN(nIce / 20, nIce / 3, nCancelled);
+  TEST_ASSERT_INT_WITHIN(N / 50, N * 9 / 10 / 4, nFiesta);
   TEST_ASSERT_INT_WITHIN(4000, 30000, (int)(sum / N));
 }
 
