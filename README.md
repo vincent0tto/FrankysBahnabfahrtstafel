@@ -341,7 +341,8 @@ zeigt die Überschrift rechts „+N weitere“.
 
 Auf dem Tab **Karaoke** (`/#karaoke`) trägt man bis zu 30 Namen mit Song ein, ändert sie direkt
 in der Liste, schiebt sie mit ▲/▼ um und nimmt sie mit ✕ heraus; beim ersten heißt der Knopf
-**✓ Fertig**, danach rücken alle nach (für 15 s gibt es *Rückgängig*). Die Farben gehören zu den
+**✓ Fertig**, danach rücken alle nach (für 15 s gibt es *Rückgängig*). Dasselbe macht der große
+Knopf oben im Tab („✓ Franky ist fertig“, darunter, wer als Nächstes dran ist). Die Farben gehören zu den
 4 Zeilen der Tafel und zur Überschrift, nicht zu den Namen: Wer nachrückt, bekommt die Farbe
 seiner neuen Zeile. Jede Änderung speichert sofort (`POST /api/karaoke`, als `/karaoke.json` im
 selben Dateisystem wie das Event); hat ein anderes Gerät die Liste inzwischen geändert, wiederholt
