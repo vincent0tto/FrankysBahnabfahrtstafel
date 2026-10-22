@@ -7,6 +7,7 @@
 
 #include "config.h"
 #include "departures/parse.h"
+#include "race/race.h"
 
 static TimeWindow hours(int from, int to) {
   TimeWindow w;
@@ -69,6 +70,7 @@ void settingsDefaults(Settings& s) {
   s.disruptPasses = DISRUPTION_PASSES;
   s.animChance = DEPART_ANIM_CHANCE;
   s.animChanceBus = DEPART_ANIM_CHANCE_BUS;
+  s.fiestaChance = RACE_FIESTA_CHANCE;
   snprintf(s.fiestaText1, sizeof(s.fiestaText1), "%s", "¡FIESTA!");
   snprintf(s.fiestaText2, sizeof(s.fiestaText2), "%s", "Mexikaner-Shots!");
 }
@@ -245,6 +247,7 @@ void settingsToJson(const Settings& s, JsonObject out, bool forWeb) {
   out["animChanceBus"] = s.animChanceBus;
   out["matchOn"] = s.matchOn;
   out["goalAnim"] = s.goalAnim;
+  out["fiestaChance"] = s.fiestaChance;
   out["fiestaText1"] = (const char*)s.fiestaText1;
   out["fiestaText2"] = (const char*)s.fiestaText2;
 
@@ -313,6 +316,7 @@ bool settingsFromJson(JsonVariantConst in, Settings& s) {
   s.animChanceBus = (uint8_t)clampU(in["animChanceBus"], 0, 100, s.animChanceBus);
   s.matchOn = in["matchOn"] | s.matchOn;
   s.goalAnim = in["goalAnim"] | s.goalAnim;
+  s.fiestaChance = (uint8_t)clampU(in["fiestaChance"], 0, 100, s.fiestaChance);
   if (in["fiestaText1"].is<const char*>()) copyText(s.fiestaText1, sizeof(s.fiestaText1), in["fiestaText1"]);
   if (in["fiestaText2"].is<const char*>()) copyText(s.fiestaText2, sizeof(s.fiestaText2), in["fiestaText2"]);
 

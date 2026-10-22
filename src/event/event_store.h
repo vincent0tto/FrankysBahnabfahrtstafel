@@ -51,10 +51,11 @@ Karaoke& karaokeScratch();
 bool karaokeFetch(Karaoke& out, uint32_t& version);
 
 // Network task: starts the tram race (src/race/race.h) worked out from `seed`,
-// over everything else, or a new one if one is running; ends by itself. With
-// `fiesta` the next seed from `seed` on whose race has the dancing Mexican.
-// Returns the race, valid until the next call.
-const Race& raceStart(uint32_t seed, bool fiesta = false);
+// over everything else, or a new one if one is running; ends by itself. The
+// dancing Mexican comes in 1 of `fiestaChance` races; with 1 surely (the
+// next seed from `seed` on whose race has him). Returns the race, valid
+// until the next call.
+const Race& raceStart(uint32_t seed, uint8_t fiestaChance);
 
 // Network task: ends the race at once.
 void raceStop();
@@ -63,5 +64,5 @@ void raceStop();
 bool raceRunning();
 
 // Render loop: like eventTestFetch() for the race: `seed` of the one to
-// start if `active`.
-bool raceFetch(uint32_t& seed, bool& active, uint32_t& version);
+// start if `active`, worked out with `fiestaChance`.
+bool raceFetch(uint32_t& seed, uint8_t& fiestaChance, bool& active, uint32_t& version);

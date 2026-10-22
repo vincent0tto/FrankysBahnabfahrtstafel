@@ -120,7 +120,7 @@
 
 // When a departure leaves, 1 in N times its tram/bus drives out of the row
 // (src/display/depart_anim.cpp). Only if no other shown row leaves in the same minute.
-// 0 = never, 1 = always. Defaults, changeable on the web page (Technik).
+// 0 = never, 1 = always. Defaults, changeable on the web page (Tafel).
 #define DEPART_ANIM_CHANCE 10
 #define DEPART_ANIM_CHANCE_BUS 3   // same for buses (line 628 etc.)
 

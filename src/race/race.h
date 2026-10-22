@@ -5,8 +5,8 @@
 // in ten a tram derails and stays where it is; one in 12 an ICE takes a
 // lane, waits and then runs straight to the finish (or, one time in three,
 // is cancelled and never leaves). About one race in four (never with a
-// derailment) the race pauses early for a dancing Mexican with a guitar,
-// "¡FIESTA!". The whole race is worked out
+// derailment, adjustable) the race pauses early for a dancing Mexican with a
+// guitar, "¡FIESTA!". The whole race is worked out
 // from a seed at the start, so drawing it (src/race/race_render.h) needs no
 // state. No Arduino dependency, unit-tested on the host.
 #include <stdint.h>
@@ -22,6 +22,7 @@ static const uint32_t RACE_DERAIL_MS = 6000;     // the race pauses for the dera
 static const uint32_t RACE_FIESTA_MS = 10000;    // ... and for the dancing Mexican
 static const uint32_t RACE_WIN_MS = 8500;        // winner blinks, then the lap of honour
 static const uint32_t RACE_RANK_MS = 5000;       // the ranking
+static const uint8_t RACE_FIESTA_CHANCE = 4;     // 1 in N races has the Mexican, by default
 
 struct RaceMove {
   uint16_t at10ms;  // when it starts, in 10 ms after the countdown
@@ -51,9 +52,9 @@ struct Race {
 // Otherwise in 1 of 12 an ICE takes a random lane: it stands until the
 // leader is half-way, then runs to the finish in one go and wins; in 1 of 3
 // of those it is cancelled instead, stands all race and ranks last. In 1 of
-// 4 races without a derailment, once the leader is on field 2-5, the race
-// pauses for the Mexican.
-void raceBegin(Race& r, uint32_t seed);
+// `fiestaChance` races without a derailment (0 = never), once the leader is
+// on field 2-5, the race pauses for the Mexican.
+void raceBegin(Race& r, uint32_t seed, uint8_t fiestaChance = RACE_FIESTA_CHANCE);
 
 // Countdown + race + winner animation + ranking.
 uint32_t raceTotalMs(const Race& r);

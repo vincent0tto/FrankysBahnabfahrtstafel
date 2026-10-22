@@ -178,8 +178,9 @@ void loop() {
   }
 
   uint32_t raceSeed;
-  if (raceFetch(raceSeed, racing, raceVersion) && racing) {
-    raceBegin(race, raceSeed);
+  uint8_t fiestaChance;
+  if (raceFetch(raceSeed, fiestaChance, racing, raceVersion) && racing) {
+    raceBegin(race, raceSeed, fiestaChance);
     raceStartMs = millis();
   }
   if (racing && millis() - raceStartMs >= raceTotalMs(race)) racing = false;

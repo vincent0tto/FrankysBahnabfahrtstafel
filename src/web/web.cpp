@@ -278,9 +278,9 @@ static void handleKaraokePreview() {
 
 // For the iPad shortcut that plays the music: whether the Mexican comes,
 // and in seconds from now when, how long, and when the lap of honour ends.
-// ?fiesta=1: he surely comes.
+// ?fiesta=1: he surely comes, otherwise as often as set.
 static void handleRace() {
-  const Race& r = raceStart(esp_random(), server.arg("fiesta") == "1");
+  const Race& r = raceStart(esp_random(), server.arg("fiesta") == "1" ? 1 : settingsNet().fiestaChance);
   JsonDocument doc(&spiRam);
   doc["fiesta"] = r.fiesta;
   doc["fiestaIn"] = r.fiesta ? (RACE_COUNTDOWN_MS + r.fiestaMs) / 1000.0 : 0;

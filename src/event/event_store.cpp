@@ -21,6 +21,7 @@ static Scene testScene;  // same
 static bool testActive = false;
 static volatile uint32_t testVersion = 0;
 static uint32_t raceSeed = 0;  // same
+static uint8_t raceFiestaPct = 0;
 static bool raceActive = false;
 static uint32_t raceEndMs = 0;  // millis() when it is over
 static volatile uint32_t raceVersion = 0;
@@ -156,12 +157,13 @@ bool eventFetch(Event& out, uint32_t& version) {
   return true;
 }
 
-const Race& raceStart(uint32_t seed, bool fiesta) {
+const Race& raceStart(uint32_t seed, uint8_t fiestaChance) {
   static Race r;  // to know how long it takes and when the Mexican comes
-  raceBegin(r, seed);
-  while (fiesta && !r.fiesta) raceBegin(r, raceRand(seed));
+  raceBegin(r, seed, fiestaChance);
+  while (fiestaChance == 1 && !r.fiesta) raceBegin(r, raceRand(seed), fiestaChance);  // not one with a derailment
   xSemaphoreTake(mutex, portMAX_DELAY);
   raceSeed = seed;
+  raceFiestaPct = fiestaChance;
   raceActive = true;
   raceEndMs = millis() + raceTotalMs(r);
   raceVersion++;
@@ -181,9 +183,10 @@ void raceStop() {
 
 bool raceRunning() { return raceActive && (int32_t)(millis() - raceEndMs) < 0; }
 
-bool raceFetch(uint32_t& seed, bool& active, uint32_t& version) {
+bool raceFetch(uint32_t& seed, uint8_t& fiestaChance, bool& active, uint32_t& version) {
   if (version == raceVersion || xSemaphoreTake(mutex, pdMS_TO_TICKS(10)) != pdTRUE) return false;
   seed = raceSeed;
+  fiestaChance = raceFiestaPct;
   active = raceActive;
   version = raceVersion;
   xSemaphoreGive(mutex);

@@ -4,6 +4,7 @@
 
 #include "config.h"
 #include "core/settings.h"
+#include "race/race.h"
 
 static Settings s, t;  // big, keep them off the stack
 
@@ -47,6 +48,7 @@ void test_defaults() {
   TEST_ASSERT_FALSE(s.promoFullRow);
   TEST_ASSERT_FALSE(s.matchOn);
   TEST_ASSERT_TRUE(s.goalAnim);
+  TEST_ASSERT_EQUAL(RACE_FIESTA_CHANCE, s.fiestaChance);
   TEST_ASSERT_EQUAL_STRING("¡FIESTA!", s.fiestaText1);
   TEST_ASSERT_EQUAL_STRING("Mexikaner-Shots!", s.fiestaText2);
   TEST_ASSERT_EQUAL(BRIGHTNESS_MAX, brightnessToPanel(100));
@@ -95,6 +97,7 @@ void test_json_roundtrip() {
   s.animChanceBus = 1;
   s.matchOn = true;
   s.goalAnim = false;
+  s.fiestaChance = 2;
   strcpy(s.fiestaText1, "Olé!");
   s.fiestaText2[0] = 0;
   promoFromText("[ig]@frankys", s.promos[s.nPromos]);
@@ -130,6 +133,7 @@ void test_json_roundtrip() {
   TEST_ASSERT_EQUAL(1, t.animChanceBus);
   TEST_ASSERT_TRUE(t.matchOn);
   TEST_ASSERT_FALSE(t.goalAnim);
+  TEST_ASSERT_EQUAL(2, t.fiestaChance);
   TEST_ASSERT_EQUAL_STRING("Olé!", t.fiestaText1);
   TEST_ASSERT_EQUAL_STRING("", t.fiestaText2);
   TEST_ASSERT_EQUAL(s.nPromos, t.nPromos);

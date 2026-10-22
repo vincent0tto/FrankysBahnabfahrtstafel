@@ -8,7 +8,7 @@ uint32_t raceRand(uint32_t& state) {
   return state;
 }
 
-void raceBegin(Race& r, uint32_t seed) {
+void raceBegin(Race& r, uint32_t seed, uint8_t fiestaChance) {
   r.seed = seed;
   r.nMoves = 0;
   r.derailLane = -1;
@@ -24,7 +24,8 @@ void raceBegin(Race& r, uint32_t seed) {
   bool ice = raceRand(rng) % 12 == 0;
   int iceLane = raceRand(rng) % RACE_LANES;
   bool iceCancelled = raceRand(rng) % 3 == 0;
-  bool fiesta = raceRand(rng) % 4 == 0 && !derail;
+  uint32_t fiestaRoll = raceRand(rng);
+  bool fiesta = fiestaChance && fiestaRoll % fiestaChance == 0 && !derail;
   int fiestaAt = 2 + raceRand(rng) % 4;  // leader's field
   if (ice && !derail) {
     r.iceLane = iceLane;

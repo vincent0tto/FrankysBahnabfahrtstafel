@@ -40,7 +40,7 @@ Schriesheim Bahnhof                     10:42
   Bahnen mit den Nummern 1–4 zufällig Feld für Feld über 12 Felder, manchmal auch eins zurück.
   Etwa jedes zehnte Rennen entgleist eine Bahn und bleibt stehen, und ab und zu ersetzt FRANKY'S ICE
   eine Bahn: Er wartet, bis die anderen halb durch sind, und rauscht dann ins Ziel – wenn er
-  nicht ausfällt. In etwa jedem vierten Rennen tanzt mittendrin ein Mexikaner mit Gitarre über
+  nicht ausfällt. In etwa jedem vierten Rennen (einstellbar) tanzt mittendrin ein Mexikaner mit Gitarre über
   die Tafel („¡FIESTA!“), und auf dem iPad läuft dazu „Fiesta Mexicana“. Wer zuerst im Ziel ist,
   gewinnt und bekommt eine Ehrenrunde mit Feuerwerk, danach kommt kurz die Rangliste. Setzen
   kann man auf eine Nummer. Das Rennen unterbricht nur, was gerade läuft: Danach zeigt die
@@ -201,11 +201,11 @@ selben WLAN öffnen. Es gibt kein Login. Die Seite hat sechs Tabs; der offene st
 - **Jetzt**: *Was zeigt die Tafel?* – *Abfahrten*, *Event* oder *Karaoke*, immer eins davon, gilt sofort,
   ohne Speichern. Darunter *Zwischendurch* mit dem Knopf für ein **Bahnrennen**: Es unterbricht
   die Tafel nur, die Auswahl oben steht so lange auf „unterbrochen“.
-- **Tafel**: 4. Zeile, St.-Pauli-Ticker, Promos und Icons.
+- **Tafel**: Promos, 4. Zeile, Abfahrts-Animation, St.-Pauli-Ticker, Mexikaner im Bahnrennen und Icons.
 - **Zeitplan**: Ruhezeit und Helligkeit.
 - **Event**: Szenen, Bilder und Helligkeit des Events (siehe *Event-Modus*).
 - **Karaoke**: die Karaoke-Liste (siehe *Karaoke*).
-- **Technik**: Abfahrts-Animation, WLAN, Log, Neustart.
+- **Technik**: WLAN, Log, Neustart.
 
 Im Einzelnen:
 
@@ -218,6 +218,9 @@ Im Einzelnen:
   an- und ausschaltbar und löschbar, jeweils mit Symbol, Darstellung (*mittig* oder *wie eine Abfahrt*, dann mit einem
   Text rechts statt der Minuten), Wochentagen und optionalem Zeitfenster. Ein Zeitfenster über
   Mitternacht zählt zum Tag, an dem es beginnt.
+- **4. Zeile**: *Ab und zu Promo* (die Abfahrt, ab und zu eine Promo; mit Anzeigedauer und
+  Pause), *Nur Promos* (die Promos laufen der Reihe nach als Laufschrift durch, wahlweise in Weiß mit eigener Helligkeit) oder *Keine
+  Promos*. Dazu die VRN-Störmeldungen: an/aus und wie oft sie am Stück durchlaufen.
 - **St.-Pauli-Ticker**: an/aus (Standard aus) und ob ein Tor die Animation über die ganze
   Tafel zeigt. Läuft ein Spiel, gehört die 4. Zeile dem Spielstand (Mannschaften und Stand
   wie eine Abfahrt, zu lange Namen als Kürzel wie `D98 - STP`, in Weiß mit der Helligkeit der weißen Promos); alle 30 s läuft das letzte
@@ -229,9 +232,6 @@ Im Einzelnen:
 - **Icons**: die eingebauten Symbole (Instagram, Grilled Cheese, Flat White, Kuchen, Bier) und
   bis zu 8 eigene, gezeichnet in einem 12×9-Pixel-Editor. Ein neues Icon lässt sich auch direkt
   aus der Icon-Auswahl einer Promo heraus anlegen.
-- **4. Zeile**: *Ab und zu Promo* (die Abfahrt, ab und zu eine Promo; mit Anzeigedauer und
-  Pause), *Nur Promos* (die Promos laufen der Reihe nach als Laufschrift durch, wahlweise in Weiß mit eigener Helligkeit) oder *Keine
-  Promos*. Dazu die VRN-Störmeldungen: an/aus und wie oft sie am Stück durchlaufen.
 - **Zeitplan**: Eine Leiste zeigt, wie hell die Tafel über den Tag ist. Darunter die
   **Ruhezeit** (Standard 02:00–06:00; das Panel ist dunkel und die Tafel ruft keine Daten ab,
   2 Minuten vor dem Ende holt sie neue, `WAKE_FETCH_LEAD_S`) und die **Helligkeit** in Prozent:
@@ -354,7 +354,7 @@ Format: `karaokeToJson` in `src/karaoke/karaoke.cpp`.
 `POST /api/race` startet ein Rennen und antwortet, ob der Mexikaner kommt und wann (Sekunden ab
 jetzt): `{"fiesta":true,"fiestaIn":12.4,"fiestaFor":10,"end":47.9}`. `end` ist das Ende der
 Ehrenrunde. Mit `?fiesta=1` kommt er sicher (Knopf **🌮 Mit Mexikaner** auf der Webseite). Die beiden
-Texte über ihm („¡FIESTA!“, „Mexikaner-Shots!“) stellt man auf dem Tab **Tafel** unter *Bahnrennen:
+Texte über ihm („¡FIESTA!“, „Mexikaner-Shots!“) und wie oft er kommt (Standard: jedes 4. Rennen) stellt man auf dem Tab **Tafel** unter *Bahnrennen:
 Mexikaner* ein. Die
 Tafel kann dem iPad nichts schicken, deshalb startet ein Kurzbefehl auf dem iPad das Rennen und
 spielt die Musik selbst. So legt man ihn an (Kurzbefehle-App, dann zum Home-Bildschirm hinzufügen):

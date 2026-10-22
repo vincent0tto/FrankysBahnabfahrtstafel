@@ -108,6 +108,24 @@ void test_fair_and_about_30s() {
   TEST_ASSERT_INT_WITHIN(4000, 30000, (int)(sum / N));
 }
 
+// The Mexican as often as set: never with 0, with 1 in every race without
+// a derailment, otherwise in about 1 of N.
+void test_fiesta_chance() {
+  int n0 = 0, n1 = 0, nDerail = 0, n2 = 0;
+  for (uint32_t s = 1; s <= 4000; s++) {
+    raceBegin(r, s, 0);
+    n0 += r.fiesta;
+    raceBegin(r, s, 1);
+    n1 += r.fiesta;
+    nDerail += r.derailLane >= 0;
+    raceBegin(r, s, 2);
+    n2 += r.fiesta;
+  }
+  TEST_ASSERT_EQUAL(0, n0);
+  TEST_ASSERT_EQUAL(4000 - nDerail, n1);
+  TEST_ASSERT_INT_WITHIN(100, (4000 - nDerail) / 2, n2);
+}
+
 void test_positions_glide_and_settle() {
   raceBegin(r, 99);
   int32_t pos[RACE_LANES];
@@ -126,6 +144,7 @@ int main(int, char**) {
   RUN_TEST(test_races_are_valid);
   RUN_TEST(test_same_seed_same_race);
   RUN_TEST(test_fair_and_about_30s);
+  RUN_TEST(test_fiesta_chance);
   RUN_TEST(test_positions_glide_and_settle);
   return UNITY_END();
 }
