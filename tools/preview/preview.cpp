@@ -382,8 +382,8 @@ int main(int argc, char** argv) {
   writePpm(argc > 5 ? argv[5] : "preview_karaoke.ppm", kFrames);
 
   // St.-Pauli-Ticker: live in the 4th row, the last goal scrolling through,
-  // live without departures, the final score as a promo; the goal
-  // animation growing, blinking, with the score, and as "Tor testen"
+  // live without departures, with the team codes, the final score as a
+  // promo; the goal animation growing, blinking, with the score, and as "Tor testen"
   std::vector<Frame> mFrames;
   Match m;
   m.id = 1;
@@ -397,6 +397,10 @@ int main(int argc, char** argv) {
   mFrames.push_back(render(normal, ok, now, 1000, m));
   mFrames.push_back(render(normal, ok, now, MATCH_GOAL_EVERY_S * 1000 + 4000, m));
   mFrames.push_back(render(empty, ok, now, 1000, m));
+  Match longNames = m;  // names too wide for their half: the codes
+  strcpy(longNames.home, "Kaiserslautern");
+  strcpy(longNames.homeCode, "FCK");
+  mFrames.push_back(render(normal, ok, now, 1000, longNames));
   m.finished = true;
   setPromoIndex(0);  // no promos in the defaults: the final score
   render(normal, ok, now, 7000000, m);  // starts a promo (due long ago)

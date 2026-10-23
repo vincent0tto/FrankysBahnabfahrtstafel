@@ -84,6 +84,9 @@ void test_finished_match() {
   TEST_ASSERT_EQUAL_STRING("Hannover 1:1 STP", t);
   matchScoreText(m, t, sizeof(t));
   TEST_ASSERT_EQUAL_STRING("1:1", t);
+  TEST_ASSERT_EQUAL_STRING("Hannover", matchHomeName(m, true));
+  TEST_ASSERT_EQUAL_STRING("St. Pauli", matchAwayName(m, false));
+  TEST_ASSERT_EQUAL_STRING("STP", matchAwayName(m, true));
 }
 
 void test_scoreboard_goals() {

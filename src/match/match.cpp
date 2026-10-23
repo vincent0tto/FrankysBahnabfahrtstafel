@@ -132,15 +132,15 @@ int newGoals(const Match& before, const Match& after) {
   return d > 0 ? d : 0;
 }
 
-static const char* homeName(const Match& m, bool codes) { return codes && m.homeCode[0] ? m.homeCode : m.home; }
-static const char* awayName(const Match& m, bool codes) { return codes && m.awayCode[0] ? m.awayCode : m.away; }
+const char* matchHomeName(const Match& m, bool codes) { return codes && m.homeCode[0] ? m.homeCode : m.home; }
+const char* matchAwayName(const Match& m, bool codes) { return codes && m.awayCode[0] ? m.awayCode : m.away; }
 
 void matchTeamsText(const Match& m, bool codes, char* out, size_t outSize) {
-  snprintf(out, outSize, "%s - %s", homeName(m, codes), awayName(m, codes));
+  snprintf(out, outSize, "%s - %s", matchHomeName(m, codes), matchAwayName(m, codes));
 }
 
 void matchLineText(const Match& m, bool codes, char* out, size_t outSize) {
-  snprintf(out, outSize, "%s %d:%d %s", homeName(m, codes), m.goalsHome, m.goalsAway, awayName(m, codes));
+  snprintf(out, outSize, "%s %d:%d %s", matchHomeName(m, codes), m.goalsHome, m.goalsAway, matchAwayName(m, codes));
 }
 
 void matchScoreText(const Match& m, char* out, size_t outSize) {

@@ -214,24 +214,43 @@ void setPromoIndex(int idx) { forcedPromo = idx; }
 static Promo finalPromo;
 static bool haveFinal = false;
 
-// The match's teams (`line`: with the score between them) in `out`, with
-// the team codes if the names are wider than `maxW`.
-static void fitMatchText(U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, bool line, const char* prefix, int maxW,
-                         char* out, size_t outSize) {
+// The match's teams with the score between them in `out`, with the team
+// codes if the names are wider than `maxW`.
+static void fitMatchText(U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, const char* prefix, int maxW, char* out,
+                         size_t outSize) {
   for (bool codes : {false, true}) {
     char t[56];
-    if (line) matchLineText(m, codes, t, sizeof(t));
-    else matchTeamsText(m, codes, t, sizeof(t));
+    matchLineText(m, codes, t, sizeof(t));
     snprintf(out, outSize, "%s%s", prefix, t);
     if (width(u8, out) <= maxW) return;
   }
+}
+
+// The running match in the row at `base`: the home team on the left, the
+// score in the middle, the away team on the right; the team codes if a name
+// doesn't fit its half (a longer one is cut).
+static void drawMatchRow(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, int base) {
+  char score[8];
+  matchScoreText(m, score, sizeof(score));
+  int scoreW = width(u8, score);
+  int scoreX = (W - scoreW) / 2;
+  int sideW = scoreX - COL_GAP - MARGIN_X;
+  bool codes = width(u8, matchHomeName(m, false)) > sideW || width(u8, matchAwayName(m, false)) > sideW;
+  const char* away = matchAwayName(m, codes);
+  u8.drawUTF8(MARGIN_X, base, matchHomeName(m, codes));
+  clipRow(g, base, MARGIN_X, scoreX - COL_GAP);
+  int awayX = W - MARGIN_X - width(u8, away);
+  int awayMin = scoreX + scoreW + COL_GAP;
+  u8.drawUTF8(awayX > awayMin ? awayX : awayMin, base, away);
+  clipRow(g, base, 0, W - MARGIN_X);  // keeps the home team
+  u8.drawUTF8(scoreX, base, score);
 }
 
 static void setFinalPromo(U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, bool show) {
   haveFinal = show;
   if (!show) return;
   finalPromo = Promo();
-  fitMatchText(u8, m, true, "Endstand: ", W - 2 * MARGIN_X, finalPromo.text, sizeof(finalPromo.text));
+  fitMatchText(u8, m, "Endstand: ", W - 2 * MARGIN_X, finalPromo.text, sizeof(finalPromo.text));
 }
 
 static const Promo& promoAt(const Settings& s, int i) { return i < s.nPromos ? s.promos[i] : finalPromo; }
@@ -494,8 +513,8 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
   if (s.promoFullRow) nLineW = n;
   bool promoIsDep = promoMsg && !showDisruption && !promo.scroll && isPromoDep(promo.item);
 
-  // The match's row: like a departure (teams, score), every
-  // MATCH_GOAL_EVERY_S the last goal scrolls through instead
+  // The match's row: the teams left and right, the score in the middle;
+  // every MATCH_GOAL_EVERY_S the last goal scrolls through instead
   bool matchRow = live && !tickerMsg && !promoMsg;
   if (matchRow && n > MAX_ROWS) n = MAX_ROWS;
   static char goalLine[64];
@@ -508,10 +527,6 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
     matchScroll = t >= every;
     scrollT = t - every;
   }
-  Promo matchPromo;  // the teams are fitted in where it is drawn
-  if (n > 0) matchScoreText(m, matchPromo.right, sizeof(matchPromo.right));
-  bool matchDep = matchRow && !matchScroll && n > 0;
-  const Promo* depRow = promoIsDep ? &promo.item : matchDep ? &matchPromo : nullptr;
   uint16_t white = grayColor(s.promoWhitePct);
 
   // Now and then the time column shows the platforms instead (also for
@@ -537,7 +552,7 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
       int w = width(u8, rows[i]->line);
       if (w > lineW) lineW = w;
     }
-    if (depRow && promoLineWidth(u8, s, *depRow) > lineW) lineW = promoLineWidth(u8, s, *depRow);
+    if (promoIsDep && promoLineWidth(u8, s, promo.item) > lineW) lineW = promoLineWidth(u8, s, promo.item);
     const int destX = MARGIN_X + lineW + COL_GAP;
     // Platforms are centred (by their ink) under the header's PLATFORM_HEADER
     u8.setFont(FONT_HEADER);
@@ -574,22 +589,11 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
       drawDepartAnim(g, color, anim.dep.cls <= 4, ms - anim.startMs, rowTop(base), rowBottom(base), W);
     }
     if (promoIsDep) drawPromoDep(g, u8, color, s, rowBase(MAX_ROWS), promo.item, lineW, destX, ms);
-    if (matchDep) {
-      int maxW = W - MARGIN_X - width(u8, matchPromo.right) - COL_GAP - destX;
-      fitMatchText(u8, m, false, "", maxW, matchPromo.text, sizeof(matchPromo.text));
-      u8.setForegroundColor(white);
-      drawPromoDep(g, u8, white, s, rowBase(MAX_ROWS), matchPromo, lineW, destX, ms);
-      u8.setForegroundColor(color);
-    }
   }
-  if (matchRow && !matchDep) {
+  if (matchRow) {
     u8.setForegroundColor(white);
-    if (matchScroll) {
-      drawTicker(g, u8, goalLine, scrollT, true);
-    } else {  // no departures: one line in the middle
-      fitMatchText(u8, m, true, "", W - 2 * MARGIN_X, matchPromo.text, sizeof(matchPromo.text));
-      drawPromo(g, u8, white, s, rowBase(MAX_ROWS), matchPromo, ms, false, 0);
-    }
+    if (matchScroll) drawTicker(g, u8, goalLine, scrollT, true);
+    else drawMatchRow(g, u8, m, rowBase(MAX_ROWS));
     u8.setForegroundColor(color);
   }
   // with promoFullRow and promoWhite the promos are white (the disruption

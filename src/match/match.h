@@ -58,8 +58,13 @@ int ourGoals(const Match& m);
 // match, never on the first look at it, 0 if the score went down (VAR).
 int newGoals(const Match& before, const Match& after);
 
+// "Hannover", "St. Pauli"; with `codes` "H96", "STP" (a name without a
+// code stays).
+const char* matchHomeName(const Match& m, bool codes);
+const char* matchAwayName(const Match& m, bool codes);
+
 // "Hannover - St. Pauli", "Hannover 1:1 St. Pauli", "1:1"; with `codes`
-// "H96 - STP" (names without a code stay).
+// "H96 - STP".
 void matchTeamsText(const Match& m, bool codes, char* out, size_t outSize);
 void matchLineText(const Match& m, bool codes, char* out, size_t outSize);
 void matchScoreText(const Match& m, char* out, size_t outSize);

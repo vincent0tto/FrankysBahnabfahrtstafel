@@ -223,8 +223,9 @@ Im Einzelnen:
   Pause), *Nur Promos* (die Promos laufen der Reihe nach als Laufschrift durch, wahlweise in Weiß mit eigener Helligkeit) oder *Keine
   Promos*. Dazu die VRN-Störmeldungen: an/aus und wie oft sie am Stück durchlaufen.
 - **St.-Pauli-Ticker**: an/aus (Standard aus) und ob ein Tor die Animation über die ganze
-  Tafel zeigt. Läuft ein Spiel, gehört die 4. Zeile dem Spielstand (Mannschaften und Stand
-  wie eine Abfahrt, zu lange Namen als Kürzel wie `D98 - STP`, in Weiß mit der Helligkeit der weißen Promos); alle 30 s läuft das letzte
+  Tafel zeigt. Läuft ein Spiel, gehört die 4. Zeile dem Spielstand (Heimteam links, Stand in
+  der Mitte, Gastteam rechts, zu lange Namen als Kürzel wie `D98  0:1  STP`, in Weiß mit der
+  Helligkeit der weißen Promos); alle 30 s läuft das letzte
   Tor durch (`MATCH_GOAL_EVERY_S`). Promos und Störmeldungen pausieren so lange, eine gerade
   laufende darf zu Ende laufen. Nach dem Spiel ist der Endstand 3 Stunden lang
   (`MATCH_FINAL_H`) eine zusätzliche Promo, auch wenn die Promos aus sind. Darunter steht das
@@ -392,7 +393,7 @@ vorher einmal `sudo xcodebuild -license` aus.
 | `!` neben der Uhr | kein WLAN, oder die Daten sind älter als 5 Minuten |
 | `Zurzeit keine Abfahrtsinformationen` | keine Abfahrten, oder die Daten sind älter als 60 Minuten |
 | Instagram-Logo + `@frankys_by_coffeetoego` in der 4. Zeile | Promo-Texte: ab und zu, nur solange diese Abfahrt ≥ `PROMO_MIN_MINUTES` entfernt ist (Texte, Symbole und Zeiten auf der Einstellungsseite) |
-| `D98 - STP   0:1` in Weiß in der 4. Zeile | St.-Pauli-Ticker: das laufende Spiel |
+| `Darmstadt   0:1   St. Pauli` in Weiß in der 4. Zeile | St.-Pauli-Ticker: das laufende Spiel |
 | Bahn/Bus fährt aus einer Zeile | bei 1 von 5 Bahn-Abfahrten und jeder Bus-Abfahrt, nur wenn in derselben Minute keine andere abfährt: die zweiteilige Bahn (oder der Bus) fährt an und aus dem Bild (`DEPART_ANIM_CHANCE`, `DEPART_ANIM_CHANCE_BUS`) |
 
 ## Dauerbetrieb rund um die Uhr
