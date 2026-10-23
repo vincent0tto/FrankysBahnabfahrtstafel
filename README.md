@@ -96,27 +96,28 @@ Es gelten die [Nutzungsbedingungen](https://opendata.vrn.de/nutzungsbedingungen)
 Eine Registrierung ist nicht nötig. Wer möchte, kann sich unter
 <https://opendata.vrn.de/user/register> kostenlos registrieren; einen API-Key gibt es dafür nicht.
 
-### St.-Pauli-Ticker: OpenLigaDB
+### St.-Pauli-Ticker: ESPN
 
-Die Spiele kommen von [OpenLigaDB](https://www.openligadb.de), kostenlos, ohne Key und
-Login (geprüft am 21.10.2026). Das Zertifikat ist von Let's Encrypt wie beim VRN. Die
-Daten pflegt eine Community, Tore kommen manchmal etwas später.
+Die Spiele kommen aus der Site-API von [ESPN](https://www.espn.com/soccer/club/_/id/270/st-pauli),
+kostenlos, ohne Key und Login (geprüft am 23.10.2026). Offiziell dokumentiert ist sie nicht,
+ESPN könnte sie also ändern. Die Daten kommen von einem Datenanbieter und sind meist
+schneller und vollständiger als bei OpenLigaDB, dem früheren Lieferanten. Die
+Zertifikatskette endet wie beim VRN in ISRG Root X1.
 
 ```
-https://api.openligadb.de/getmatchesbyteamid/98/1/1     Spiele eine Woche zurück und vor
-https://api.openligadb.de/getmatchdata/<matchID>        ein Spiel
+…/apis/site/v2/sports/soccer/all/teams/270/schedule               Ergebnisse (alle Wettbewerbe)
+…/apis/site/v2/sports/soccer/all/teams/270/schedule?fixture=true  kommende Spiele
+…/apis/site/v2/sports/soccer/ger.2/scoreboard?dates=20261023      Spieltag einer Liga mit Toren
 ```
 
-Die Liste holt die Tafel stündlich, ab 5 Minuten vor dem Anstoß bis zum Abpfiff den
-Spielstand alle 30 Sekunden (`MATCH_*` in `include/config.h`); nicht in der Ruhezeit, nicht
-im Event-Modus und nur, wenn der Ticker an ist. OpenLigaDB führt manche Spiele doppelt, in
-einer zweiten Liga (`bl2h`) mit anderer Anstoßzeit. Deshalb zählen nur die Ligen in
-`MATCH_LEAGUES` (`bl1,bl2,dfb`, also auch nach einem Auf- oder Abstieg und im Pokal). Eine
-laufende Spielminute liefert OpenLigaDB nicht, die Tafel zeigt deshalb nur die Minute des
-letzten Tors. Kürzel für die Vereine hat OpenLigaDB nicht: Passen die Namen nicht in die Zeile,
-nimmt die Tafel die aus `MATCH_TEAM_ABBREVIATIONS` (die DFL-Kürzel der 2. Liga, `St. Pauli|STP;…`);
-ein Verein ohne Kürzel behält seinen Namen und läuft hin und her. Ein anderer Verein: `MATCH_TEAM_ID`, die Nummer steht in
-`https://api.openligadb.de/getavailableteams/bl1/2026`.
+Ergebnisse und kommende Spiele holt die Tafel stündlich. Ab 5 Minuten vor dem Anstoß bis
+zum Abpfiff fragt sie alle 15 Sekunden den Spieltag der Liga ab (`MATCH_*` in
+`include/config.h`), nicht in der Ruhezeit, nicht im Event-Modus und nur, wenn der Ticker
+an ist. Es zählen nur die Wettbewerbe in `MATCH_LEAGUES` (`ger.1,ger.2,ger.dfb_pokal`, also
+auch nach einem Auf- oder Abstieg und im Pokal, aber keine Testspiele). Die Kürzel der
+Vereine (`STP`, `H96`) liefert ESPN mit. Den letzten Torschützen zeigt die Tafel nur, wenn
+die Tore schon alle eingetragen sind, sonst nur den Spielstand. Ein anderer Verein:
+`MATCH_TEAM_ID`, die Nummer steht in der URL seiner ESPN-Seite (`…/club/_/id/270/st-pauli`).
 
 ### Eine andere Haltestelle?
 
@@ -415,9 +416,9 @@ vorher einmal `sudo xcodebuild -license` aus.
 |---|---|
 | `include/config.h` | Haltestelle, Filter, Pins, Helligkeit, Zeiten |
 | `src/departures/parse.cpp` | JSON → Abfahrten, Umlaute (CP437), Countdown-Text (auf dem Host getestet) |
-| `src/core/https_json.cpp` | HTTPS-Anfrage, Streaming-JSON-Parser mit Filter (VRN und OpenLigaDB) |
+| `src/core/https_json.cpp` | HTTPS-Anfrage, Streaming-JSON-Parser mit Filter (VRN und ESPN) |
 | `src/departures/vrn_client.cpp` | Abfahrten abrufen (Haupt- und Ausweich-Host), PSRAM |
-| `src/match/match.cpp` | St.-Pauli-Ticker: Spiel aus OpenLigaDB-JSON, Phasen, Tore (auf dem Host getestet) |
+| `src/match/match.cpp` | St.-Pauli-Ticker: Spiel aus ESPN-JSON, Phasen, Tore (auf dem Host getestet) |
 | `src/match/match_client.cpp` | St.-Pauli-Ticker: Abruf im Netzwerk-Task, Übergabe an die Render-Schleife |
 | `src/match/goal_render.cpp` | Tor-Animation |
 | `src/core/net.cpp` | WLAN-Watchdog, NTP, OTA |

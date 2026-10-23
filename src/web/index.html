@@ -236,7 +236,7 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 
 <section>
 <h2>St.-Pauli-Ticker</h2>
-<div class="hint">Während eines Spiels von St. Pauli zeigt die 4. Zeile den Spielstand, ab und zu läuft das letzte Tor durch. Promos und Störmeldungen pausieren so lange. Danach kommt der Endstand noch ein paar Stunden als Promo. Die Spiele findet die Tafel selbst (Daten: OpenLigaDB, Tore manchmal etwas später).</div>
+<div class="hint">Während eines Spiels von St. Pauli zeigt die 4. Zeile den Spielstand, ab und zu läuft das letzte Tor durch. Promos und Störmeldungen pausieren so lange. Danach kommt der Endstand noch ein paar Stunden als Promo. Die Spiele findet die Tafel selbst (Daten: ESPN).</div>
 <div class="row"><label><input type="checkbox" id="matchOn">Ticker an</label>
 <label><input type="checkbox" id="goalAnim">bei einem Tor „TOOOR!“ über die ganze Tafel</label></div>
 <div class="note" id="matchInfo" hidden></div>
@@ -774,7 +774,7 @@ function renderMatch(m){
     next:()=>'Nächstes Spiel: '+when()+' Uhr, '+m.home+' – '+m.away,
     live:()=>'Läuft gerade: '+score+(m.lastGoal?' · Tor: '+m.lastGoal:''),
     final:()=>'Endstand: '+score}[m.phase];
-  box.textContent=text?text():'Gerade kein Spiel in Sicht (die Tafel schaut eine Woche voraus).';
+  box.textContent=text?text():'Gerade kein Spiel in Sicht.';
 }
 $('goalTest').onclick=()=>act(()=>post('/api/goal/test'));
 

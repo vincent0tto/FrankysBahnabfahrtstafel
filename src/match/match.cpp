@@ -1,106 +1,113 @@
 #include "match/match.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "config.h"
 #include "departures/parse.h"
 #include "event/event.h"
 
-void buildMatchFilter(JsonDocument& filter, bool list) {
-  JsonObject o = list ? filter.to<JsonArray>().add<JsonObject>() : filter.to<JsonObject>();
-  o["matchID"] = true;
-  o["matchDateTimeUTC"] = true;
-  o["leagueShortcut"] = true;
-  o["matchIsFinished"] = true;
-  for (const char* t : {"team1", "team2"}) {
-    JsonObject team = o[t].to<JsonObject>();
-    team["teamId"] = true;
-    team["shortName"] = true;
-    team["teamName"] = true;
-  }
-  JsonObject r = o["matchResults"].to<JsonArray>().add<JsonObject>();
-  r["pointsTeam1"] = true;
-  r["pointsTeam2"] = true;
-  r["resultOrderID"] = true;
-  JsonObject g = o["goals"].to<JsonArray>().add<JsonObject>();
-  g["scoreTeam1"] = true;
-  g["scoreTeam2"] = true;
-  g["matchMinute"] = true;
-  g["goalGetterName"] = true;
+void buildMatchFilter(JsonDocument& filter, bool scoreboard) {
+  if (scoreboard) filter["leagues"][0]["slug"] = true;
+  JsonObject e = filter["events"].to<JsonArray>().add<JsonObject>();
+  e["id"] = true;
+  e["date"] = true;
+  if (!scoreboard) e["league"]["slug"] = true;
+  JsonObject c = e["competitions"].to<JsonArray>().add<JsonObject>();
+  c["status"]["type"]["state"] = true;
+  c["status"]["type"]["completed"] = true;
+  JsonObject t = c["competitors"].to<JsonArray>().add<JsonObject>();
+  t["homeAway"] = true;
+  t["team"]["id"] = true;
+  t["team"]["shortDisplayName"] = true;
+  t["team"]["abbreviation"] = true;
+  t["score"] = true;  // "1" on a scoreboard, {"value":1.0,...} in a schedule
+  if (!scoreboard) return;
+  JsonObject d = c["details"].to<JsonArray>().add<JsonObject>();
+  d["scoringPlay"] = true;
+  d["shootout"] = true;
+  d["ownGoal"] = true;
+  d["clock"]["displayValue"] = true;
+  d["athletesInvolved"][0]["shortName"] = true;
 }
 
-static void teamName(JsonVariantConst team, char* out, size_t outSize) {
-  const char* s = team["shortName"];
-  copyText(out, outSize, s && s[0] ? s : (const char*)(team["teamName"] | "?"));
+static int score(JsonVariantConst s) {
+  if (s.is<const char*>()) return atoi(s.as<const char*>());
+  return (int)(s["value"] | 0.0);
 }
 
-bool matchFromJson(JsonVariantConst o, int teamId, Match& m) {
+bool matchFromJson(JsonVariantConst ev, const char* teamId, const char* league, Match& m) {
   m = Match();
-  if (!o.is<JsonObjectConst>()) return false;
-  bool home = o["team1"]["teamId"] == teamId;
-  if (!home && o["team2"]["teamId"] != teamId) return false;
-  m.id = o["matchID"] | 0u;
-  if (!m.id || !parseIsoUtc(o["matchDateTimeUTC"], m.kickoff)) return false;
-  m.ourHome = home;
-  teamName(o["team1"], m.home, sizeof(m.home));
-  teamName(o["team2"], m.away, sizeof(m.away));
-  teamCode(MATCH_TEAM_ABBREVIATIONS, m.home, m.homeCode, sizeof(m.homeCode));
-  teamCode(MATCH_TEAM_ABBREVIATIONS, m.away, m.awayCode, sizeof(m.awayCode));
-  m.finished = o["matchIsFinished"] | false;
+  if (!ev.is<JsonObjectConst>()) return false;
+  JsonVariantConst c = ev["competitions"][0];
+  JsonVariantConst home, away;
+  for (JsonVariantConst t : c["competitors"].as<JsonArrayConst>())
+    (strcmp(t["homeAway"] | "", "home") == 0 ? home : away) = t;
+  if (home.isNull() || away.isNull()) return false;
+  m.ourHome = strcmp(home["team"]["id"] | "", teamId) == 0;
+  if (!m.ourHome && strcmp(away["team"]["id"] | "", teamId) != 0) return false;
+  m.id = (uint32_t)strtoul(ev["id"] | "0", nullptr, 10);
+  if (!m.id || !parseIsoUtc(ev["date"], m.kickoff)) return false;
 
-  // the latest goal: the most goals, on a tie the later one in the list
-  int best = -1;
-  for (JsonVariantConst g : o["goals"].as<JsonArrayConst>()) {
-    int h = g["scoreTeam1"] | 0, a = g["scoreTeam2"] | 0;
-    if (h + a < best) continue;
-    best = h + a;
-    m.goalsHome = (uint8_t)h;
-    m.goalsAway = (uint8_t)a;
-    int minute = g["matchMinute"] | 0;
+  JsonVariantConst type = c["status"]["type"];
+  m.finished = type["completed"] | false;
+  // postponed, cancelled: over without being played
+  if (!m.finished && strcmp(type["state"] | "", "post") == 0) return false;
+
+  copyText(m.league, sizeof(m.league), league ? league : (const char*)(ev["league"]["slug"] | ""));
+  copyText(m.home, sizeof(m.home), home["team"]["shortDisplayName"] | "?");
+  copyText(m.away, sizeof(m.away), away["team"]["shortDisplayName"] | "?");
+  copyText(m.homeCode, sizeof(m.homeCode), home["team"]["abbreviation"] | "");
+  copyText(m.awayCode, sizeof(m.awayCode), away["team"]["abbreviation"] | "");
+  m.goalsHome = (uint8_t)score(home["score"]);
+  m.goalsAway = (uint8_t)score(away["score"]);
+
+  // the last goal, if the goals listed are all there are (not the shoot-out)
+  int goals = 0;
+  JsonVariantConst last;
+  for (JsonVariantConst d : c["details"].as<JsonArrayConst>()) {
+    if (!(d["scoringPlay"] | false) || (d["shootout"] | false)) continue;
+    goals++;
+    last = d;
+  }
+  if (goals && goals == m.goalsHome + m.goalsAway) {
     char t[64];
-    const char* name = g["goalGetterName"] | "";
-    if (minute > 0) snprintf(t, sizeof(t), "%d' %s", minute, name);
-    else snprintf(t, sizeof(t), "%s", name);
+    snprintf(t, sizeof(t), "%s %s%s", last["clock"]["displayValue"] | "", last["athletesInvolved"][0]["shortName"] | "?",
+             (last["ownGoal"] | false) ? " (ET)" : "");
     copyText(m.lastGoal, sizeof(m.lastGoal), t);
   }
-  // the latest result (half-time, end) if it is further
-  int order = -1;
-  JsonVariantConst latest;
-  for (JsonVariantConst r : o["matchResults"].as<JsonArrayConst>()) {
-    if ((r["resultOrderID"] | 0) <= order) continue;
-    order = r["resultOrderID"] | 0;
-    latest = r;
-  }
-  if (!latest.isNull()) {
-    int h = latest["pointsTeam1"] | 0, a = latest["pointsTeam2"] | 0;
-    if (h + a > best) {
-      m.goalsHome = (uint8_t)h;
-      m.goalsAway = (uint8_t)a;
-      m.lastGoal[0] = 0;  // the goals don't tell who
+  return true;
+}
+
+bool matchesFromJson(JsonVariantConst schedule, const char* teamId, const char* leagues, time_t now, Match& m) {
+  JsonArrayConst events = schedule["events"];
+  if (events.isNull()) return false;
+  auto rank = [now](const Match& x) {  // 3 live, 2 final, 1 next
+    MatchPhase p = matchPhase(x, now);
+    return p == MatchPhase::Live ? 3 : p == MatchPhase::Final ? 2 : p == MatchPhase::Next ? 1 : 0;
+  };
+  Match c;
+  int bestRank = rank(m);
+  for (JsonVariantConst ev : events) {
+    if (!csvContains(leagues, ev["league"]["slug"] | "") || !matchFromJson(ev, teamId, nullptr, c)) continue;
+    int r = rank(c);
+    // of two finals the later, of two next ones the earlier
+    bool better = r > bestRank || (r == bestRank && r > 0 &&
+                                   (r == 1 ? c.kickoff < m.kickoff : c.kickoff > m.kickoff));
+    if (better) {
+      m = c;
+      bestRank = r;
     }
   }
   return true;
 }
 
-bool matchesFromJson(JsonVariantConst in, int teamId, const char* leagues, time_t now, Match& m) {
-  m = Match();
-  if (!in.is<JsonArrayConst>()) return false;
-  Match c;
-  int bestRank = 0;  // 3 live, 2 final, 1 next
-  for (JsonVariantConst o : in.as<JsonArrayConst>()) {
-    if (!csvContains(leagues, o["leagueShortcut"] | "") || !matchFromJson(o, teamId, c)) continue;
-    MatchPhase p = matchPhase(c, now);
-    int rank = p == MatchPhase::Live ? 3 : p == MatchPhase::Final ? 2 : p == MatchPhase::Next ? 1 : 0;
-    // of two finals the later, of two next ones the earlier
-    bool better = rank > bestRank || (rank == bestRank && rank > 0 &&
-                                      (rank == 1 ? c.kickoff < m.kickoff : c.kickoff > m.kickoff));
-    if (better) {
-      m = c;
-      bestRank = rank;
-    }
-  }
-  return true;
+bool matchFromScoreboard(JsonVariantConst scoreboard, uint32_t id, const char* teamId, Match& m) {
+  const char* league = scoreboard["leagues"][0]["slug"] | "";
+  for (JsonVariantConst ev : scoreboard["events"].as<JsonArrayConst>())
+    if (strtoul(ev["id"] | "0", nullptr, 10) == id) return matchFromJson(ev, teamId, league, m);
+  return false;
 }
 
 MatchPhase matchPhase(const Match& m, time_t now) {
@@ -123,23 +130,6 @@ int newGoals(const Match& before, const Match& after) {
   if (!before.id || before.id != after.id) return 0;
   int d = ourGoals(after) - ourGoals(before);
   return d > 0 ? d : 0;
-}
-
-void teamCode(const char* table, const char* name, char* out, size_t outSize) {
-  out[0] = 0;
-  size_t len = strlen(name);
-  for (const char* p = table; *p;) {
-    const char* bar = strchr(p, '|');
-    if (!bar) return;
-    const char* end = strchr(bar + 1, ';');
-    size_t n = end ? (size_t)(end - bar - 1) : strlen(bar + 1);
-    if ((size_t)(bar - p) == len && strncmp(p, name, len) == 0) {
-      snprintf(out, outSize, "%.*s", (int)n, bar + 1);
-      return;
-    }
-    if (!end) return;
-    p = end + 1;
-  }
 }
 
 static const char* homeName(const Match& m, bool codes) { return codes && m.homeCode[0] ? m.homeCode : m.home; }

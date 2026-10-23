@@ -47,32 +47,47 @@ static void publish(const Match& m) {
   if (goals) logMatch("TOR", m);
   else if (same) logMatch(m.finished ? "final" : "score", m);
   else if (m.id) logMatch(matchPhase(m, time(nullptr)) == MatchPhase::Next ? "next" : "now", m);
-  else Log.println("[match] no match within a week");
+  else Log.println("[match] no match coming");
 }
 
-static bool fetchList(Match& m) {
+// One team schedule (`fixtures`: the ones to come, else the results) into `m`.
+static bool fetchSchedule(bool fixtures, Match& m) {
   char url[128];
-  snprintf(url, sizeof(url), "%s/getmatchesbyteamid/%d/1/1", MATCH_API_URL, MATCH_TEAM_ID);
+  snprintf(url, sizeof(url), "%s/all/teams/%s/schedule%s", MATCH_API_URL, MATCH_TEAM_ID, fixtures ? "?fixture=true" : "");
   JsonDocument filter;
-  buildMatchFilter(filter, true);
+  buildMatchFilter(filter, false);
   JsonDocument doc(&spiRam);
-  FetchResult r = httpsGetJson(url, filter, doc, "match");
-  if (r != FetchResult::Ok) return false;
+  if (httpsGetJson(url, filter, doc, "match") != FetchResult::Ok) return false;
   if (!matchesFromJson(doc.as<JsonVariantConst>(), MATCH_TEAM_ID, MATCH_LEAGUES, time(nullptr), m)) {
-    Log.println("[match] list: no array");
+    Log.println("[match] schedule: no events");
     return false;
   }
   return true;
 }
 
-static bool fetchOne(uint32_t id, Match& m) {
-  char url[128];
-  snprintf(url, sizeof(url), "%s/getmatchdata/%lu", MATCH_API_URL, (unsigned long)id);
+// The results and the fixtures. A running or just finished match stays even
+// if neither lists it (yet).
+static bool fetchList(Match& m) {
+  MatchPhase p = matchPhase(current, time(nullptr));
+  m = p == MatchPhase::Live || p == MatchPhase::Final ? current : Match();
+  return fetchSchedule(false, m) && fetchSchedule(true, m);
+}
+
+// The match from its league's scoreboard of the kick-off day (ESPN's days
+// are US Eastern, the same date for German kick-offs in UTC).
+static bool fetchOne(const Match& cur, Match& m) {
+  char url[128], day[12];
+  struct tm t;
+  gmtime_r(&cur.kickoff, &t);
+  strftime(day, sizeof(day), "%Y%m%d", &t);
+  snprintf(url, sizeof(url), "%s/%s/scoreboard?dates=%s", MATCH_API_URL, cur.league, day);
   JsonDocument filter;
-  buildMatchFilter(filter, false);
+  buildMatchFilter(filter, true);
   JsonDocument doc(&spiRam);
   if (httpsGetJson(url, filter, doc, "match") != FetchResult::Ok) return false;
-  return matchFromJson(doc.as<JsonVariantConst>(), MATCH_TEAM_ID, m);
+  if (matchFromScoreboard(doc.as<JsonVariantConst>(), cur.id, MATCH_TEAM_ID, m)) return true;
+  Log.printf("[match] %lu not on the scoreboard\n", (unsigned long)cur.id);
+  return false;
 }
 
 void matchMaintain(bool active) {
@@ -101,7 +116,7 @@ void matchMaintain(bool active) {
   }
   if (matchPollLive(current, time(nullptr)) && (int32_t)(millis() - nextLiveMs) >= 0) {
     nextLiveMs = millis() + MATCH_POLL_LIVE_S * 1000UL;
-    if (fetchOne(current.id, m)) publish(m);
+    if (fetchOne(current, m)) publish(m);
   }
 }
 

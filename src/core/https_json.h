@@ -1,7 +1,8 @@
 #pragma once
 // A JSON GET over HTTPS (Let's Encrypt, include/certs.h), streamed into an
 // ArduinoJson document through a filter. For the VRN (src/departures/vrn_client.cpp)
-// and OpenLigaDB (src/match/match_client.cpp). Network task only.
+// and ESPN (src/match/match_client.cpp; its chain ends in ISRG Root X1 too).
+// Network task only.
 #include <ArduinoJson.h>
 
 enum class FetchResult { Ok, NetworkError, HttpError, ParseError };

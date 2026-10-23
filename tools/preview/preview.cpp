@@ -390,8 +390,8 @@ int main(int argc, char** argv) {
   m.kickoff = now - 30 * 60;
   strcpy(m.home, "Darmstadt");
   strcpy(m.away, "St. Pauli");
-  teamCode(MATCH_TEAM_ABBREVIATIONS, m.home, m.homeCode, sizeof(m.homeCode));
-  teamCode(MATCH_TEAM_ABBREVIATIONS, m.away, m.awayCode, sizeof(m.awayCode));
+  strcpy(m.homeCode, "SVD");
+  strcpy(m.awayCode, "STP");
   m.goalsAway = 1;
   strcpy(m.lastGoal, "23' A. Ceesay");
   mFrames.push_back(render(normal, ok, now, 1000, m));

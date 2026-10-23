@@ -29,9 +29,13 @@ static long daysFromCivil(int y, int m, int d) {
 
 bool parseIsoUtc(const char* s, time_t& out) {
   if (!s) return false;
-  int Y, M, D, h, m, sec = 0, consumed = 0;
-  if (sscanf(s, "%4d-%2d-%2dT%2d:%2d:%2d%n", &Y, &M, &D, &h, &m, &sec, &consumed) < 6 || consumed == 0)
-    return false;
+  int Y, M, D, h, m, sec = 0, consumed = 0, secLen = 0;
+  if (sscanf(s, "%4d-%2d-%2dT%2d:%2d%n", &Y, &M, &D, &h, &m, &consumed) < 5 || consumed == 0) return false;
+  // the seconds may be left out ("2026-10-23T16:30Z", ESPN)
+  if (s[consumed] == ':') {
+    if (sscanf(s + consumed, ":%2d%n", &sec, &secLen) < 1 || secLen == 0) return false;
+    consumed += secLen;
+  }
   if (M < 1 || M > 12 || D < 1 || D > 31 || h > 23 || m > 59 || sec > 60) return false;
   long offset = 0;
   const char* tz = s + consumed;

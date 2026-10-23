@@ -134,24 +134,19 @@
 #define DISRUPTION_PASSES       2   // scroll through all messages this often (default; web page)
 
 // ---- St.-Pauli-Ticker (switched on on the web page) ------------------------
-// Matches from OpenLigaDB (free, no key, Let's Encrypt like the VRN). The
-// team's id: https://api.openligadb.de/getavailableteams/bl2/2026
-#define MATCH_API_URL     "https://api.openligadb.de"
-#define MATCH_TEAM_ID     98                // FC St. Pauli
-#define MATCH_LEAGUES     "bl1,bl2,dfb"     // leagueShortcut; OpenLigaDB has some matches twice ("bl2h")
-#define MATCH_POLL_IDLE_S  3600   // the list of matches (a week back and ahead)
-#define MATCH_POLL_LIVE_S    30   // the score while it runs
+// Matches from ESPN's site API (free, no key, not documented officially; the
+// certificate chain ends in ISRG Root X1 like the VRN's). The team's id is in
+// the URL of its ESPN page, espn.com/soccer/club/_/id/270/st-pauli.
+#define MATCH_API_URL     "https://site.api.espn.com/apis/site/v2/sports/soccer"
+#define MATCH_TEAM_ID     "270"             // FC St. Pauli
+#define MATCH_LEAGUES     "ger.1,ger.2,ger.dfb_pokal"  // ESPN league slugs; not the friendlies ("club.friendly")
+#define MATCH_POLL_IDLE_S  3600   // the team's results and fixtures
+#define MATCH_POLL_LIVE_S    15   // the score while it runs (ESPN has no limit, ~25 kB a time)
 #define MATCH_RETRY_S       300   // the list after a failed fetch
 #define MATCH_LIVE_LEAD_S   300   // start asking this long before kick-off
 #define MATCH_LIVE_MAX_S  (3 * 3600)  // live at most this long after kick-off (cup: extra time, penalties)
 #define MATCH_FINAL_H         3   // the final score is a promo this long (counted from kick-off + 2 h)
 #define MATCH_GOAL_EVERY_S   30   // while live the last goal scrolls through the row this often
-// OpenLigaDB has no team codes. Where the names don't fit, these are shown:
-// "shortName|code" pairs (the DFL codes); teams without one keep their name.
-#define MATCH_TEAM_ABBREVIATIONS \
-  "St. Pauli|STP;Darmstadt|D98;Hannover|H96;Heidenheim|HDH;Kaiserslautern|FCK;Magdeburg|FCM;" \
-  "Nürnberg|FCN;Bielefeld|DSC;Dresden|SGD;Braunschweig|EBS;Cottbus|FCE;Hertha|BSC;Kiel|KSV;" \
-  "Karlsruhe|KSC;Fürth|SGF;Bochum|BOC;Osnabrück|OSN;Wolfsburg|WOB"
 
 // HUB75 pin map (ESP32-S3-DevKitC-1 N8R8; avoids PSRAM 35-37, straps 0/3/45/46,
 // USB 19/20, UART 43/44)

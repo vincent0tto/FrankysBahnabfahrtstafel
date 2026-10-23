@@ -1,6 +1,6 @@
 #pragma once
 // The St.-Pauli-Ticker's match (src/match/match.h) at run time: fetched from
-// OpenLigaDB by the network task, copied by the render loop, like the
+// ESPN by the network task, copied by the render loop, like the
 // departures in src/main.cpp.
 #include <stdint.h>
 

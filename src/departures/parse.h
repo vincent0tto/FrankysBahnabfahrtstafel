@@ -26,7 +26,8 @@ void buildFilter(JsonDocument& filter);
 // "stopEvents" array (= API error); an empty array is a valid result.
 bool parseDepartures(JsonVariantConst root, time_t now, const ParseOptions& opt, Board& out);
 
-// "2026-10-08T10:20:00Z" -> UTC epoch. Returns false on malformed input.
+// "2026-10-08T10:20:00Z" (the seconds may be left out) -> UTC epoch. Returns
+// false on malformed input.
 bool parseIsoUtc(const char* s, time_t& out);
 
 // Keeps only characters the display fonts have (ASCII + Latin-1, e.g. umlauts,

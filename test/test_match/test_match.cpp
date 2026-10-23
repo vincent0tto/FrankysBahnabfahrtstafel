@@ -11,7 +11,7 @@
 #include "departures/parse.h"
 #include "match/match.h"
 
-static JsonDocument doc;
+static JsonDocument results, fixtures, scoreboard;
 static Match m, before;
 
 static time_t iso(const char* s) {
@@ -20,46 +20,58 @@ static time_t iso(const char* s) {
   return t;
 }
 
-// getmatchesbyteamid/98/1/1 of 21.10.2026: Hannover - St. Pauli (bl2, 1:1,
-// and the same once more as "bl2h" without a result), Darmstadt - St. Pauli
-// (bl2 Fri 18:30, "bl2h" Sat 15:30)
-static std::string readFixture() {
-  for (const char* p : {"test/fixtures/stpauli.json", "../test/fixtures/stpauli.json"}) {
-    std::ifstream f(p);
+static std::string readFixture(const char* name) {
+  for (const char* dir : {"test/fixtures/", "../test/fixtures/"}) {
+    std::ifstream f(std::string(dir) + name);
     if (f) { std::stringstream ss; ss << f.rdbuf(); return ss.str(); }
   }
-  TEST_FAIL_MESSAGE("fixture not found");
+  TEST_FAIL_MESSAGE(name);
   return "";
 }
 
-static void loadFixture() {
-  static std::string json = readFixture();
+static void load(JsonDocument& doc, const char* name, bool isScoreboard) {
   JsonDocument filter;
-  buildMatchFilter(filter, true);
+  buildMatchFilter(filter, isScoreboard);
   doc.clear();
-  DeserializationError err = deserializeJson(doc, json, DeserializationOption::Filter(filter));
+  DeserializationError err = deserializeJson(doc, readFixture(name), DeserializationOption::Filter(filter));
   TEST_ASSERT_FALSE_MESSAGE(err, err.c_str());
 }
 
+// Of 23.10.2026, links and logos taken out: all/teams/270/schedule (results:
+// Hannover - St. Pauli 1:1 on 17.10., a friendly on 3.10., the cup),
+// all/teams/270/schedule?fixture=true (Darmstadt - St. Pauli 23.10. 16:30 UTC
+// first), ger.2/scoreboard?dates=20261017 (Hannover - St. Pauli with the goals).
 void setUp() {
   setenv("TZ", TZ_INFO, 1);
   tzset();
-  loadFixture();
+  load(results, "espn_results.json", false);
+  load(fixtures, "espn_fixtures.json", false);
+  load(scoreboard, "espn_scoreboard.json", true);
 }
 void tearDown() {}
 
+static JsonVariant hannoverOnBoard() {
+  for (JsonVariant ev : scoreboard["events"].as<JsonArray>())
+    if (strcmp(ev["id"] | "", "401885091") == 0) return ev;
+  TEST_FAIL_MESSAGE("Hannover not on the scoreboard");
+  return JsonVariant();
+}
+
 void test_finished_match() {
-  TEST_ASSERT_TRUE(matchFromJson(doc[1], MATCH_TEAM_ID, m));
-  TEST_ASSERT_EQUAL(83627, m.id);
+  TEST_ASSERT_TRUE(matchFromJson(results["events"][0], MATCH_TEAM_ID, nullptr, m));
+  TEST_ASSERT_EQUAL(401885091, m.id);
+  TEST_ASSERT_EQUAL_STRING("ger.2", m.league);
   TEST_ASSERT_EQUAL(iso("2026-10-17T18:30:00Z"), m.kickoff);
   TEST_ASSERT_EQUAL_STRING("Hannover", m.home);
   TEST_ASSERT_EQUAL_STRING("St. Pauli", m.away);
+  TEST_ASSERT_EQUAL_STRING("H96", m.homeCode);
+  TEST_ASSERT_EQUAL_STRING("STP", m.awayCode);
   TEST_ASSERT_FALSE(m.ourHome);
   TEST_ASSERT_TRUE(m.finished);
   TEST_ASSERT_EQUAL(1, m.goalsHome);
   TEST_ASSERT_EQUAL(1, m.goalsAway);
   TEST_ASSERT_EQUAL(1, ourGoals(m));
-  TEST_ASSERT_EQUAL_STRING("48' Husseyn Chakroun", m.lastGoal);
+  TEST_ASSERT_EQUAL_STRING("", m.lastGoal);  // a schedule has no goals
   char t[48];
   matchTeamsText(m, false, t, sizeof(t));
   TEST_ASSERT_EQUAL_STRING("Hannover - St. Pauli", t);
@@ -74,39 +86,43 @@ void test_finished_match() {
   TEST_ASSERT_EQUAL_STRING("1:1", t);
 }
 
-void test_team_codes() {
-  char c[8];
-  teamCode(MATCH_TEAM_ABBREVIATIONS, "St. Pauli", c, sizeof(c));
-  TEST_ASSERT_EQUAL_STRING("STP", c);
-  teamCode(MATCH_TEAM_ABBREVIATIONS, "Fürth", c, sizeof(c));
-  TEST_ASSERT_EQUAL_STRING("SGF", c);
-  teamCode(MATCH_TEAM_ABBREVIATIONS, "Wolfsburg", c, sizeof(c));  // the last one
-  TEST_ASSERT_EQUAL_STRING("WOB", c);
-  teamCode(MATCH_TEAM_ABBREVIATIONS, "St.", c, sizeof(c));
-  TEST_ASSERT_EQUAL_STRING("", c);
-  teamCode(MATCH_TEAM_ABBREVIATIONS, "Schalke", c, sizeof(c));
-  TEST_ASSERT_EQUAL_STRING("", c);
-}
-
-void test_other_team() { TEST_ASSERT_FALSE(matchFromJson(doc[1], 7, m)); }
-
-void test_result_without_goals() {
-  doc[1]["goals"].to<JsonArray>();  // the goals lag behind the result
-  TEST_ASSERT_TRUE(matchFromJson(doc[1], MATCH_TEAM_ID, m));
+void test_scoreboard_goals() {
+  TEST_ASSERT_TRUE(matchFromScoreboard(scoreboard.as<JsonVariantConst>(), 401885091, MATCH_TEAM_ID, m));
+  TEST_ASSERT_EQUAL_STRING("ger.2", m.league);
   TEST_ASSERT_EQUAL(1, m.goalsHome);
   TEST_ASSERT_EQUAL(1, m.goalsAway);
+  TEST_ASSERT_TRUE(m.finished);
+  TEST_ASSERT_EQUAL_STRING("48' H. Chakroun", m.lastGoal);
+  TEST_ASSERT_FALSE(matchFromScoreboard(scoreboard.as<JsonVariantConst>(), 401885082, MATCH_TEAM_ID, m));
+}
+
+void test_goals_lag_behind() {
+  JsonVariant ev = hannoverOnBoard();
+  ev["competitions"][0]["competitors"][1]["score"] = "2";  // St. Pauli's second, not listed yet
+  TEST_ASSERT_TRUE(matchFromJson(ev, MATCH_TEAM_ID, "ger.2", m));
+  TEST_ASSERT_EQUAL(2, m.goalsAway);
   TEST_ASSERT_EQUAL_STRING("", m.lastGoal);
 }
 
-void test_live_before_any_goal() {
-  doc[2]["matchIsFinished"] = false;
-  TEST_ASSERT_TRUE(matchFromJson(doc[2], MATCH_TEAM_ID, m));
-  TEST_ASSERT_EQUAL(0, m.goalsHome + m.goalsAway);
-  TEST_ASSERT_EQUAL(MatchPhase::Live, matchPhase(m, m.kickoff + 60));
+void test_scheduled_match() {
+  TEST_ASSERT_TRUE(matchFromJson(fixtures["events"][0], MATCH_TEAM_ID, nullptr, m));
+  TEST_ASSERT_EQUAL(401885082, m.id);
+  TEST_ASSERT_EQUAL(iso("2026-10-23T16:30:00Z"), m.kickoff);
+  TEST_ASSERT_EQUAL_STRING("Darmstadt", m.home);
+  TEST_ASSERT_EQUAL(0, m.goalsHome + m.goalsAway);  // no score yet
+  TEST_ASSERT_FALSE(m.finished);
+}
+
+void test_other_team() { TEST_ASSERT_FALSE(matchFromJson(results["events"][0], "7", nullptr, m)); }
+
+void test_postponed() {
+  JsonVariant type = fixtures["events"][0]["competitions"][0]["status"]["type"];
+  type["state"] = "post";  // STATUS_POSTPONED: over, not completed
+  TEST_ASSERT_FALSE(matchFromJson(fixtures["events"][0], MATCH_TEAM_ID, nullptr, m));
 }
 
 void test_phases() {
-  TEST_ASSERT_TRUE(matchFromJson(doc[2], MATCH_TEAM_ID, m));  // Darmstadt, not finished
+  TEST_ASSERT_TRUE(matchFromJson(fixtures["events"][0], MATCH_TEAM_ID, nullptr, m));  // Darmstadt
   TEST_ASSERT_EQUAL(MatchPhase::Next, matchPhase(m, m.kickoff - 1));
   TEST_ASSERT_FALSE(matchPollLive(m, m.kickoff - MATCH_LIVE_LEAD_S - 1));
   TEST_ASSERT_TRUE(matchPollLive(m, m.kickoff - MATCH_LIVE_LEAD_S));
@@ -123,38 +139,55 @@ void test_phases() {
   TEST_ASSERT_EQUAL(MatchPhase::None, matchPhase(Match(), 0));
 }
 
+// The results, then the fixtures, as the board asks for them.
+static void list(time_t now, const char* leagues = MATCH_LEAGUES) {
+  m = Match();
+  TEST_ASSERT_TRUE(matchesFromJson(results.as<JsonVariantConst>(), MATCH_TEAM_ID, leagues, now, m));
+  TEST_ASSERT_TRUE(matchesFromJson(fixtures.as<JsonVariantConst>(), MATCH_TEAM_ID, leagues, now, m));
+}
+
 void test_list_final_then_next() {
-  // Saturday night: Hannover is over, the bl2h copy without a result is left out
-  TEST_ASSERT_TRUE(matchesFromJson(doc.as<JsonVariantConst>(), MATCH_TEAM_ID, MATCH_LEAGUES,
-                                   iso("2026-10-17T21:00:00Z"), m));
-  TEST_ASSERT_EQUAL(83627, m.id);
-  // Wednesday: the next one, the bl2 kick-off (Friday), not the bl2h one (Saturday)
-  TEST_ASSERT_TRUE(matchesFromJson(doc.as<JsonVariantConst>(), MATCH_TEAM_ID, MATCH_LEAGUES,
-                                   iso("2026-10-21T12:00:00Z"), m));
-  TEST_ASSERT_EQUAL(83648, m.id);
-  TEST_ASSERT_EQUAL(iso("2026-10-23T16:30:00Z"), m.kickoff);
+  list(iso("2026-10-17T21:00:00Z"));  // Saturday night: Hannover is over
+  TEST_ASSERT_EQUAL(401885091, m.id);
+  list(iso("2026-10-21T12:00:00Z"));  // Wednesday: the next one, not a later one
+  TEST_ASSERT_EQUAL(401885082, m.id);
   TEST_ASSERT_EQUAL_STRING("Darmstadt", m.home);
 }
 
 void test_list_live_first() {
-  doc[1]["matchIsFinished"] = false;
-  // live beats the next one
-  TEST_ASSERT_TRUE(matchesFromJson(doc.as<JsonVariantConst>(), MATCH_TEAM_ID, MATCH_LEAGUES,
-                                   iso("2026-10-17T19:30:00Z"), m));
-  TEST_ASSERT_EQUAL(83627, m.id);
+  JsonVariant type = results["events"][0]["competitions"][0]["status"]["type"];
+  type["state"] = "in";
+  type["completed"] = false;
+  list(iso("2026-10-17T19:30:00Z"));  // live beats the next one
+  TEST_ASSERT_EQUAL(401885091, m.id);
   TEST_ASSERT_TRUE(matchPollLive(m, iso("2026-10-17T19:30:00Z")));
 }
 
+void test_list_keeps_what_it_has() {
+  // a running match neither schedule lists (yet) stays
+  TEST_ASSERT_TRUE(matchFromScoreboard(scoreboard.as<JsonVariantConst>(), 401885091, MATCH_TEAM_ID, m));
+  m.finished = false;
+  results["events"].as<JsonArray>().remove(0);
+  TEST_ASSERT_TRUE(matchesFromJson(results.as<JsonVariantConst>(), MATCH_TEAM_ID, MATCH_LEAGUES,
+                                   iso("2026-10-17T19:30:00Z"), m));
+  TEST_ASSERT_TRUE(matchesFromJson(fixtures.as<JsonVariantConst>(), MATCH_TEAM_ID, MATCH_LEAGUES,
+                                   iso("2026-10-17T19:30:00Z"), m));
+  TEST_ASSERT_EQUAL(401885091, m.id);
+  TEST_ASSERT_EQUAL_STRING("48' H. Chakroun", m.lastGoal);
+}
+
 void test_list_leagues() {
-  TEST_ASSERT_TRUE(matchesFromJson(doc.as<JsonVariantConst>(), MATCH_TEAM_ID, "bl2h", iso("2026-10-21T12:00:00Z"), m));
-  TEST_ASSERT_EQUAL(83578, m.id);
-  TEST_ASSERT_TRUE(matchesFromJson(doc.as<JsonVariantConst>(), MATCH_TEAM_ID, "bl1", iso("2026-10-21T12:00:00Z"), m));
+  list(iso("2026-10-03T15:00:00Z"));  // the friendly on 3.10. doesn't count: the next one
+  TEST_ASSERT_EQUAL(401885101, m.id);  // Karlsruhe, 11.10.
+  list(iso("2026-10-03T15:00:00Z"), "club.friendly");
+  TEST_ASSERT_EQUAL(401920464, m.id);
+  list(iso("2026-10-21T12:00:00Z"), "ger.1");
   TEST_ASSERT_EQUAL(0, m.id);
-  TEST_ASSERT_FALSE(matchesFromJson(doc[0], MATCH_TEAM_ID, MATCH_LEAGUES, 0, m));
+  TEST_ASSERT_FALSE(matchesFromJson(results["events"][0], MATCH_TEAM_ID, MATCH_LEAGUES, 0, m));
 }
 
 void test_new_goals() {
-  TEST_ASSERT_TRUE(matchFromJson(doc[1], MATCH_TEAM_ID, m));  // St. Pauli away, 1:1
+  TEST_ASSERT_TRUE(matchFromJson(results["events"][0], MATCH_TEAM_ID, nullptr, m));  // St. Pauli away, 1:1
   before = m;
   before.goalsAway = 0;
   TEST_ASSERT_EQUAL(1, newGoals(before, m));
@@ -171,13 +204,15 @@ void test_new_goals() {
 int main(int, char**) {
   UNITY_BEGIN();
   RUN_TEST(test_finished_match);
-  RUN_TEST(test_team_codes);
+  RUN_TEST(test_scoreboard_goals);
+  RUN_TEST(test_goals_lag_behind);
+  RUN_TEST(test_scheduled_match);
   RUN_TEST(test_other_team);
-  RUN_TEST(test_result_without_goals);
-  RUN_TEST(test_live_before_any_goal);
+  RUN_TEST(test_postponed);
   RUN_TEST(test_phases);
   RUN_TEST(test_list_final_then_next);
   RUN_TEST(test_list_live_first);
+  RUN_TEST(test_list_keeps_what_it_has);
   RUN_TEST(test_list_leagues);
   RUN_TEST(test_new_goals);
   return UNITY_END();
