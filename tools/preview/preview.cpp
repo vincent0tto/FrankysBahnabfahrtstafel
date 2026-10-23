@@ -381,9 +381,10 @@ int main(int argc, char** argv) {
   for (uint32_t ms : {0u, 6000u}) karaokeFrame(ms);
   writePpm(argc > 5 ? argv[5] : "preview_karaoke.ppm", kFrames);
 
-  // St.-Pauli-Ticker: live in the 4th row, the last goal scrolling through,
-  // live without departures, with the team codes, the final score as a
-  // promo; the goal animation growing, blinking, with the score, and as "Tor testen"
+  // St.-Pauli-Ticker: live in the 4th row, with the minute, the last goal
+  // scrolling through, live without departures, with the team codes (and
+  // the minute in stoppage time), the final score as a promo; the goal
+  // animation growing, blinking, with the score, and as "Tor testen"
   std::vector<Frame> mFrames;
   Match m;
   m.id = 1;
@@ -394,13 +395,17 @@ int main(int argc, char** argv) {
   strcpy(m.awayCode, "STP");
   m.goalsAway = 1;
   strcpy(m.lastGoal, "23' A. Ceesay");
+  strcpy(m.clock, "31'");
   mFrames.push_back(render(normal, ok, now, 1000, m));
+  mFrames.push_back(render(normal, ok, now, MATCH_CLOCK_EVERY_S * 1000 - 1000, m));  // the minute
   mFrames.push_back(render(normal, ok, now, MATCH_GOAL_EVERY_S * 1000 + 4000, m));
   mFrames.push_back(render(empty, ok, now, 1000, m));
   Match longNames = m;  // names too wide for their half: the codes
   strcpy(longNames.home, "Kaiserslautern");
   strcpy(longNames.homeCode, "FCK");
   mFrames.push_back(render(normal, ok, now, 1000, longNames));
+  strcpy(longNames.clock, "90+4'");
+  mFrames.push_back(render(normal, ok, now, MATCH_CLOCK_EVERY_S * 1000 - 1000, longNames));
   m.finished = true;
   setPromoIndex(0);  // no promos in the defaults: the final score
   render(normal, ok, now, 7000000, m);  // starts a promo (due long ago)

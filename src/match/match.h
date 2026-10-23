@@ -19,6 +19,7 @@ struct Match {
   bool ourHome = false;   // MATCH_TEAM_ID is the home side
   uint8_t goalsHome = 0, goalsAway = 0;
   bool finished = false;
+  char clock[8] = "";     // while it runs: "67'", "90+4'", "HZ" at half-time
   char lastGoal[40] = ""; // "48' H. Chakroun", "" before the first
 };
 

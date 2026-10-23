@@ -107,6 +107,26 @@ void test_goals_lag_behind() {
   TEST_ASSERT_EQUAL_STRING("", m.lastGoal);
 }
 
+void test_clock() {
+  JsonVariant ev = hannoverOnBoard();
+  JsonVariant status = ev["competitions"][0]["status"];
+  TEST_ASSERT_TRUE(matchFromJson(ev, MATCH_TEAM_ID, "ger.2", m));
+  TEST_ASSERT_EQUAL_STRING("", m.clock);  // finished: no minute
+  status["type"]["state"] = "in";
+  status["type"]["completed"] = false;
+  status["type"]["name"] = "STATUS_SECOND_HALF";
+  status["displayClock"] = "67'";
+  TEST_ASSERT_TRUE(matchFromJson(ev, MATCH_TEAM_ID, "ger.2", m));
+  TEST_ASSERT_EQUAL_STRING("67'", m.clock);
+  status["displayClock"] = "90'+4'";
+  TEST_ASSERT_TRUE(matchFromJson(ev, MATCH_TEAM_ID, "ger.2", m));
+  TEST_ASSERT_EQUAL_STRING("90+4'", m.clock);
+  status["type"]["name"] = "STATUS_HALFTIME";
+  status["displayClock"] = "45'+2'";
+  TEST_ASSERT_TRUE(matchFromJson(ev, MATCH_TEAM_ID, "ger.2", m));
+  TEST_ASSERT_EQUAL_STRING("HZ", m.clock);
+}
+
 void test_scheduled_match() {
   TEST_ASSERT_TRUE(matchFromJson(fixtures["events"][0], MATCH_TEAM_ID, nullptr, m));
   TEST_ASSERT_EQUAL(401885082, m.id);
@@ -209,6 +229,7 @@ int main(int, char**) {
   RUN_TEST(test_finished_match);
   RUN_TEST(test_scoreboard_goals);
   RUN_TEST(test_goals_lag_behind);
+  RUN_TEST(test_clock);
   RUN_TEST(test_scheduled_match);
   RUN_TEST(test_other_team);
   RUN_TEST(test_postponed);

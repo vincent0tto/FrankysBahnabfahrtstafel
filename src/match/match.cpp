@@ -17,6 +17,8 @@ void buildMatchFilter(JsonDocument& filter, bool scoreboard) {
   JsonObject c = e["competitions"].to<JsonArray>().add<JsonObject>();
   c["status"]["type"]["state"] = true;
   c["status"]["type"]["completed"] = true;
+  c["status"]["type"]["name"] = true;
+  c["status"]["displayClock"] = true;
   JsonObject t = c["competitors"].to<JsonArray>().add<JsonObject>();
   t["homeAway"] = true;
   t["team"]["id"] = true;
@@ -62,6 +64,19 @@ bool matchFromJson(JsonVariantConst ev, const char* teamId, const char* league, 
   copyText(m.awayCode, sizeof(m.awayCode), away["team"]["abbreviation"] | "");
   m.goalsHome = (uint8_t)score(home["score"]);
   m.goalsAway = (uint8_t)score(away["score"]);
+
+  // the minute while it runs; "90'+4'" shortened to "90+4'"
+  if (strcmp(type["state"] | "", "in") == 0) {
+    if (strcmp(type["name"] | "", "STATUS_HALFTIME") == 0) {
+      copyText(m.clock, sizeof(m.clock), "HZ");
+    } else {
+      char t[16];
+      copyText(t, sizeof(t), c["status"]["displayClock"] | "");
+      char* plus = strstr(t, "'+");
+      if (plus) memmove(plus, plus + 1, strlen(plus));
+      copyText(m.clock, sizeof(m.clock), t);
+    }
+  }
 
   // the last goal, if the goals listed are all there are (not the shoot-out)
   int goals = 0;

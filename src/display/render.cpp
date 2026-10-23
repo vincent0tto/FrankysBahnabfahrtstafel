@@ -227,23 +227,31 @@ static void fitMatchText(U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, const char* 
 }
 
 // The running match in the row at `base`: the home team on the left, the
-// score in the middle, the away team on the right; the team codes if a name
-// doesn't fit its half (a longer one is cut).
-static void drawMatchRow(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, int base) {
+// score in the middle (every MATCH_CLOCK_EVERY_S the minute for
+// MATCH_CLOCK_SHOW_S), the away team on the right; the team codes if a name
+// doesn't fit its half (a longer one is cut). The middle keeps room for a
+// minute in stoppage time, so the names don't jump.
+static void drawMatchRow(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, int base, uint32_t ms) {
   char score[8];
   matchScoreText(m, score, sizeof(score));
-  int scoreW = width(u8, score);
-  int scoreX = (W - scoreW) / 2;
-  int sideW = scoreX - COL_GAP - MARGIN_X;
+  const uint32_t every = MATCH_CLOCK_EVERY_S * 1000UL;
+  bool clock = m.clock[0] && every > 0 && ms % (every ? every : 1) >= every - MATCH_CLOCK_SHOW_S * 1000UL;
+  const char* mid = clock ? m.clock : score;
+  int midW = width(u8, mid);
+  int boxW = width(u8, score);
+  if (m.clock[0] && width(u8, "90+4'") > boxW) boxW = width(u8, "90+4'");
+  int boxX = (W - boxW) / 2;
+  int scoreX = (W - midW) / 2;
+  int sideW = boxX - COL_GAP - MARGIN_X;
   bool codes = width(u8, matchHomeName(m, false)) > sideW || width(u8, matchAwayName(m, false)) > sideW;
   const char* away = matchAwayName(m, codes);
   u8.drawUTF8(MARGIN_X, base, matchHomeName(m, codes));
-  clipRow(g, base, MARGIN_X, scoreX - COL_GAP);
+  clipRow(g, base, MARGIN_X, boxX - COL_GAP);
   int awayX = W - MARGIN_X - width(u8, away);
-  int awayMin = scoreX + scoreW + COL_GAP;
+  int awayMin = boxX + boxW + COL_GAP;
   u8.drawUTF8(awayX > awayMin ? awayX : awayMin, base, away);
   clipRow(g, base, 0, W - MARGIN_X);  // keeps the home team
-  u8.drawUTF8(scoreX, base, score);
+  u8.drawUTF8(scoreX, base, mid);
 }
 
 static void setFinalPromo(U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, bool show) {
@@ -593,7 +601,7 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
   if (matchRow) {
     u8.setForegroundColor(white);
     if (matchScroll) drawTicker(g, u8, goalLine, scrollT, true);
-    else drawMatchRow(g, u8, m, rowBase(MAX_ROWS));
+    else drawMatchRow(g, u8, m, rowBase(MAX_ROWS), ms);
     u8.setForegroundColor(color);
   }
   // with promoFullRow and promoWhite the promos are white (the disruption

@@ -147,6 +147,8 @@
 #define MATCH_LIVE_MAX_S  (3 * 3600)  // live at most this long after kick-off (cup: extra time, penalties)
 #define MATCH_FINAL_H         3   // the final score is a promo this long (counted from kick-off + 2 h)
 #define MATCH_GOAL_EVERY_S   30   // while live the last goal scrolls through the row this often
+#define MATCH_CLOCK_EVERY_S  10   // while live the minute replaces the score this often ...
+#define MATCH_CLOCK_SHOW_S    3   // ... for this long
 
 // HUB75 pin map (ESP32-S3-DevKitC-1 N8R8; avoids PSRAM 35-37, straps 0/3/45/46,
 // USB 19/20, UART 43/44)
