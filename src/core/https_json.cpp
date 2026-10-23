@@ -52,7 +52,11 @@ FetchResult httpsGetJson(const char* url, JsonDocument& filter, JsonDocument& do
     return FetchResult::HttpError;
   }
 
-  DeserializationError err = deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));
+  // The nesting limit counts the filtered-out parts too; ESPN's team logos
+  // (events[].competitions[].competitors[].team.logos[].rel[]) are 11 deep,
+  // one more than ArduinoJson's default of 10.
+  DeserializationError err = deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter),
+                                             DeserializationOption::NestingLimit(16));
   // The server closes the socket right after the body; stop TLS ourselves so
   // http.end() doesn't try to drain a dead connection (logs mbedTLS -76).
   client.stop();
