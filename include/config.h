@@ -94,8 +94,10 @@
 // The library sets 3; the hard edges of all six switching together (white
 // text) coupled over the jumper wires into red/blue pixels. Softer colour
 // edges fix that without slowing the clock (a slower clock broke WiFi).
-// Address, LAT, OE and CLK keep 3: softer there gave ghost rows.
+// Address, LAT and OE keep 3: softer there gave ghost rows.
 #define PANEL_DRIVE_CAP     1
+// CLK a bit softer against ringing (double clocking) on its long wire.
+#define PANEL_CLK_DRIVE_CAP 2
 // The library trades colour depth for refresh to reach this. It calculates
 // with 8 MHz although S3_LCD_DIV_NUM=24 really clocks 6.7 MHz, so the real
 // rate is ~17 % lower than requested.

@@ -37,6 +37,7 @@ bool displayBegin() {
   // after begin(): the library sets every pin to the strongest drive
   for (int pin : {PIN_R1, PIN_G1, PIN_B1, PIN_R2, PIN_G2, PIN_B2})
     gpio_set_drive_capability((gpio_num_t)pin, (gpio_drive_cap_t)PANEL_DRIVE_CAP);
+  gpio_set_drive_capability((gpio_num_t)PIN_CLK, (gpio_drive_cap_t)PANEL_CLK_DRIVE_CAP);
   amber = matrix->color565(COLOR_R, COLOR_G, COLOR_B);
   u8.begin(*matrix);
   srand(esp_random());  // dice for the departure animation
