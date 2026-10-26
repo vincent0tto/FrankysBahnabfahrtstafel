@@ -52,7 +52,7 @@ Schriesheim Bahnhof                     10:42
 - **Rausschmeißer:** Zum Feierabend steht ein eigener Text erst groß auf der ganzen Tafel, dann
   läuft er durch die unterste Zeile, auch mitten im Event, bis die Tafel nachts ausgeht. Auf dem
   iPad läuft dazu das Rausschmeißer-Lied.
-- **Letzte Runde:** Ein eigener Text als Laufschrift so hoch wie die ganze Tafel, für ein paar Sekunden, danach geht
+- **Letzte Runde:** Ein eigener Text als Laufschrift im Farbwechsel (z. B. Rot/Weiß) so hoch wie die ganze Tafel, für ein paar Sekunden, danach geht
   es weiter wie vorher.
 - **St.-Pauli-Ticker:** Spielt St. Pauli, steht der Spielstand in der untersten Zeile, die
   Abfahrten bleiben darüber. Bei einem Tor für St. Pauli zeigt die ganze Tafel kurz
@@ -388,8 +388,8 @@ Startet man das Rennen über die Webseite, kommt der Mexikaner trotzdem, es läu
 Zum Feierabend steht ein Text, wahlweise mit Icon, erst groß über die ganze Tafel (so groß, wie er
 auf bis zu vier Zeilen passt, sonst als Laufschrift durch die Mitte), wie lange, stellt man unter
 *Ganze Tafel* ein (Sekunden, 0 = gar nicht). Danach läuft er als Laufschrift durch die 4. Zeile,
-immer wieder, so wie die Promos bei *Nur Promos*. Text, Icon, Dauer und Farbe (Orange oder Weiß mit
-eigener Helligkeit) stellt man unter **Jetzt** → *Rausschmeißer* → *Text bearbeiten* ein,
+immer wieder, so wie die Promos bei *Nur Promos*. Text, Icon, Dauer und Farbe (eine der
+Vorgaben oder eine eigene) stellt man unter **Jetzt** → *Rausschmeißer* → *Text bearbeiten* ein,
 eingeschaltet wird er dort auf der Karte oder per Kurzbefehl. Solange er läuft:
 
 - hat er die 4. Zeile für sich: keine Promos, Störmeldungen, kein Spielstand, auch nicht
@@ -411,11 +411,11 @@ Seite Event getestete Szene gehen vor.
 
 ### Letzte Runde (Kurzbefehl fürs iPad)
 
-Ein Text, wahlweise mit Icon, läuft so hoch wie die ganze Tafel immer wieder von rechts durch
+Ein Text, wahlweise mit Icon, läuft so hoch wie die ganze Tafel immer wieder von rechts durch, im Wechsel zweier Farben (Rot und Weiß, einstellbar) und mit einem Viertel der Tafel Abstand
 (nur die Punkte über großen Umlauten wie „Ä“ sind oben abgeschnitten), so lange wie unter *Dauer* eingestellt
 (5 bis 600 Sekunden), danach ist er weg und die Tafel zeigt wieder, was vorher lief, auch das Event
 oder den Rausschmeißer; in der 4. Zeile kommt er nicht. Eingestellt wird er unter **Jetzt** →
-*Letzte Runde* → *Text bearbeiten* (Text, Icon, Dauer, Farbe), auch hier gehen ein Bahnrennen, ein
+*Letzte Runde* → *Text bearbeiten* (Text, Icon, Dauer, Farben), auch hier gehen ein Bahnrennen, ein
 Tor und eine getestete Szene vor. Läuft er bei Event oder Karaoke, bleibt deren Helligkeit. In der
 Ruhezeit und ohne Text und Icon lässt er sich nicht einschalten (`409`); der Rausschmeißer beendet ihn.
 

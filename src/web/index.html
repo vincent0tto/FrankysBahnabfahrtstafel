@@ -224,7 +224,7 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 </div>
 <div class="show" id="lastRoundCard" style="margin-top:8px">
 <h3>Letzte Runde</h3>
-<div class="hint">Dein Text als Laufschrift so hoch wie die ganze Tafel, auch über Event und Karaoke, für ein paar Sekunden; danach zeigt die Tafel wieder, was vorher lief. Mit dem Kurzbefehl auf dem iPad läuft dazu ein Lied.</div>
+<div class="hint">Dein Text als Laufschrift im Farbwechsel so hoch wie die ganze Tafel, auch über Event und Karaoke, für ein paar Sekunden; danach zeigt die Tafel wieder, was vorher lief. Mit dem Kurzbefehl auf dem iPad läuft dazu ein Lied.</div>
 <div class="row"><button class="primary" id="lastRoundStart">▶ Anzeigen</button><button id="lastRoundStop" hidden>Abbrechen</button><span class="hint" id="lastRoundText" style="margin:0"></span></div>
 <a class="more" href="#letzterunde">Text bearbeiten ›</a>
 </div>
@@ -288,7 +288,7 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 <div class="sub"><a href="#jetzt">‹ Jetzt</a><b>Letzte Runde</b></div>
 <section>
 <h2>Text</h2>
-<div class="hint">Läuft so hoch wie die ganze Tafel immer wieder durch, so lange wie eingestellt, danach ist er wieder weg. Änderungen gelten nach „Änderungen speichern“.</div>
+<div class="hint">Läuft im Wechsel zweier Farben so hoch wie die ganze Tafel immer wieder durch (mit einem Viertel der Tafel Abstand), so lange wie eingestellt, danach ist er wieder weg. Änderungen gelten nach „Änderungen speichern“.</div>
 <div id="lastRound"></div>
 </section>
 </div>
@@ -461,12 +461,12 @@ function iconRows(tag){
   const m=/^\[c(\d)\]$/.exec(tag),c=m&&S.icons.find(i=>i.id==m[1]);
   return c?c.rows.map(r=>[...Array(IW)].map((_,x)=>!!(r>>(IW-1-x)&1))):null;
 }
-function iconCanvas(tag,scale=3){
+function iconCanvas(tag,scale=3,color='#ff7800'){
   const rows=iconRows(tag),cv=el('canvas',{className:'icon'});
   const h=rows?rows.length:IH,w=rows?rows[0].length:IW;
   cv.width=w*scale;cv.height=h*scale;
   const g=cv.getContext('2d');
-  if(rows)rows.forEach((r,y)=>r.forEach((on,x)=>{g.fillStyle=on?'#ff7800':'#2a2420';g.fillRect(x*scale,y*scale,scale-(scale>2),scale-(scale>2))}));
+  if(rows)rows.forEach((r,y)=>r.forEach((on,x)=>{g.fillStyle=on?color:'#2a2420';g.fillRect(x*scale,y*scale,scale-(scale>2),scale-(scale>2))}));
   return cv;
 }
 function iconOptions(sel){
@@ -645,16 +645,16 @@ function renderPromos(){
 // one text with an icon over the whole board ("Rausschmeißer": then
 // scrolling like the promos with "Nur Promos"); `k`: its keys in S
 const CALLOUTS=[
-  {box:'bouncer',text:'bouncer',white:'bouncerWhite',pct:'bouncerWhitePct',dur:'bouncerFullS',min:0,
+  {box:'bouncer',text:'bouncer',color:'bouncerColor',dur:'bouncerFullS',min:0,
     durLabel:'Ganze Tafel',durHint:'Sekunden groß, dann in der 4. Zeile (0: gleich dort)'},
-  {box:'lastRound',text:'lastRound',white:'lastRoundWhite',pct:'lastRoundWhitePct',dur:'lastRoundS',min:5,
+  {box:'lastRound',text:'lastRound',color:'lastRoundColor',color2:'lastRoundColor2',dur:'lastRoundS',min:5,
     durLabel:'Dauer',durHint:'Sekunden'}];
 function renderCallouts(){for(const k of CALLOUTS)renderCalloutEditor(k)}
 function renderCalloutEditor(k){
   const b=S[k.text],pv=el('div',{style:'margin:6px 0'});
   const upd=()=>{
-    const ic=b.icon&&iconRows(b.icon)?iconCanvas(b.icon,2):'';
-    pv.replaceChildren(el('div',{className:'led left'},el('span',{className:'tx'},ic,
+    const ic=b.icon&&iconRows(b.icon)?iconCanvas(b.icon,2,S[k.color]):'';
+    pv.replaceChildren(el('div',{className:'led left',style:'color:'+S[k.color]},el('span',{className:'tx'},ic,
       b.text?el('span',{className:'t',textContent:b.text}):el('span',{className:'t empty',textContent:'(kein Text)'}))));
   };upd();
   const sel=iconOptions(b.icon||'');
@@ -664,19 +664,15 @@ function renderCalloutEditor(k){
     location.hash='tafel';showTab();  // the icon editor is there
     renderIcons();renderPromos();edit(ic);
   };
-  const row=el('div',{className:'row'},
-    el('label',{},el('input',{type:'checkbox',checked:S[k.white],onchange:e=>{S[k.white]=e.target.checked;renderCalloutEditor(k)}}),'in Weiß statt Orange'));
-  if(S[k.white]){
-    const val=el('span',{className:'val',textContent:S[k.pct]+' %'});
-    row.append(el('label',{},'Helligkeit',el('input',{type:'range',min:1,max:100,value:S[k.pct],
-      oninput:e=>{S[k.pct]=+e.target.value;val.textContent=S[k.pct]+' %'}}),val));
-  }
+  // a preset: draw the swatches anew (which one is on); the picker: only the preview, or it would close
+  const colors=key=>EV.swatches(EV.COLORS,S[key],(c,typing)=>{S[key]=c;typing?upd():renderCalloutEditor(k)});
   $(k.box).replaceChildren(pv,
     field('Text',el('input',{type:'text',value:b.text,maxLength:60,placeholder:'Text',oninput:e=>{b.text=e.target.value;upd()}})),
     field('Icon',sel),
     field(k.durLabel,el('label',{},el('input',{type:'number',min:k.min,max:600,value:S[k.dur],
       oninput:e=>{S[k.dur]=Math.min(600,Math.max(k.min,Math.round(+e.target.value||0)))}}),' '+k.durHint)),
-    row);
+    ...(k.color2?[field('Farben',el('div',{},colors(k.color),el('div',{className:'hint',textContent:'im Wechsel mit'}),colors(k.color2)))]
+      :[field('Farbe',colors(k.color))]));
 }
 
 function renderIcons(){
@@ -757,8 +753,8 @@ function collect(){
     disruptOn:S.disruptOn,disruptPasses:S.disruptPasses,animChance:S.animChance,animChanceBus:S.animChanceBus,
     matchOn:$('matchOn').checked,goalAnim:$('goalAnim').checked,
     fiestaChance:+$('fiestaChance').value,fiestaText1:$('fiestaText1').value,fiestaText2:$('fiestaText2').value,
-    bouncer:{icon:S.bouncer.icon||'',text:S.bouncer.text},bouncerWhite:S.bouncerWhite,bouncerWhitePct:S.bouncerWhitePct,bouncerFullS:S.bouncerFullS,
-    lastRound:{icon:S.lastRound.icon||'',text:S.lastRound.text},lastRoundWhite:S.lastRoundWhite,lastRoundWhitePct:S.lastRoundWhitePct,lastRoundS:S.lastRoundS,
+    bouncer:{icon:S.bouncer.icon||'',text:S.bouncer.text},bouncerColor:S.bouncerColor,bouncerFullS:S.bouncerFullS,
+    lastRound:{icon:S.lastRound.icon||'',text:S.lastRound.text},lastRoundColor:S.lastRoundColor,lastRoundColor2:S.lastRoundColor2,lastRoundS:S.lastRoundS,
     promos,icons:S.icons};
 }
 
@@ -772,8 +768,8 @@ function updateSave(){
 }
 // which tab holds which settings, for the dot at a tab with unsaved changes
 // (the event's and the PAGE_KEYS are on "Jetzt", their pages are below it; the card's link gets the dot too)
-const PAGE_KEYS={rausschmeisser:['bouncer','bouncerWhite','bouncerWhitePct','bouncerFullS'],
-  letzterunde:['lastRound','lastRoundWhite','lastRoundWhitePct','lastRoundS'],mexikaner:['fiestaChance','fiestaText1','fiestaText2']};
+const PAGE_KEYS={rausschmeisser:['bouncer','bouncerColor','bouncerFullS'],
+  letzterunde:['lastRound','lastRoundColor','lastRoundColor2','lastRoundS'],mexikaner:['fiestaChance','fiestaText1','fiestaText2']};
 const TAB_KEYS={tafel:['promos','icons','promoShowS','promoIntervalS','promoFullRow','promoWhite','promoWhitePct','disruptOn','disruptPasses','matchOn','goalAnim','animChance','animChanceBus'],
   jetzt:Object.values(PAGE_KEYS).flat(),zeitplan:['off','brightnessPct','dim']};
 function markTabs(){

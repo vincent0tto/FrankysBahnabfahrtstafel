@@ -126,6 +126,9 @@
 
 #define TICKER_SPEED_PX_S  30       // scrolling text speed
 
+// "Letzte Runde" switches between its two colours this often
+#define LAST_ROUND_COLOR_MS 500
+
 #define EVENT_TEST_S       30       // "Auf der Tafel testen" on the event page shows a scene this long
 
 // When a departure leaves, 1 in N times its tram/bus drives out of the row

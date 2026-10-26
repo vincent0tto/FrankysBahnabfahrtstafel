@@ -75,9 +75,12 @@ void settingsDefaults(Settings& s) {
   snprintf(s.fiestaText2, sizeof(s.fiestaText2), "%s", "Mexikaner-Shots!");
   snprintf(s.bouncer.text, sizeof(s.bouncer.text), "%s", "Feierabend! Danke für euren Besuch, bis bald!");
   s.bouncerFullS = 20;
+  s.bouncerColor = (uint32_t)COLOR_R << 16 | COLOR_G << 8 | COLOR_B;
   snprintf(s.lastRound.icon, sizeof(s.lastRound.icon), "%s", "[bi]");
   snprintf(s.lastRound.text, sizeof(s.lastRound.text), "%s", "Letzte Runde!");
   s.lastRoundS = 30;
+  s.lastRoundColor = 0xFF3030;  // red and white
+  s.lastRoundColor2 = 0xFFFFFF;
 }
 
 bool inWindow(const TimeWindow& w, int m) {
@@ -201,6 +204,30 @@ static uint32_t clampU(JsonVariantConst v, uint32_t lo, uint32_t hi, uint32_t de
   return x < (long)lo ? lo : x > (long)hi ? hi : (uint32_t)x;
 }
 
+// 0xRRGGBB as "#rrggbb" under `key`
+static void colorToJson(uint32_t rgb, JsonObject o, const char* key) {
+  char t[8];
+  snprintf(t, sizeof(t), "#%06lx", (unsigned long)(rgb & 0xFFFFFF));
+  o[key] = (const char*)t;
+}
+
+// "#rrggbb" under `key`; without it, as stored by older firmware: white
+// (`whiteKey` true) at the brightness under `whiteKey` + "Pct"; else `def`.
+// `whiteKey` nullptr: no older form.
+static uint32_t colorFromJson(JsonVariantConst in, const char* key, const char* whiteKey, uint32_t def) {
+  const char* s = in[key];
+  if (s && s[0] == '#' && strlen(s) == 7) {
+    char* end;
+    unsigned long x = strtoul(s + 1, &end, 16);
+    if (!*end) return (uint32_t)x & 0xFFFFFF;
+  }
+  if (!whiteKey || !(in[whiteKey] | false)) return def;
+  char pctKey[32];
+  snprintf(pctKey, sizeof(pctKey), "%sPct", whiteKey);
+  uint32_t v = (clampU(in[pctKey], 1, 100, 100) * 255 + 50) / 100;
+  return v << 16 | v << 8 | v;
+}
+
 // (const char*): ArduinoJson keeps char arrays by pointer like literals
 static void promoFieldsToJson(const Promo& p, JsonObject o) {
   o["icon"] = (const char*)p.icon;
@@ -258,15 +285,14 @@ void settingsToJson(const Settings& s, JsonObject out, bool forWeb) {
   JsonObject bouncer = out["bouncer"].to<JsonObject>();
   bouncer["icon"] = (const char*)s.bouncer.icon;
   bouncer["text"] = (const char*)s.bouncer.text;
-  out["bouncerWhite"] = s.bouncerWhite;
-  out["bouncerWhitePct"] = s.bouncerWhitePct;
+  colorToJson(s.bouncerColor, out, "bouncerColor");
   out["bouncerFullS"] = s.bouncerFullS;
   JsonObject lastRound = out["lastRound"].to<JsonObject>();
   lastRound["icon"] = (const char*)s.lastRound.icon;
   lastRound["text"] = (const char*)s.lastRound.text;
   out["lastRoundS"] = s.lastRoundS;
-  out["lastRoundWhite"] = s.lastRoundWhite;
-  out["lastRoundWhitePct"] = s.lastRoundWhitePct;
+  colorToJson(s.lastRoundColor, out, "lastRoundColor");
+  colorToJson(s.lastRoundColor2, out, "lastRoundColor2");
 
   JsonArray promos = out["promos"].to<JsonArray>();
   for (int i = 0; i < s.nPromos; i++) {
@@ -337,13 +363,12 @@ bool settingsFromJson(JsonVariantConst in, Settings& s) {
   if (in["fiestaText1"].is<const char*>()) copyText(s.fiestaText1, sizeof(s.fiestaText1), in["fiestaText1"]);
   if (in["fiestaText2"].is<const char*>()) copyText(s.fiestaText2, sizeof(s.fiestaText2), in["fiestaText2"]);
   if (in["bouncer"].is<JsonObjectConst>()) promoFieldsFromJson(in["bouncer"], s.bouncer);
-  s.bouncerWhite = in["bouncerWhite"] | s.bouncerWhite;
-  s.bouncerWhitePct = (uint8_t)clampU(in["bouncerWhitePct"], 1, 100, s.bouncerWhitePct);
+  s.bouncerColor = colorFromJson(in, "bouncerColor", "bouncerWhite", s.bouncerColor);
   s.bouncerFullS = (uint16_t)clampU(in["bouncerFullS"], 0, 600, s.bouncerFullS);
   if (in["lastRound"].is<JsonObjectConst>()) promoFieldsFromJson(in["lastRound"], s.lastRound);
   s.lastRoundS = (uint16_t)clampU(in["lastRoundS"], 5, 600, s.lastRoundS);
-  s.lastRoundWhite = in["lastRoundWhite"] | s.lastRoundWhite;
-  s.lastRoundWhitePct = (uint8_t)clampU(in["lastRoundWhitePct"], 1, 100, s.lastRoundWhitePct);
+  s.lastRoundColor = colorFromJson(in, "lastRoundColor", "lastRoundWhite", s.lastRoundColor);
+  s.lastRoundColor2 = colorFromJson(in, "lastRoundColor2", nullptr, s.lastRoundColor2);
 
   if (in["promos"].is<JsonArrayConst>()) {
     for (JsonVariantConst o : in["promos"].as<JsonArrayConst>()) {

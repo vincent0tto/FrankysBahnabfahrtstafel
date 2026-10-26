@@ -65,12 +65,11 @@ struct Settings {
   Promo bouncer;                // "Rausschmeißer": icon and text only; once started
                                 // (src/event/event_store.h) it fills the board first,
   uint16_t bouncerFullS = 0;    // this many seconds (0: not at all), then scrolls through the 4th row
-  bool bouncerWhite = false;    // in white instead of amber,
-  uint8_t bouncerWhitePct = 100;  // this bright, percent (1..100)
+  uint32_t bouncerColor = 0;    // in this colour, 0xRRGGBB
   Promo lastRound;              // "Letzte Runde": like the bouncer, but only filling the board,
   uint16_t lastRoundS = 0;      // this many seconds, then it ends
-  bool lastRoundWhite = false;
-  uint8_t lastRoundWhitePct = 100;
+  uint32_t lastRoundColor = 0;  // switching between these two, 0xRRGGBB
+  uint32_t lastRoundColor2 = 0;
   Promo promos[MAX_PROMOS];
   uint8_t nPromos = 0;
   CustomIcon icons[MAX_CUSTOM_ICONS];  // index = number in the tag

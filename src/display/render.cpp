@@ -82,6 +82,12 @@ static uint16_t grayColor(uint8_t pct) {
   return r << 11 | g << 5 | r;
 }
 
+// 0xRRGGBB -> RGB565
+static uint16_t rgb565(uint32_t rgb) {
+  uint8_t r = rgb >> 16, g = rgb >> 8, b = rgb;
+  return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+}
+
 // ---- Departure animation -----------------------------------------------------
 static int animOverride = -1;
 void setDepartAnimChance(int oneIn) { animOverride = oneIn; }
@@ -621,7 +627,7 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
 
   if (tickerMsg) drawTicker(g, u8, tickerMsg, ms, false);
   if (bouncer) {  // like a promo with promoFullRow, again and again
-    uint16_t c = s.bouncerWhite ? grayColor(s.bouncerWhitePct) : color;
+    uint16_t c = rgb565(s.bouncerColor);
     u8.setForegroundColor(c);
     drawPromo(g, u8, c, s, rowBase(MAX_ROWS), *bouncer, ms, true, bouncerMs);
     u8.setForegroundColor(color);
@@ -688,21 +694,27 @@ static bool wrapText(U8G2_FOR_ADAFRUIT_GFX& u8, const char* text, int lead, int 
 }
 
 // `ic` and `text` in the current font scrolling through on baseline `base`,
-// in from the right, again and again, `t` ms after it came up.
+// in from the right, again and again (each pass PROMO_GAP behind the one
+// before, like the promos), `t` ms after it came up.
 static void drawMarquee(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const IconRef& ic,
                         const char* text, int base, uint32_t t) {
   int scale = ic ? u8.getFontAscent() / ic.h : 0;
   if (ic && scale < 1) scale = 1;
   int lead = ic ? ic.w * scale + ICON_GAP * scale : 0;
   int tw = lead + width(u8, text);
-  int x = W - (int)((uint64_t)t * TICKER_SPEED_PX_S / 1000 % (tw + W));
-  if (ic) drawIcon(g, color, ic, x, base, scale);
-  u8.drawUTF8(x + lead, base, text);
+  int period = tw + PROMO_GAP;
+  int pos = (int)((uint64_t)t * TICKER_SPEED_PX_S / 1000);  // px scrolled since it came up
+  for (int k = pos / period; k >= 0; k--) {  // the newest pass first, back to the oldest still visible
+    int x = W - pos + k * period;
+    if (x + tw <= 0) break;
+    if (ic) drawIcon(g, color, ic, x, base, scale);
+    u8.drawUTF8(x + lead, base, text);
+  }
 }
 
-void renderCallout(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const Settings& s, const Promo& p,
-                   bool white, uint8_t whitePct, uint32_t t) {
-  if (white) color = grayColor(whitePct);
+void renderCallout(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint32_t rgb, const Settings& s, const Promo& p,
+                   uint32_t t) {
+  uint16_t color = rgb565(rgb);
   u8.setFontMode(1);
   u8.setForegroundColor(color);
   IconRef ic = findIcon(s, p.icon);
@@ -736,9 +748,9 @@ void renderCallout(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, c
   drawMarquee(g, u8, color, ic, p.text, (H + u8.getFontAscent()) / 2, t);
 }
 
-void renderMarquee(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const Settings& s, const Promo& p,
-                   bool white, uint8_t whitePct, uint32_t t) {
-  if (white) color = grayColor(whitePct);
+void renderMarquee(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint32_t rgb, uint32_t rgb2, const Settings& s,
+                   const Promo& p, uint32_t t) {
+  uint16_t color = rgb565(t / LAST_ROUND_COLOR_MS % 2 ? rgb2 : rgb);
   u8.setFontMode(1);
   u8.setForegroundColor(color);
   u8.setFont(MARQUEE_FONT);

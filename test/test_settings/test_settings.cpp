@@ -52,7 +52,9 @@ void test_defaults() {
   TEST_ASSERT_EQUAL_STRING("¡FIESTA!", s.fiestaText1);
   TEST_ASSERT_EQUAL_STRING("Mexikaner-Shots!", s.fiestaText2);
   TEST_ASSERT_TRUE(s.bouncer.text[0] != 0);
-  TEST_ASSERT_FALSE(s.bouncerWhite);
+  TEST_ASSERT_EQUAL_HEX32(0xFF7800, s.bouncerColor);
+  TEST_ASSERT_EQUAL_HEX32(0xFF3030, s.lastRoundColor);
+  TEST_ASSERT_EQUAL_HEX32(0xFFFFFF, s.lastRoundColor2);
   TEST_ASSERT_EQUAL(20, s.bouncerFullS);
   TEST_ASSERT_EQUAL_STRING("Letzte Runde!", s.lastRound.text);
   TEST_ASSERT_EQUAL(30, s.lastRoundS);
@@ -107,14 +109,13 @@ void test_json_roundtrip() {
   s.fiestaText2[0] = 0;
   strcpy(s.bouncer.icon, "[bi]");
   strcpy(s.bouncer.text, "Letzte Runde!");
-  s.bouncerWhite = true;
-  s.bouncerWhitePct = 30;
+  s.bouncerColor = 0x2F7BFF;
   s.bouncerFullS = 0;
   strcpy(s.lastRound.icon, "");
   strcpy(s.lastRound.text, "Last orders");
   s.lastRoundS = 45;
-  s.lastRoundWhite = true;
-  s.lastRoundWhitePct = 50;
+  s.lastRoundColor = 0xFFFFFF;
+  s.lastRoundColor2 = 0x4BE04B;
   promoFromText("[ig]@frankys", s.promos[s.nPromos]);
   s.promos[s.nPromos++].on = false;
   Promo own;
@@ -153,14 +154,13 @@ void test_json_roundtrip() {
   TEST_ASSERT_EQUAL_STRING("", t.fiestaText2);
   TEST_ASSERT_EQUAL_STRING("[bi]", t.bouncer.icon);
   TEST_ASSERT_EQUAL_STRING("Letzte Runde!", t.bouncer.text);
-  TEST_ASSERT_TRUE(t.bouncerWhite);
-  TEST_ASSERT_EQUAL(30, t.bouncerWhitePct);
+  TEST_ASSERT_EQUAL_HEX32(0x2F7BFF, t.bouncerColor);
   TEST_ASSERT_EQUAL(0, t.bouncerFullS);
   TEST_ASSERT_EQUAL_STRING("", t.lastRound.icon);
   TEST_ASSERT_EQUAL_STRING("Last orders", t.lastRound.text);
   TEST_ASSERT_EQUAL(45, t.lastRoundS);
-  TEST_ASSERT_TRUE(t.lastRoundWhite);
-  TEST_ASSERT_EQUAL(50, t.lastRoundWhitePct);
+  TEST_ASSERT_EQUAL_HEX32(0xFFFFFF, t.lastRoundColor);
+  TEST_ASSERT_EQUAL_HEX32(0x4BE04B, t.lastRoundColor2);
   TEST_ASSERT_EQUAL(s.nPromos, t.nPromos);
   TEST_ASSERT_FALSE(t.promos[0].on);
   TEST_ASSERT_EQUAL_STRING("@frankys", t.promos[0].text);
@@ -325,6 +325,20 @@ void test_old_brightness_dropped() {
   TEST_ASSERT_EQUAL(BRIGHTNESS_DAY, t.dim[0].value);
 }
 
+// stored by older firmware: white at a brightness instead of a colour
+void test_old_white_callouts() {
+  JsonDocument doc;
+  deserializeJson(doc, "{\"bouncerWhite\":true,\"bouncerWhitePct\":60,\"lastRoundWhite\":false,"
+                       "\"lastRoundWhitePct\":30}");
+  TEST_ASSERT_TRUE(settingsFromJson(doc.as<JsonVariantConst>(), t));
+  TEST_ASSERT_EQUAL_HEX32(0x999999, t.bouncerColor);
+  TEST_ASSERT_EQUAL_HEX32(0xFF3030, t.lastRoundColor);
+  deserializeJson(doc, "{\"bouncerColor\":\"#00ff00\",\"bouncerWhite\":true,\"lastRoundColor\":\"#12345\"}");
+  TEST_ASSERT_TRUE(settingsFromJson(doc.as<JsonVariantConst>(), t));
+  TEST_ASSERT_EQUAL_HEX32(0x00FF00, t.bouncerColor);
+  TEST_ASSERT_EQUAL_HEX32(0xFF3030, t.lastRoundColor);  // malformed: default
+}
+
 void test_custom_icon_tag() {
   TEST_ASSERT_EQUAL(0, customIconIndex("[c0]"));
   TEST_ASSERT_EQUAL(7, customIconIndex("[c7]"));
@@ -344,6 +358,7 @@ int main() {
   RUN_TEST(test_old_presets);
   RUN_TEST(test_promo_days);
   RUN_TEST(test_old_brightness_dropped);
+  RUN_TEST(test_old_white_callouts);
   RUN_TEST(test_custom_icon_tag);
   return UNITY_END();
 }

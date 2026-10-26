@@ -435,8 +435,7 @@ int main(int argc, char** argv) {
     canvas.fillScreen(0);
     U8G2_FOR_ADAFRUIT_GFX u8;
     u8.begin(canvas);
-    uint16_t amber = ((COLOR_R & 0xF8) << 8) | ((COLOR_G & 0xFC) << 3) | (COLOR_B >> 3);
-    renderCallout(canvas, u8, amber, settings, p, false, 100, t);
+    renderCallout(canvas, u8, settings.bouncerColor, settings, p, t);
     Frame f;
     f.px.assign(canvas.getBuffer(), canvas.getBuffer() + W * H);
     bFrames.push_back(f);
@@ -454,13 +453,13 @@ int main(int argc, char** argv) {
     canvas.fillScreen(0);
     U8G2_FOR_ADAFRUIT_GFX u8;
     u8.begin(canvas);
-    uint16_t amber = ((COLOR_R & 0xF8) << 8) | ((COLOR_G & 0xFC) << 3) | (COLOR_B >> 3);
-    renderMarquee(canvas, u8, amber, settings, p, false, 100, t);
+    renderMarquee(canvas, u8, settings.lastRoundColor, settings.lastRoundColor2, settings, p, t);
     Frame f;
     f.px.assign(canvas.getBuffer(), canvas.getBuffer() + W * H);
     bFrames.push_back(f);
   };
   marquee(settings.lastRound.icon, settings.lastRound.text, 4000);
+  marquee(settings.lastRound.icon, settings.lastRound.text, 17000);  // the next pass a quarter behind
   marquee("", "Zapfhahn zu, Äpfel gibt's morgen", 6500);
 
   // Rausschmeißer then: the default text scrolling in, with an icon, in white,
@@ -471,8 +470,7 @@ int main(int argc, char** argv) {
   strcpy(bouncer.icon, "[bi]");
   strcpy(bouncer.text, "Letzte Runde!");
   bFrames.push_back(render(normal, ok, now, 1000, Match(), &bouncer, 5000));
-  settings.bouncerWhite = true;
-  settings.bouncerWhitePct = 60;
+  settings.bouncerColor = 0x999999;
   m.finished = false;
   bFrames.push_back(render(normal, ok, now, 1000, m, &bouncer, 5000));
   DisplayStatus noWifi = ok;
