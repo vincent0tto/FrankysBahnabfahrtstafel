@@ -305,15 +305,38 @@ static void handleBouncer() {
     return;
   }
   if (!s.bouncer.text[0] && !s.bouncer.icon[0]) {
-    server.send(409, "text/plain", "kein Text eingestellt (Tab Tafel)");
+    server.send(409, "text/plain", "kein Text eingestellt");
     return;
   }
+  if (lastRoundRunning()) lastRoundStop();  // or it would hide the bouncer's first part
   bouncerStart();
   server.send(200, "text/plain", "ok");
 }
 
 static void handleBouncerStop() {
   bouncerStop();
+  server.send(200, "text/plain", "ok");
+}
+
+// ---- Letzte Runde (Settings::lastRound) -----------------------------------------------
+
+// Like the bouncer, for its own shortcut and the page.
+static void handleLastRound() {
+  const Settings& s = settingsNet();
+  if (timeValid() && isOffTime(s, minuteOfDay(time(nullptr)))) {
+    server.send(409, "text/plain", "Ruhezeit, die Tafel ist aus");
+    return;
+  }
+  if (!s.lastRound.text[0] && !s.lastRound.icon[0]) {
+    server.send(409, "text/plain", "kein Text eingestellt");
+    return;
+  }
+  lastRoundStart(s.lastRoundS * 1000UL);
+  server.send(200, "text/plain", "ok");
+}
+
+static void handleLastRoundStop() {
+  lastRoundStop();
   server.send(200, "text/plain", "ok");
 }
 
@@ -466,6 +489,7 @@ static void handleStatus() {
   doc["eventRev"] = eventRev();
   doc["race"] = raceRunning();
   doc["bouncer"] = bouncerRunning();
+  doc["lastRound"] = lastRoundRunning();
   if (settingsNet().matchOn) matchToJson(now, doc["match"].to<JsonObject>());
   doc["off"] = !eventNet().on && timeValid() && isOffTime(settingsNet(), minuteOfDay(now));
   doc["rssi"] = WiFi.RSSI();
@@ -569,6 +593,8 @@ void webBegin() {
   server.on("/api/goal/test", HTTP_POST, handleGoalTest);
   server.on("/api/rausschmeisser", HTTP_POST, handleBouncer);
   server.on("/api/rausschmeisser/stop", HTTP_POST, handleBouncerStop);
+  server.on("/api/letzterunde", HTTP_POST, handleLastRound);
+  server.on("/api/letzterunde/stop", HTTP_POST, handleLastRoundStop);
   server.on("/api/images", HTTP_GET, [] { sendImages(); });
   server.on("/api/image", HTTP_GET, handleImageGet);
   server.on("/api/image", HTTP_POST, handleImageSave, handleImageUpload);

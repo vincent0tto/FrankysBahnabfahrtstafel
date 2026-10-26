@@ -425,9 +425,31 @@ int main(int argc, char** argv) {
   goalFrame(Match(), 4000);
   writePpm(argc > 6 ? argv[6] : "preview_match.ppm", mFrames);
 
-  // Rausschmeißer: the default text scrolling in, with an icon, in white,
-  // over the live match, and with no WiFi
+  // Over the whole board first: the bouncer's and the last round's default
+  // texts, a short one, only an icon, one too long for 4 lines (scrolling)
   std::vector<Frame> bFrames;
+  auto callout = [&](const char* icon, const char* text, uint32_t t) {
+    Promo p;
+    strcpy(p.icon, icon);
+    strcpy(p.text, text);
+    GFXcanvas16 canvas(W, H);
+    canvas.fillScreen(0);
+    U8G2_FOR_ADAFRUIT_GFX u8;
+    u8.begin(canvas);
+    uint16_t amber = ((COLOR_R & 0xF8) << 8) | ((COLOR_G & 0xFC) << 3) | (COLOR_B >> 3);
+    renderCallout(canvas, u8, amber, settings, p, false, 100, t);
+    Frame f;
+    f.px.assign(canvas.getBuffer(), canvas.getBuffer() + W * H);
+    bFrames.push_back(f);
+  };
+  callout(settings.bouncer.icon, settings.bouncer.text, 0);
+  callout(settings.lastRound.icon, settings.lastRound.text, 0);
+  callout("", "Feierabend!", 0);
+  callout("[bi]", "", 0);
+  callout("", "Donaudampfschifffahrtsgesellschaftskapitänsmützenabzeichen", 3000);
+
+  // Rausschmeißer then: the default text scrolling in, with an icon, in white,
+  // over the live match, and with no WiFi
   Promo bouncer = settings.bouncer;
   bFrames.push_back(render(normal, ok, now, 1000, Match(), &bouncer, 3000));
   bFrames.push_back(render(normal, ok, now, 1000, Match(), &bouncer, 9000));

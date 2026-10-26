@@ -63,15 +63,20 @@ struct Settings {
   char fiestaText1[32] = "";    // the race's dancing Mexican (src/race/race.h): over him first,
   char fiestaText2[32] = "";    // then this; "" shows nothing
   Promo bouncer;                // "Rausschmeißer": icon and text only; once started
-                                // (src/event/event_store.h) it scrolls through the 4th row
+                                // (src/event/event_store.h) it fills the board first,
+  uint16_t bouncerFullS = 0;    // this many seconds (0: not at all), then scrolls through the 4th row
   bool bouncerWhite = false;    // in white instead of amber,
   uint8_t bouncerWhitePct = 100;  // this bright, percent (1..100)
+  Promo lastRound;              // "Letzte Runde": like the bouncer, but only filling the board,
+  uint16_t lastRoundS = 0;      // this many seconds, then it ends
+  bool lastRoundWhite = false;
+  uint8_t lastRoundWhitePct = 100;
   Promo promos[MAX_PROMOS];
   uint8_t nPromos = 0;
   CustomIcon icons[MAX_CUSTOM_ICONS];  // index = number in the tag
 };
 
-// config.h values, no promos, a bouncer text.
+// config.h values, no promos, a bouncer and a last round text.
 void settingsDefaults(Settings& s);
 
 // Fills `p` from a text in the former PROMO_TEXTS form

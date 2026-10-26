@@ -49,8 +49,11 @@ Schriesheim Bahnhof                     10:42
 - **Event-Modus:** Für eine Party oder einen besonderen Abend übernimmt die Tafel auf Knopfdruck
   ganz eigene Texte und Bilder in Farbe, bis man sie wieder auf die Abfahrten zurückschaltet.
 - **Karaoke-Liste:** Beim Karaoke-Abend zeigt die Tafel, wer als Nächstes singt und was.
-- **Rausschmeißer:** Zum Feierabend läuft ein eigener Text durch die unterste Zeile, auch mitten
-  im Event, bis die Tafel nachts ausgeht. Auf dem iPad läuft dazu das Rausschmeißer-Lied.
+- **Rausschmeißer:** Zum Feierabend steht ein eigener Text erst groß auf der ganzen Tafel, dann
+  läuft er durch die unterste Zeile, auch mitten im Event, bis die Tafel nachts ausgeht. Auf dem
+  iPad läuft dazu das Rausschmeißer-Lied.
+- **Letzte Runde:** Ein eigener Text groß über die ganze Tafel, für ein paar Sekunden, danach geht
+  es weiter wie vorher.
 - **St.-Pauli-Ticker:** Spielt St. Pauli, steht der Spielstand in der untersten Zeile, die
   Abfahrten bleiben darüber. Bei einem Tor für St. Pauli zeigt die ganze Tafel kurz
   „TOOOR!“ mit Feuerwerk, nach dem Abpfiff kommt der Endstand noch ein paar Stunden.
@@ -78,7 +81,7 @@ Schriften und Layout stehen oben in `src/display/render.cpp`. Um ein Layout ohne
 Abfahrtsanimation nach `tools/preview/preview_anim.png`, Beispiele des Event-Modus nach
 `tools/preview/preview_event.png`, ein Bahnrennen nach `tools/preview/preview_race.png` und die
 Karaoke-Liste nach `tools/preview/preview_karaoke.png`, den St.-Pauli-Ticker nach
-`tools/preview/preview_match.png` und den Rausschmeißer nach `tools/preview/preview_bouncer.png`.
+`tools/preview/preview_match.png` und Rausschmeißer und Letzte Runde nach `tools/preview/preview_bouncer.png`.
 
 ## Datenquelle
 
@@ -204,11 +207,13 @@ eine Seite unter *Jetzt*, die man über ihre Karte dort öffnet (`/#event`, `/#k
 Leiste mit jedem neuen Event nicht länger wird:
 
 - **Jetzt**: *Was zeigt die Tafel?* – *Abfahrten*, *Event* oder *Karaoke*, immer eins davon, gilt sofort,
-  ohne Speichern. Darunter *Zwischendurch* mit dem Knopf für ein **Bahnrennen** und dem
-  **Rausschmeißer**: Sie unterbrechen die Tafel nur, die Auswahl oben steht so lange auf „unterbrochen“.
+  ohne Speichern. Darunter *Zwischendurch* mit den Knöpfen für ein **Bahnrennen**, den
+  **Rausschmeißer** und die **Letzte Runde**: Sie unterbrechen die Tafel nur, die Auswahl oben steht
+  so lange auf „unterbrochen“.
   - **Event bearbeiten**: Szenen, Bilder und Helligkeit des Events (siehe *Event-Modus*).
   - **Liste bearbeiten**: die Karaoke-Liste (siehe *Karaoke*).
-- **Tafel**: Promos, Rausschmeißer, 4. Zeile, Abfahrts-Animation, St.-Pauli-Ticker, Mexikaner im Bahnrennen und Icons.
+  - **Text bearbeiten** (`/#rausschmeisser`, `/#letzterunde`), **Mexikaner einstellen** (`/#mexikaner`).
+- **Tafel**: Promos, 4. Zeile, Abfahrts-Animation, St.-Pauli-Ticker und Icons.
 - **Zeitplan**: Ruhezeit und Helligkeit.
 - **Technik**: WLAN, Log, Neustart.
 
@@ -380,10 +385,12 @@ Startet man das Rennen über die Webseite, kommt der Mexikaner trotzdem, es läu
 
 ### Rausschmeißer (Kurzbefehl fürs iPad)
 
-Zum Feierabend läuft ein Text, wahlweise mit Icon, als Laufschrift durch die 4. Zeile, immer
-wieder, so wie die Promos bei *Nur Promos*. Text, Icon und Farbe (Orange oder Weiß mit eigener
-Helligkeit) stellt man auf dem Tab **Tafel** unter *Rausschmeißer* ein, eingeschaltet wird er
-unter **Jetzt** → *Zwischendurch* oder per Kurzbefehl. Solange er läuft:
+Zum Feierabend steht ein Text, wahlweise mit Icon, erst groß über die ganze Tafel (so groß, wie er
+auf bis zu vier Zeilen passt, sonst als Laufschrift durch die Mitte), wie lange, stellt man unter
+*Ganze Tafel* ein (Sekunden, 0 = gar nicht). Danach läuft er als Laufschrift durch die 4. Zeile,
+immer wieder, so wie die Promos bei *Nur Promos*. Text, Icon, Dauer und Farbe (Orange oder Weiß mit
+eigener Helligkeit) stellt man unter **Jetzt** → *Rausschmeißer* → *Text bearbeiten* ein,
+eingeschaltet wird er dort auf der Karte oder per Kurzbefehl. Solange er läuft:
 
 - hat er die 4. Zeile für sich: keine Promos, Störmeldungen, kein Spielstand, auch nicht
   „Keine WLAN-Verbindung“ (das „!“ oben rechts warnt trotzdem),
@@ -401,6 +408,18 @@ Seite Event getestete Szene gehen vor.
 1. **Inhalte von URL abrufen**: `http://abfahrtstafel.local/api/rausschmeisser`, Methode **POST**
 2. **Musik suchen**: Titel ist das Rausschmeißer-Lied, Limit 1 (es muss in der Mediathek sein)
 3. **Musik abspielen**: *Musik* aus Schritt 2
+
+### Letzte Runde (Kurzbefehl fürs iPad)
+
+Wie der Rausschmeißer groß über die ganze Tafel, aber nur so lange wie unter *Dauer* eingestellt
+(5 bis 600 Sekunden), danach ist er weg und die Tafel zeigt wieder, was vorher lief, auch das Event
+oder den Rausschmeißer; in der 4. Zeile kommt er nicht. Eingestellt wird er unter **Jetzt** →
+*Letzte Runde* → *Text bearbeiten* (Text, Icon, Dauer, Farbe), auch hier gehen ein Bahnrennen, ein
+Tor und eine getestete Szene vor. Läuft er bei Event oder Karaoke, bleibt deren Helligkeit. In der
+Ruhezeit und ohne Text und Icon lässt er sich nicht einschalten (`409`); der Rausschmeißer beendet ihn.
+
+`POST /api/letzterunde` zeigt ihn (ein zweites Mal: von vorn), `POST /api/letzterunde/stop` bricht
+ihn ab. Der Kurzbefehl geht wie beim Rausschmeißer, mit dieser Adresse und dem passenden Lied.
 
 ### Tests (Parser, laufen auf dem Mac)
 
@@ -457,7 +476,7 @@ vorher einmal `sudo xcodebuild -license` aus.
 | `src/core/settings_store.cpp` | Einstellungen im Flash (LittleFS), Übergabe an die Render-Schleife |
 | `src/web/web.cpp`, `src/web/index.html` | die Webseite (alle Tabs, auch der Event-Editor) und ihre JSON-API; `tools/web_assets.py` packt sie beim Build per gzip in die Firmware |
 | `src/event/event.cpp` | Event-Modus: Szenen und Zeilen, JSON (auf dem Host getestet) |
-| `src/event/event_store.cpp` | Event und Karaoke-Liste im Flash (LittleFS), Übergabe an die Render-Schleife, auch von Bahnrennen und Rausschmeißer |
+| `src/event/event_store.cpp` | Event und Karaoke-Liste im Flash (LittleFS), Übergabe an die Render-Schleife, auch von Bahnrennen, Rausschmeißer und Letzter Runde |
 | `src/event/event_render.cpp` | zeichnet die Szenen, für das Panel und die Vorschau auf der Seite |
 | `src/karaoke/karaoke.cpp` | Karaoke-Liste: Einträge, Farben, JSON (auf dem Host getestet) |
 | `src/karaoke/karaoke_render.cpp` | zeichnet die Karaoke-Liste, für das Panel und die Vorschau auf der Seite |

@@ -160,11 +160,12 @@ static IconRef findIcon(const Settings& s, const char* tag) {
   return ic;
 }
 
-static void drawIcon(Adafruit_GFX& g, uint16_t color, const IconRef& ic, int x, int base) {
-  int top = base - ic.h + ic.drop;
+// `scale`: each icon pixel as a square this big.
+static void drawIcon(Adafruit_GFX& g, uint16_t color, const IconRef& ic, int x, int base, int scale = 1) {
+  int top = base - (ic.h - ic.drop) * scale;
   for (int r = 0; r < ic.h; r++)
     for (int c = 0; c < ic.w; c++)
-      if (ic.on(r, c)) g.drawPixel(x + c, top + r, color);
+      if (ic.on(r, c)) g.fillRect(x + c * scale, top + r * scale, scale, scale, color);
 }
 
 // Width of a departure-style promo's line column: its icon or text.
@@ -627,4 +628,101 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
   }
 
   drawHeader(g, u8, color, st, now, stale || !st.wifi, showPlatforms);
+}
+
+// ---- Text over the whole board (bouncer, last round) ------------------------
+// Largest first; each with as many lines as fit the board.
+static const uint8_t* const CALLOUT_FONTS[] = {u8g2_font_logisoso32_tf, u8g2_font_helvB18_tf,
+                                               u8g2_font_helvB14_tf, FONT_ROW};
+static const int CALLOUT_MARGIN = 4;  // to the board's edges, all around
+static const int CALLOUT_MAX_LINES = 4;
+
+struct CalloutLine {
+  const char* start;
+  int len;
+  int w;
+};
+
+// Width of `len` bytes of `s`.
+static int partWidth(U8G2_FOR_ADAFRUIT_GFX& u8, const char* s, int len) {
+  char buf[sizeof(Promo::text)];
+  if (len >= (int)sizeof(buf)) len = sizeof(buf) - 1;
+  memcpy(buf, s, len);
+  buf[len] = 0;
+  return width(u8, buf);
+}
+
+// Breaks `text` at its spaces into lines of at most `box` px, the first one
+// with `lead` px in front (the icon). False if a word doesn't fit or it needs
+// more than `maxLines`. "" is one empty line.
+static bool wrapText(U8G2_FOR_ADAFRUIT_GFX& u8, const char* text, int lead, int box, int maxLines,
+                     CalloutLine* lines, int& n) {
+  n = 0;
+  const char* p = text;
+  while (*p == ' ') p++;
+  do {
+    if (n == maxLines) return false;
+    int room = box - (n == 0 ? lead : 0);
+    CalloutLine l = {p, 0, 0};
+    const char* q = p;
+    while (*q) {  // one more word
+      const char* e = q;
+      while (*e == ' ') e++;
+      if (!*e) break;  // only spaces left
+      while (*e && *e != ' ') e++;
+      int w = partWidth(u8, p, e - p);
+      if (w > room) break;
+      l.len = e - p;
+      l.w = w;
+      q = e;
+    }
+    if (*q && l.len == 0) return false;  // a single word too long
+    lines[n++] = l;
+    p = q;
+    while (*p == ' ') p++;
+  } while (*p);
+  return true;
+}
+
+void renderCallout(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const Settings& s, const Promo& p,
+                   bool white, uint8_t whitePct, uint32_t t) {
+  if (white) color = grayColor(whitePct);
+  u8.setFontMode(1);
+  u8.setForegroundColor(color);
+  IconRef ic = findIcon(s, p.icon);
+  int box = W - 2 * CALLOUT_MARGIN;
+  CalloutLine lines[CALLOUT_MAX_LINES];
+  int n = 0;
+  for (const uint8_t* font : CALLOUT_FONTS) {
+    u8.setFont(font);
+    int ascent = u8.getFontAscent(), pitch = ascent - u8.getFontDescent() + 2;
+    int scale = ic ? (ascent / ic.h > 1 ? ascent / ic.h : 1) : 0;
+    int lead = ic ? ic.w * scale + (p.text[0] ? ICON_GAP * scale : 0) : 0;
+    int maxLines = (H - 2 * CALLOUT_MARGIN - ascent) / pitch + 1;
+    if (maxLines > CALLOUT_MAX_LINES) maxLines = CALLOUT_MAX_LINES;
+    if (!wrapText(u8, p.text, lead, box, maxLines, lines, n)) continue;
+    int base = (H - (n - 1) * pitch - ascent) / 2 + ascent;
+    for (int i = 0; i < n; i++, base += pitch) {
+      int x = (W - lines[i].w - (i == 0 ? lead : 0)) / 2;
+      if (i == 0 && ic) {
+        drawIcon(g, color, ic, x, base, scale);
+        x += lead;
+      }
+      char buf[sizeof(Promo::text)];
+      memcpy(buf, lines[i].start, lines[i].len);
+      buf[lines[i].len] = 0;
+      u8.drawUTF8(x, base, buf);
+    }
+    return;
+  }
+  // too long even in the smallest font: scrolls through the middle, again and again
+  u8.setFont(CALLOUT_FONTS[1]);
+  int ascent = u8.getFontAscent(), base = (H + ascent) / 2;
+  int scale = ic ? ascent / ic.h : 0;
+  if (ic && scale < 1) scale = 1;
+  int lead = ic ? ic.w * scale + ICON_GAP * scale : 0;
+  int tw = lead + width(u8, p.text);
+  int x = W - (int)((uint64_t)t * TICKER_SPEED_PX_S / 1000 % (tw + W));
+  if (ic) drawIcon(g, color, ic, x, base, scale);
+  u8.drawUTF8(x + lead, base, p.text);
 }

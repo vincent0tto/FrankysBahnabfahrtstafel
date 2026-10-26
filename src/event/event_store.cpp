@@ -27,6 +27,10 @@ static uint32_t raceEndMs = 0;  // millis() when it is over
 static volatile uint32_t raceVersion = 0;
 static bool bouncerActive = false;  // same
 static volatile uint32_t bouncerVersion = 0;
+static bool lastRoundActive = false;  // same
+static uint32_t lastRoundDurMs = 0;
+static uint32_t lastRoundEndMs = 0;  // millis() when it is over
+static volatile uint32_t lastRoundVersion = 0;
 static SemaphoreHandle_t mutex;
 
 Event& eventScratch() {
@@ -217,6 +221,35 @@ bool bouncerFetch(bool& active, uint32_t& version) {
   if (version == bouncerVersion || xSemaphoreTake(mutex, pdMS_TO_TICKS(10)) != pdTRUE) return false;
   active = bouncerActive;
   version = bouncerVersion;
+  xSemaphoreGive(mutex);
+  return true;
+}
+
+void lastRoundStart(uint32_t durMs) {
+  xSemaphoreTake(mutex, portMAX_DELAY);
+  lastRoundActive = true;
+  lastRoundDurMs = durMs;
+  lastRoundEndMs = millis() + durMs;
+  lastRoundVersion++;
+  xSemaphoreGive(mutex);
+  Log.printf("[last round] on for %u s\n", (unsigned)(durMs / 1000));
+}
+
+void lastRoundStop() {
+  xSemaphoreTake(mutex, portMAX_DELAY);
+  lastRoundActive = false;
+  lastRoundVersion++;
+  xSemaphoreGive(mutex);
+  Log.println("[last round] off");
+}
+
+bool lastRoundRunning() { return lastRoundActive && (int32_t)(millis() - lastRoundEndMs) < 0; }
+
+bool lastRoundFetch(bool& active, uint32_t& durMs, uint32_t& version) {
+  if (version == lastRoundVersion || xSemaphoreTake(mutex, pdMS_TO_TICKS(10)) != pdTRUE) return false;
+  active = lastRoundActive;
+  durMs = lastRoundDurMs;
+  version = lastRoundVersion;
   xSemaphoreGive(mutex);
   return true;
 }

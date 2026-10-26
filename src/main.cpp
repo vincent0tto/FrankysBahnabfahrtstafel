@@ -5,7 +5,7 @@
 // Core 0: netTask   – WiFi, NTP, OTA, settings web page, firmware update
 //                     check after start, API polling, the St.-Pauli-Ticker
 // Core 1: loop()    – renders ~30 fps from the last good data, the event,
-//                     the tram race, a goal or the bouncer
+//                     the tram race, a goal, the bouncer or the last round
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -173,6 +173,10 @@ void loop() {
   static bool bouncer = false;
   static uint32_t bouncerVersion = 0;
   static uint32_t bouncerStartMs = 0;
+  static bool lastRound = false;
+  static uint32_t lastRoundVersion = 0;
+  static uint32_t lastRoundStartMs = 0;
+  static uint32_t lastRoundDurMs = 0;
 
   esp_task_wdt_reset();
   if (boardVersion != localVersion && xSemaphoreTake(boardMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
@@ -203,6 +207,8 @@ void loop() {
   if (racing && millis() - raceStartMs >= raceTotalMs(race)) racing = false;
 
   if (bouncerFetch(bouncer, bouncerVersion) && bouncer) bouncerStartMs = millis();
+  if (lastRoundFetch(lastRound, lastRoundDurMs, lastRoundVersion) && lastRound) lastRoundStartMs = millis();
+  if (lastRound && millis() - lastRoundStartMs >= lastRoundDurMs) lastRound = false;
 
   // a goal interrupts the departures only, not the event
   matchFetch(match, matchVersion);
@@ -219,12 +225,13 @@ void loop() {
   uint32_t ms = millis();
   const Race* r = racing ? &race : nullptr;
   uint32_t goalMs = goal ? ms - goalStartMs : NO_GOAL;
-  // a scene tested from the event page shows even over the bouncer
+  // a scene tested from the event page shows even over the bouncer and the last round
   bool dark = testing ? displayRender(local, settings, test, karaoke, match, st, time(nullptr), ms, ms - testStartMs, r,
-                                      ms - raceStartMs, goalMs, nullptr, 0)
+                                      ms - raceStartMs, goalMs, nullptr, 0, nullptr, 0)
                       : displayRender(local, settings, event, karaoke, match, st, time(nullptr), ms, ms - eventStartMs, r,
                                       ms - raceStartMs, goalMs, bouncer ? &settings.bouncer : nullptr,
-                                      ms - bouncerStartMs);
+                                      ms - bouncerStartMs, lastRound ? &settings.lastRound : nullptr,
+                                      ms - lastRoundStartMs);
   // a fixed frame rate however long the frame took (off time: nothing to
   // draw); if one took longer than that, wait a tick anyway and go on from now
   static TickType_t lastWake = xTaskGetTickCount();

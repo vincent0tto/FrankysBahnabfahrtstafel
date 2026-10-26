@@ -57,14 +57,17 @@ static void updateBrightness(const Settings& s, const Event& ev, bool evOn, cons
 
 bool displayRender(const Board& b, const Settings& s, const Event& ev, const Karaoke& k, const Match& m,
                    const DisplayStatus& st, time_t now, uint32_t ms, uint32_t eventMs, const Race* race,
-                   uint32_t raceMs, uint32_t goalMs, const Promo* bouncer, uint32_t bouncerMs) {
+                   uint32_t raceMs, uint32_t goalMs, const Promo* bouncer, uint32_t bouncerMs,
+                   const Promo* lastRound, uint32_t lastRoundMs) {
   if (!matrix) return false;
   bool evOn = ev.on && !bouncer;
+  uint32_t bouncerFullMs = s.bouncerFullS * 1000UL;
+  bool bouncerFull = bouncer && bouncerMs < bouncerFullMs;
   // Off time: blank both buffers once and switch the LEDs off (also while
   // the nightly update installs). Never while the time is unknown, nor
-  // while the event is on, a race runs or a goal is shown.
+  // while the event is on, a race runs, a goal or the last round is shown.
   bool goal = goalMs != NO_GOAL;
-  bool off = !evOn && !race && !goal && st.timeValid && isOffTime(s, minuteOfDay(now));
+  bool off = !evOn && !race && !goal && !lastRound && st.timeValid && isOffTime(s, minuteOfDay(now));
   if (off) {
     if (!asleep) {
       Log.println("[display] off time, panel dark");
@@ -86,9 +89,11 @@ bool displayRender(const Board& b, const Settings& s, const Event& ev, const Kar
   matrix->clearScreen();
   if (race) drawRace(*matrix, u8, amber, *race, raceMs, s.fiestaText1, s.fiestaText2);
   else if (goal) drawGoal(*matrix, u8, m, goalMs);
+  else if (lastRound) renderCallout(*matrix, u8, amber, s, *lastRound, s.lastRoundWhite, s.lastRoundWhitePct, lastRoundMs);
+  else if (bouncerFull) renderCallout(*matrix, u8, amber, s, *bouncer, s.bouncerWhite, s.bouncerWhitePct, bouncerMs);
   else if (evOn && ev.karaoke) renderKaraoke(*matrix, u8, k, ms);
   else if (evOn) renderEvent(*matrix, u8, ev, eventMs);
-  else renderFrame(*matrix, u8, amber, b, s, st, now, ms, m, bouncer, bouncerMs);
+  else renderFrame(*matrix, u8, amber, b, s, st, now, ms, m, bouncer, bouncer ? bouncerMs - bouncerFullMs : 0);
   matrix->flipDMABuffer();
   return false;
 }

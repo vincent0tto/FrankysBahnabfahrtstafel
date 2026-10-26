@@ -218,9 +218,15 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 </div>
 <div class="show" id="bouncerCard" style="margin-top:8px">
 <h3>Rausschmeißer</h3>
-<div class="hint">Zum Feierabend: Dein Text läuft durch die 4. Zeile, statt Promos und Spielstand. Bei Event oder Karaoke zeigt die Tafel so lange wieder die Abfahrten. Bleibt bis zur Ruhezeit (dann geht auch das Event aus), bis zum Neustart oder bis „Aus“. Mit dem Kurzbefehl auf dem iPad läuft dazu das Lied.</div>
+<div class="hint">Zum Feierabend: Dein Text erst groß über die ganze Tafel, dann läuft er durch die 4. Zeile, statt Promos und Spielstand. Bei Event oder Karaoke zeigt die Tafel so lange wieder die Abfahrten. Bleibt bis zur Ruhezeit (dann geht auch das Event aus), bis zum Neustart oder bis „Aus“. Mit dem Kurzbefehl auf dem iPad läuft dazu das Lied.</div>
 <div class="row"><button class="primary" id="bouncerStart">▶ Anzeigen</button><button id="bouncerStop" hidden>Aus</button><span class="hint" id="bouncerText" style="margin:0"></span></div>
 <a class="more" href="#rausschmeisser">Text bearbeiten ›</a>
+</div>
+<div class="show" id="lastRoundCard" style="margin-top:8px">
+<h3>Letzte Runde</h3>
+<div class="hint">Dein Text groß über die ganze Tafel, auch über Event und Karaoke, für ein paar Sekunden; danach zeigt die Tafel wieder, was vorher lief. Mit dem Kurzbefehl auf dem iPad läuft dazu ein Lied.</div>
+<div class="row"><button class="primary" id="lastRoundStart">▶ Anzeigen</button><button id="lastRoundStop" hidden>Abbrechen</button><span class="hint" id="lastRoundText" style="margin:0"></span></div>
+<a class="more" href="#letzterunde">Text bearbeiten ›</a>
 </div>
 </section>
 </div>
@@ -273,8 +279,17 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 <div class="sub"><a href="#jetzt">‹ Jetzt</a><b>Rausschmeißer</b></div>
 <section>
 <h2>Text</h2>
-<div class="hint">Läuft zum Feierabend durch die 4. Zeile, egal was die Tafel gerade zeigt, bis zur Ruhezeit. Änderungen gelten nach „Änderungen speichern“.</div>
+<div class="hint">Zum Feierabend erst groß über die ganze Tafel, dann in der 4. Zeile, egal was die Tafel gerade zeigt, bis zur Ruhezeit. Änderungen gelten nach „Änderungen speichern“.</div>
 <div id="bouncer"></div>
+</section>
+</div>
+
+<div class="tab" id="t-letzterunde" hidden>
+<div class="sub"><a href="#jetzt">‹ Jetzt</a><b>Letzte Runde</b></div>
+<section>
+<h2>Text</h2>
+<div class="hint">Groß über die ganze Tafel, so lange wie eingestellt, danach ist er wieder weg. Änderungen gelten nach „Änderungen speichern“.</div>
+<div id="lastRound"></div>
 </section>
 </div>
 
@@ -625,11 +640,18 @@ function renderPromos(){
     box.append(card);
   });
   $('addPromo').disabled=S.promos.length>=MAX_PROMOS;
-  renderBouncer();
+  renderCallouts();
 }
-// one text with an icon, scrolling like the promos with "Nur Promos"
-function renderBouncer(){
-  const b=S.bouncer,pv=el('div',{style:'margin:6px 0'});
+// one text with an icon over the whole board ("Rausschmeißer": then
+// scrolling like the promos with "Nur Promos"); `k`: its keys in S
+const CALLOUTS=[
+  {box:'bouncer',text:'bouncer',white:'bouncerWhite',pct:'bouncerWhitePct',dur:'bouncerFullS',min:0,
+    durLabel:'Ganze Tafel',durHint:'Sekunden groß, dann in der 4. Zeile (0: gleich dort)'},
+  {box:'lastRound',text:'lastRound',white:'lastRoundWhite',pct:'lastRoundWhitePct',dur:'lastRoundS',min:5,
+    durLabel:'Dauer',durHint:'Sekunden'}];
+function renderCallouts(){for(const k of CALLOUTS)renderCalloutEditor(k)}
+function renderCalloutEditor(k){
+  const b=S[k.text],pv=el('div',{style:'margin:6px 0'});
   const upd=()=>{
     const ic=b.icon&&iconRows(b.icon)?iconCanvas(b.icon,2):'';
     pv.replaceChildren(el('div',{className:'led left'},el('span',{className:'tx'},ic,
@@ -643,15 +665,18 @@ function renderBouncer(){
     renderIcons();renderPromos();edit(ic);
   };
   const row=el('div',{className:'row'},
-    el('label',{},el('input',{type:'checkbox',checked:S.bouncerWhite,onchange:e=>{S.bouncerWhite=e.target.checked;renderBouncer()}}),'in Weiß statt Orange'));
-  if(S.bouncerWhite){
-    const val=el('span',{className:'val',textContent:S.bouncerWhitePct+' %'});
-    row.append(el('label',{},'Helligkeit',el('input',{type:'range',min:1,max:100,value:S.bouncerWhitePct,
-      oninput:e=>{S.bouncerWhitePct=+e.target.value;val.textContent=S.bouncerWhitePct+' %'}}),val));
+    el('label',{},el('input',{type:'checkbox',checked:S[k.white],onchange:e=>{S[k.white]=e.target.checked;renderCalloutEditor(k)}}),'in Weiß statt Orange'));
+  if(S[k.white]){
+    const val=el('span',{className:'val',textContent:S[k.pct]+' %'});
+    row.append(el('label',{},'Helligkeit',el('input',{type:'range',min:1,max:100,value:S[k.pct],
+      oninput:e=>{S[k.pct]=+e.target.value;val.textContent=S[k.pct]+' %'}}),val));
   }
-  $('bouncer').replaceChildren(pv,
+  $(k.box).replaceChildren(pv,
     field('Text',el('input',{type:'text',value:b.text,maxLength:60,placeholder:'Text',oninput:e=>{b.text=e.target.value;upd()}})),
-    field('Icon',sel),row);
+    field('Icon',sel),
+    field(k.durLabel,el('label',{},el('input',{type:'number',min:k.min,max:600,value:S[k.dur],
+      oninput:e=>{S[k.dur]=Math.min(600,Math.max(k.min,Math.round(+e.target.value||0)))}}),' '+k.durHint)),
+    row);
 }
 
 function renderIcons(){
@@ -667,9 +692,10 @@ function renderIcons(){
 
 function delIcon(i){
   const tag='[c'+i.id+']';
-  if((S.promos.some(p=>p.icon===tag)||S.bouncer.icon===tag)&&!confirm('Das Icon wird noch benutzt. Trotzdem löschen?'))return;
+  const users=[...S.promos,S.bouncer,S.lastRound];
+  if(users.some(p=>p.icon===tag)&&!confirm('Das Icon wird noch benutzt. Trotzdem löschen?'))return;
   S.icons=S.icons.filter(x=>x!==i);
-  for(const p of [...S.promos,S.bouncer])if(p.icon===tag)p.icon='';
+  for(const p of users)if(p.icon===tag)p.icon='';
   if(editing===i)$('editBox').hidden=true;
   renderIcons();renderPromos();
 }
@@ -731,7 +757,8 @@ function collect(){
     disruptOn:S.disruptOn,disruptPasses:S.disruptPasses,animChance:S.animChance,animChanceBus:S.animChanceBus,
     matchOn:$('matchOn').checked,goalAnim:$('goalAnim').checked,
     fiestaChance:+$('fiestaChance').value,fiestaText1:$('fiestaText1').value,fiestaText2:$('fiestaText2').value,
-    bouncer:{icon:S.bouncer.icon||'',text:S.bouncer.text},bouncerWhite:S.bouncerWhite,bouncerWhitePct:S.bouncerWhitePct,
+    bouncer:{icon:S.bouncer.icon||'',text:S.bouncer.text},bouncerWhite:S.bouncerWhite,bouncerWhitePct:S.bouncerWhitePct,bouncerFullS:S.bouncerFullS,
+    lastRound:{icon:S.lastRound.icon||'',text:S.lastRound.text},lastRoundWhite:S.lastRoundWhite,lastRoundWhitePct:S.lastRoundWhitePct,lastRoundS:S.lastRoundS,
     promos,icons:S.icons};
 }
 
@@ -745,7 +772,8 @@ function updateSave(){
 }
 // which tab holds which settings, for the dot at a tab with unsaved changes
 // (the event's and the PAGE_KEYS are on "Jetzt", their pages are below it; the card's link gets the dot too)
-const PAGE_KEYS={rausschmeisser:['bouncer','bouncerWhite','bouncerWhitePct'],mexikaner:['fiestaChance','fiestaText1','fiestaText2']};
+const PAGE_KEYS={rausschmeisser:['bouncer','bouncerWhite','bouncerWhitePct','bouncerFullS'],
+  letzterunde:['lastRound','lastRoundWhite','lastRoundWhitePct','lastRoundS'],mexikaner:['fiestaChance','fiestaText1','fiestaText2']};
 const TAB_KEYS={tafel:['promos','icons','promoShowS','promoIntervalS','promoFullRow','promoWhite','promoWhitePct','disruptOn','disruptPasses','matchOn','goalAnim','animChance','animChanceBus'],
   jetzt:Object.values(PAGE_KEYS).flat(),zeitplan:['off','brightnessPct','dim']};
 function markTabs(){
@@ -825,8 +853,8 @@ async function status(){
     const age=s.dataAgeS<0?'noch keine Daten':'Daten von vor '+(s.dataAgeS<120?s.dataAgeS+' s':Math.round(s.dataAgeS/60)+' min');
     const up=s.uptimeS<7200?Math.round(s.uptimeS/60)+' min':Math.round(s.uptimeS/3600)+' h';
     $('ssidNow').textContent=s.ssid;
-    $('status').textContent=`Firmware ${s.build} · läuft seit ${up} · ${age} · ${s.race?'Bahnrennen':s.bouncer?'Rausschmeißer':s.karaoke?'Karaoke läuft':s.event?'Event läuft':s.off?'Ruhezeit':'Panel an'} · WLAN ${s.rssi} dBm`;
-    shown=s.karaoke?'karaoke':s.event?'event':'dep';raceOn=!!s.race;bouncerOn=!!s.bouncer;renderModes();
+    $('status').textContent=`Firmware ${s.build} · läuft seit ${up} · ${age} · ${s.race?'Bahnrennen':s.lastRound?'Letzte Runde':s.bouncer?'Rausschmeißer':s.karaoke?'Karaoke läuft':s.event?'Event läuft':s.off?'Ruhezeit':'Panel an'} · WLAN ${s.rssi} dBm`;
+    shown=s.karaoke?'karaoke':s.event?'event':'dep';raceOn=!!s.race;bouncerOn=!!s.bouncer;lastRoundOn=!!s.lastRound;renderModes();
     renderMatch(s.match);
     if(S)renderTimeline();
     sync(s.rev);
@@ -852,11 +880,12 @@ $('goalTest').onclick=()=>act(()=>post('/api/goal/test'));
 // What the board shows: the departures, the event or the karaoke list
 // ('dep', 'event', 'karaoke'), switched at once (no saving). A race only
 // interrupts that for a while, then it shows again.
-// The bouncer interrupts the event and karaoke until it is switched off.
-let shown='dep',raceOn=false,bouncerOn=false,raceTimer=0,switching=false;
+// The bouncer interrupts the event and karaoke until it is switched off,
+// the last round all three for a while.
+let shown='dep',raceOn=false,bouncerOn=false,lastRoundOn=false,raceTimer=0,switching=false;
 function renderModes(){
   const set=(id,on)=>{
-    const paused=on&&(raceOn||bouncerOn&&id!=='mDep');
+    const paused=on&&(raceOn||lastRoundOn||bouncerOn&&id!=='mDep');
     const m=$(id);m.classList.toggle('on',on);m.classList.toggle('paused',paused);
     m.querySelector('.pick').setAttribute('aria-checked',on);
     m.querySelector('em').textContent=on?paused?'unterbrochen':'läuft':'';
@@ -870,9 +899,13 @@ function renderModes(){
   $('bouncerCard').classList.toggle('on',bouncerOn);
   $('bouncerStart').hidden=bouncerOn;$('bouncerStop').hidden=!bouncerOn;
   $('bouncerText').textContent=!bouncerOn?'':S&&S.off.on?'läuft bis zur Ruhezeit ('+S.off.from+' Uhr)':'läuft (keine Ruhezeit eingestellt)';
+  $('lastRoundCard').classList.toggle('on',lastRoundOn);
+  $('lastRoundStart').hidden=lastRoundOn;$('lastRoundStop').hidden=!lastRoundOn;
+  $('lastRoundText').textContent=lastRoundOn?'läuft …':'';
   EV.setShown(shown);KA.setShown(shown);
   clearTimeout(raceTimer);
-  if(raceOn)raceTimer=setTimeout(status,3000);  // the race ends by itself, so ask more often meanwhile
+  // the race and the last round end by themselves, so ask more often meanwhile
+  if(raceOn||lastRoundOn)raceTimer=setTimeout(status,3000);
 }
 async function post(path,body){
   const r=await fetch(path,{method:'POST',...body&&{headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}});
@@ -901,7 +934,9 @@ $('mKaraoke').querySelector('.pick').onclick=()=>pick('karaoke');
 $('raceStart').onclick=()=>act(async()=>{await post('/api/race');raceOn=true});
 $('raceFiesta').onclick=()=>act(async()=>{await post('/api/race?fiesta=1');raceOn=true});
 $('raceStop').onclick=()=>act(async()=>{await post('/api/race/stop');raceOn=false});
-$('bouncerStart').onclick=()=>act(async()=>{await post('/api/rausschmeisser');bouncerOn=true});
+$('bouncerStart').onclick=()=>act(async()=>{await post('/api/rausschmeisser');bouncerOn=true;lastRoundOn=false});
+$('lastRoundStart').onclick=()=>act(async()=>{await post('/api/letzterunde');lastRoundOn=true});
+$('lastRoundStop').onclick=()=>act(async()=>{await post('/api/letzterunde/stop');lastRoundOn=false});
 $('bouncerStop').onclick=()=>act(async()=>{await post('/api/rausschmeisser/stop');bouncerOn=false});
 // waits for the board to come back after a restart, then reloads the page
 async function afterRestart(msg){
@@ -1831,7 +1866,7 @@ return {
 
 // ---- tabs: the one in the address (#zeitplan), without one "Jetzt" ----
 // pages without a tab of their own and the tab they belong to
-const PARENT={event:'jetzt',karaoke:'jetzt',rausschmeisser:'jetzt',mexikaner:'jetzt'};
+const PARENT={event:'jetzt',karaoke:'jetzt',rausschmeisser:'jetzt',letzterunde:'jetzt',mexikaner:'jetzt'};
 let tab='';
 function showTab(){
   const want=location.hash.slice(1),t=want&&$('t-'+want)?want:'jetzt';

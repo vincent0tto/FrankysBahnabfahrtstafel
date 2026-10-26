@@ -74,6 +74,10 @@ void settingsDefaults(Settings& s) {
   snprintf(s.fiestaText1, sizeof(s.fiestaText1), "%s", "¡FIESTA!");
   snprintf(s.fiestaText2, sizeof(s.fiestaText2), "%s", "Mexikaner-Shots!");
   snprintf(s.bouncer.text, sizeof(s.bouncer.text), "%s", "Feierabend! Danke für euren Besuch, bis bald!");
+  s.bouncerFullS = 20;
+  snprintf(s.lastRound.icon, sizeof(s.lastRound.icon), "%s", "[bi]");
+  snprintf(s.lastRound.text, sizeof(s.lastRound.text), "%s", "Letzte Runde!");
+  s.lastRoundS = 30;
 }
 
 bool inWindow(const TimeWindow& w, int m) {
@@ -256,6 +260,13 @@ void settingsToJson(const Settings& s, JsonObject out, bool forWeb) {
   bouncer["text"] = (const char*)s.bouncer.text;
   out["bouncerWhite"] = s.bouncerWhite;
   out["bouncerWhitePct"] = s.bouncerWhitePct;
+  out["bouncerFullS"] = s.bouncerFullS;
+  JsonObject lastRound = out["lastRound"].to<JsonObject>();
+  lastRound["icon"] = (const char*)s.lastRound.icon;
+  lastRound["text"] = (const char*)s.lastRound.text;
+  out["lastRoundS"] = s.lastRoundS;
+  out["lastRoundWhite"] = s.lastRoundWhite;
+  out["lastRoundWhitePct"] = s.lastRoundWhitePct;
 
   JsonArray promos = out["promos"].to<JsonArray>();
   for (int i = 0; i < s.nPromos; i++) {
@@ -328,6 +339,11 @@ bool settingsFromJson(JsonVariantConst in, Settings& s) {
   if (in["bouncer"].is<JsonObjectConst>()) promoFieldsFromJson(in["bouncer"], s.bouncer);
   s.bouncerWhite = in["bouncerWhite"] | s.bouncerWhite;
   s.bouncerWhitePct = (uint8_t)clampU(in["bouncerWhitePct"], 1, 100, s.bouncerWhitePct);
+  s.bouncerFullS = (uint16_t)clampU(in["bouncerFullS"], 0, 600, s.bouncerFullS);
+  if (in["lastRound"].is<JsonObjectConst>()) promoFieldsFromJson(in["lastRound"], s.lastRound);
+  s.lastRoundS = (uint16_t)clampU(in["lastRoundS"], 5, 600, s.lastRoundS);
+  s.lastRoundWhite = in["lastRoundWhite"] | s.lastRoundWhite;
+  s.lastRoundWhitePct = (uint8_t)clampU(in["lastRoundWhitePct"], 1, 100, s.lastRoundWhitePct);
 
   if (in["promos"].is<JsonArrayConst>()) {
     for (JsonVariantConst o : in["promos"].as<JsonArrayConst>()) {

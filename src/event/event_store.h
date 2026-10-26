@@ -67,8 +67,9 @@ bool raceRunning();
 // start if `active`, worked out with `fiestaChance`.
 bool raceFetch(uint32_t& seed, uint8_t& fiestaChance, bool& active, uint32_t& version);
 
-// Network task: starts the "Rausschmeißer" (Settings::bouncer in the 4th row,
-// with the departures even while the event is on) until bouncerStop(); the
+// Network task: starts the "Rausschmeißer" (Settings::bouncer over the whole
+// board, then in the 4th row, with the departures even while the event is
+// on) until bouncerStop(); the
 // network task stops it when the off time begins. Not stored: a restart ends it.
 void bouncerStart();
 void bouncerStop();
@@ -78,3 +79,15 @@ bool bouncerRunning();
 
 // Render loop: like eventTestFetch(), whether it is on (`active`).
 bool bouncerFetch(bool& active, uint32_t& version);
+
+// Network task: shows the "Letzte Runde" (Settings::lastRound over the whole
+// board, over the event too) for `durMs`, then it ends by itself; a new
+// start begins again. Not stored.
+void lastRoundStart(uint32_t durMs);
+void lastRoundStop();
+
+// Network task: whether it is on the board.
+bool lastRoundRunning();
+
+// Render loop: like eventTestFetch(), whether it started (`active`) and how long it lasts.
+bool lastRoundFetch(bool& active, uint32_t& durMs, uint32_t& version);

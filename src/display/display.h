@@ -23,8 +23,12 @@ bool displayBegin();
 // goes over both, `raceMs` after it started, also in the off time; next
 // comes the goal animation, `goalMs` after the goal (NO_GOAL: none). `m`:
 // the St.-Pauli-Ticker's match for the 4th row (id 0: none). `bouncer`
-// (nullptr: none): the departures with it in the 4th row, `bouncerMs` after
-// it started, also instead of the event (then with its brightness and off time).
+// (nullptr: none): `bouncerMs` after it started, first over the whole board
+// for Settings::bouncerFullS, then the departures with it in the 4th row,
+// also instead of the event (then with its brightness and off time).
+// `lastRound` (nullptr: none): over the whole board, `lastRoundMs` after it
+// started, over everything but a race and a goal; also in the off time.
 bool displayRender(const Board& b, const Settings& s, const Event& ev, const Karaoke& k, const Match& m,
                    const DisplayStatus& st, time_t now, uint32_t ms, uint32_t eventMs, const Race* race,
-                   uint32_t raceMs, uint32_t goalMs, const Promo* bouncer, uint32_t bouncerMs);
+                   uint32_t raceMs, uint32_t goalMs, const Promo* bouncer, uint32_t bouncerMs,
+                   const Promo* lastRound, uint32_t lastRoundMs);

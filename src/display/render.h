@@ -35,3 +35,10 @@ void setPromoIndex(int idx);
 void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const Board& b,
                  const Settings& s, const DisplayStatus& st, time_t now, uint32_t ms, const Match& m = Match(),
                  const Promo* bouncer = nullptr, uint32_t bouncerMs = 0);
+
+// Fills the board with `p` (icon and text, as large as fits, on up to 4
+// lines; too long even then: scrolling through the middle, `t` ms after it
+// came up), in `color` or, if `white`, in white this bright. For the
+// "Rausschmeißer" and the "Letzte Runde" (Settings::bouncer, ::lastRound).
+void renderCallout(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const Settings& s, const Promo& p,
+                   bool white, uint8_t whitePct, uint32_t t);
