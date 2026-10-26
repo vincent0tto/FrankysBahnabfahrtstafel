@@ -7,9 +7,10 @@ name: firmware
 on:
   push:
     branches: [main]
-    paths-ignore:  # pushes that only change docs don't make a new release
+    paths-ignore:  # pushes that only change docs or Claude skills don't make a new release
       - '**.md'
       - 'docs/**'
+      - '.claude/**'
   workflow_dispatch:
 
 concurrency:
