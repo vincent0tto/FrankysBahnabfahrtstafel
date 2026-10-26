@@ -408,6 +408,8 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 </div>
 </main>
 <footer>
+<div class="stale" id="newFw" hidden>Die Tafel hat eine neue Firmware, die Seite passt evtl. nicht mehr dazu.
+<button id="newFwReload">Seite neu laden</button></div>
 <div class="bar" id="setBar"><div class="stale" id="stale" hidden>Die Einstellungen wurden inzwischen auf einem anderen Gerät geändert.
 <button id="reload">Neu laden</button><button id="force" title="die Änderungen vom anderen Gerät gehen verloren">Trotzdem meine speichern</button></div>
 <button id="save" disabled>Alles gespeichert</button><span class="msg" id="msg"></span></div>
@@ -427,6 +429,7 @@ const MODES=[
   ['scroll','Nur Promos','Die 4. Zeile gehört den Promos: Sie laufen der Reihe nach als Laufschrift durch. Passt gerade keine (Uhrzeit, Wochentag), erscheint dort wieder die 4. Abfahrt.'],
   ['off','Keine Promos','Die 4. Zeile zeigt immer die Abfahrt.']];
 let S=null,editing=null,leaving=false;
+let pageBuild=null;  // the firmware this page came with (first /api/status)
 // base: collect() as loaded, to tell unsaved changes; srv: the loaded
 // settings as sent by the board, to tell real changes from a new rev alone
 let base='',srv='',staleRev='';
@@ -801,6 +804,7 @@ async function save(force){
   }catch(e){$('msg').textContent='Fehler: '+e.message;renderDim()}
 }
 $('save').onclick=()=>save();
+$('newFwReload').onclick=()=>location.reload();  // still asks if there are changes
 $('force').onclick=()=>save(true);
 $('reload').onclick=()=>{
   if(dirty()&&!confirm('Deine nicht gespeicherten Änderungen gehen verloren.'))return;
@@ -811,6 +815,13 @@ $('reload').onclick=()=>{
 async function status(){
   try{
     const s=await (await fetch('/api/status',{cache:'no-store'})).json();
+    // the board installed new firmware meanwhile (OTA): its page may not fit
+    // this one any more, so reload unless that loses changes made here
+    if(pageBuild===null)pageBuild=s.build;
+    else if(s.build!==pageBuild){
+      if(!dirty()&&!EV.dirty()){leaving=true;location.reload();return}
+      $('newFw').hidden=false;
+    }
     const age=s.dataAgeS<0?'noch keine Daten':'Daten von vor '+(s.dataAgeS<120?s.dataAgeS+' s':Math.round(s.dataAgeS/60)+' min');
     const up=s.uptimeS<7200?Math.round(s.uptimeS/60)+' min':Math.round(s.uptimeS/3600)+' h';
     $('ssidNow').textContent=s.ssid;
