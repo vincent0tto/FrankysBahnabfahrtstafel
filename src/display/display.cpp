@@ -72,7 +72,7 @@ bool displayRender(const Board& b, const Settings& s, const Event& ev, const Kar
   // the nightly update installs). Never while the time is unknown, nor
   // while the event is on, a race runs, a goal or the last round is shown.
   bool goal = goalMs != NO_GOAL;
-  bool off = !evOn && !race && !goal && !lastRound && st.timeValid && isOffTime(s, minuteOfDay(now));
+  bool off = !evOn && !race && !goal && !lastRound && st.timeValid && isOffTime(s, minuteOfDay(now), localDay(now));
   if (off) {
     if (!asleep) {
       Log.println("[display] off time, panel dark");

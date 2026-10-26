@@ -36,9 +36,9 @@ void test_in_window() {
 void test_defaults() {
   settingsDefaults(s);
   TEST_ASSERT_EQUAL(BRIGHTNESS_DAY, s.brightness);
-  TEST_ASSERT_TRUE(s.offEnabled);
-  TEST_ASSERT_TRUE(isOffTime(s, 3 * 60));
-  TEST_ASSERT_FALSE(isOffTime(s, 6 * 60));
+  TEST_ASSERT_TRUE(s.off[0].on && s.off[6].on);
+  TEST_ASSERT_TRUE(isOffTime(s, 3 * 60, 20742));
+  TEST_ASSERT_FALSE(isOffTime(s, 6 * 60, 20742));
   TEST_ASSERT_EQUAL(BRIGHTNESS_NIGHT, brightnessAt(s, 23 * 60));
   TEST_ASSERT_EQUAL(BRIGHTNESS_DAY, brightnessAt(s, 12 * 60));
   TEST_ASSERT_TRUE(s.disruptOn);
@@ -88,8 +88,9 @@ void test_promo_from_text() {
 
 void test_json_roundtrip() {
   settingsDefaults(s);
-  s.offEnabled = false;
-  s.off = win(60, 300);
+  s.off[0].on = false;
+  s.off[0].win = win(60, 300);
+  s.off[5].win = win(23 * 60, 10 * 60);
   s.brightness = 99;
   s.dim[1].win = win(18 * 60, 19 * 60);
   s.dim[1].value = 50;
@@ -133,9 +134,12 @@ void test_json_roundtrip() {
   settingsToJson(s, doc.to<JsonObject>(), false);
   TEST_ASSERT_TRUE(settingsFromJson(doc.as<JsonVariantConst>(), t));
 
-  TEST_ASSERT_FALSE(t.offEnabled);
-  TEST_ASSERT_EQUAL(60, t.off.from);
-  TEST_ASSERT_EQUAL(300, t.off.to);
+  TEST_ASSERT_FALSE(t.off[0].on);
+  TEST_ASSERT_EQUAL(60, t.off[0].win.from);
+  TEST_ASSERT_EQUAL(300, t.off[0].win.to);
+  TEST_ASSERT_TRUE(t.off[5].on);
+  TEST_ASSERT_EQUAL(23 * 60, t.off[5].win.from);
+  TEST_ASSERT_EQUAL(10 * 60, t.off[5].win.to);
   TEST_ASSERT_EQUAL(99, t.brightness);
   TEST_ASSERT_EQUAL(2, t.nDim);
   TEST_ASSERT_EQUAL(50, t.dim[1].value);
@@ -228,7 +232,7 @@ void test_json_clamps_and_rejects() {
   TEST_ASSERT_EQUAL(100, t.promoWhitePct);
   TEST_ASSERT_FALSE(t.matchOn);         // missing: default
   TEST_ASSERT_TRUE(t.goalAnim);
-  TEST_ASSERT_EQUAL(s.off.from, t.off.from);  // malformed times keep the default
+  TEST_ASSERT_EQUAL(s.off[3].win.from, t.off[3].win.from);  // malformed times keep the default
   TEST_ASSERT_EQUAL(1, t.nDim);
   TEST_ASSERT_EQUAL(1, t.dim[0].value);
   TEST_ASSERT_EQUAL(2, t.nPromos);  // empty one dropped
@@ -317,6 +321,43 @@ void test_promo_days() {
 }
 
 // build 10 stored 0..255 under other keys: back to the defaults
+void test_off_nights() {
+  const int32_t FRI = 20742;  // 2026-10-16
+  settingsDefaults(s);
+  for (OffNight& n : s.off) n.on = false;
+  s.off[4] = {true, win(3 * 60, 10 * 60)};    // Friday night: Saturday 03:00 - 10:00
+  s.off[5] = {true, win(23 * 60, 12 * 60)};   // Saturday night: from 23:00 to Sunday noon
+  s.off[6] = {true, win(14 * 60, 15 * 60)};   // after noon: Sunday itself
+  TEST_ASSERT_FALSE(isOffTime(s, 3 * 60, FRI));
+  TEST_ASSERT_TRUE(isOffTime(s, 3 * 60, FRI + 1));
+  TEST_ASSERT_TRUE(isOffTime(s, 9 * 60 + 59, FRI + 1));
+  TEST_ASSERT_FALSE(isOffTime(s, 10 * 60, FRI + 1));
+  TEST_ASSERT_FALSE(isOffTime(s, 22 * 60, FRI + 1));
+  TEST_ASSERT_TRUE(isOffTime(s, 23 * 60, FRI + 1));
+  TEST_ASSERT_TRUE(isOffTime(s, 11 * 60, FRI + 2));
+  TEST_ASSERT_FALSE(isOffTime(s, 12 * 60, FRI + 2));
+  TEST_ASSERT_TRUE(isOffTime(s, 14 * 60, FRI + 2));
+  TEST_ASSERT_FALSE(isOffTime(s, 3 * 60, FRI + 3));  // Sunday night is off
+  // a long one: Monday 20:00 to Tuesday 19:00
+  s.off[0] = {true, win(20 * 60, 19 * 60)};
+  TEST_ASSERT_TRUE(isOffTime(s, 18 * 60, FRI + 4));
+  TEST_ASSERT_FALSE(isOffTime(s, 19 * 60, FRI + 4));
+  // until midnight
+  s.off[1] = {true, win(22 * 60, 1440)};
+  TEST_ASSERT_TRUE(isOffTime(s, 23 * 60 + 59, FRI + 4));
+  TEST_ASSERT_FALSE(isOffTime(s, 0, FRI + 5));
+
+  // stored by older firmware: one window for every night
+  JsonDocument doc;
+  deserializeJson(doc, "{\"off\":{\"on\":true,\"from\":\"01:00\",\"to\":\"07:00\"}}");
+  TEST_ASSERT_TRUE(settingsFromJson(doc.as<JsonVariantConst>(), t));
+  for (const OffNight& n : t.off) {
+    TEST_ASSERT_TRUE(n.on);
+    TEST_ASSERT_EQUAL(60, n.win.from);
+    TEST_ASSERT_EQUAL(7 * 60, n.win.to);
+  }
+}
+
 void test_old_brightness_dropped() {
   JsonDocument doc;
   deserializeJson(doc, "{\"brightness\":200,\"dim\":[{\"from\":\"23:00\",\"to\":\"05:00\",\"value\":20}]}");
@@ -357,6 +398,7 @@ int main() {
   RUN_TEST(test_json_clamps_and_rejects);
   RUN_TEST(test_old_presets);
   RUN_TEST(test_promo_days);
+  RUN_TEST(test_off_nights);
   RUN_TEST(test_old_brightness_dropped);
   RUN_TEST(test_old_white_callouts);
   RUN_TEST(test_custom_icon_tag);

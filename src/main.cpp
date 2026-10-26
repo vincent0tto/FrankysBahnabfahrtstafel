@@ -68,7 +68,7 @@ static void netTask(void*) {
     // the board goes dark (the event first, or it would light up in between)
     time_t now = time(nullptr);
     const Settings& s = settingsNet();
-    if (bouncerRunning() && timeValid() && isOffTime(s, minuteOfDay(now))) {
+    if (bouncerRunning() && timeValid() && isOffTime(s, minuteOfDay(now), localDay(now))) {
       if (eventNet().on) {
         Event& e = eventScratch();
         e = eventNet();
@@ -93,8 +93,9 @@ static void netTask(void*) {
 
     // Off time: no API calls; WAKE_FETCH_LEAD_S before its end they start
     // again so the panel comes on with fresh data
-    bool sleeping = timeValid() && isOffTime(s, minuteOfDay(now)) &&
-                    isOffTime(s, minuteOfDay(now + WAKE_FETCH_LEAD_S));
+    time_t wake = now + WAKE_FETCH_LEAD_S;
+    bool sleeping = timeValid() && isOffTime(s, minuteOfDay(now), localDay(now)) &&
+                    isOffTime(s, minuteOfDay(wake), localDay(wake));
 
     if (online && timeValid() && !sleeping && departures && (int32_t)(millis() - nextFetchMs) >= 0) {
       FetchResult r = fetchBoard(fresh);

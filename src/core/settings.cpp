@@ -53,12 +53,14 @@ void promoFromText(const char* text, Promo& p) {
 
 void settingsDefaults(Settings& s) {
   s = Settings();
+  for (OffNight& n : s.off) {
 #if OFF_START_HOUR >= 0
-  s.offEnabled = true;
-  s.off = hours(OFF_START_HOUR, OFF_END_HOUR);
+    n.on = true;
+    n.win = hours(OFF_START_HOUR, OFF_END_HOUR);
 #else
-  s.off = hours(2, 6);  // preset for the web page
+    n.win = hours(2, 6);  // preset for the web page
 #endif
+  }
   s.brightness = BRIGHTNESS_DAY;
 #if NIGHT_START_HOUR >= 0
   s.dim[0].win = hours(NIGHT_START_HOUR, NIGHT_END_HOUR);
@@ -137,7 +139,19 @@ bool promoOpen(const Promo& p, int m, int32_t day) {
   return p.days & (1 << weekday(start));
 }
 
-bool isOffTime(const Settings& s, int m) { return s.offEnabled && inWindow(s.off, m); }
+bool isOffTime(const Settings& s, int m, int32_t day) {
+  // a night starts at most 2159 minutes after its day's midnight (11:59 the
+  // morning after) and lasts less than 1440, so it began on one of the last three days
+  for (int back = 0; back < 3; back++) {
+    const OffNight& n = s.off[weekday(day - back)];
+    if (!n.on || n.win.from % 1440 == n.win.to % 1440) continue;
+    int start = n.win.from < 12 * 60 ? n.win.from + 1440 : n.win.from;
+    int len = (n.win.to - n.win.from + 1440) % 1440;
+    int at = back * 1440 + m;
+    if (at >= start && at < start + len) return true;
+  }
+  return false;
+}
 
 uint8_t brightnessAt(const Settings& s, int m, int32_t day) {
   for (int i = 0; i < s.nDim; i++) {
@@ -251,9 +265,12 @@ static void promoFieldsFromJson(JsonVariantConst o, Promo& p) {
 }
 
 void settingsToJson(const Settings& s, JsonObject out, bool forWeb) {
-  JsonObject off = out["off"].to<JsonObject>();
-  off["on"] = s.offEnabled;
-  windowToJson(s.off, off);
+  JsonArray off = out["off"].to<JsonArray>();
+  for (const OffNight& n : s.off) {
+    JsonObject o = off.add<JsonObject>();
+    o["on"] = n.on;
+    windowToJson(n.win, o);
+  }
   out["brightnessPct"] = s.brightness;
   JsonArray dim = out["dim"].to<JsonArray>();
   for (int i = 0; i < s.nDim; i++) {
@@ -330,10 +347,13 @@ bool settingsFromJson(JsonVariantConst in, Settings& s) {
   settingsDefaults(s);
   if (!in.is<JsonObjectConst>()) return false;
 
+  // one per night; older firmware stored a single object for all of them
   JsonVariantConst off = in["off"];
-  if (off.is<JsonObjectConst>()) {
-    s.offEnabled = off["on"] | s.offEnabled;
-    windowFromJson(off, s.off);
+  for (int i = 0; i < 7; i++) {
+    JsonVariantConst o = off.is<JsonObjectConst>() ? off : off[i];
+    if (!o.is<JsonObjectConst>()) continue;
+    s.off[i].on = o["on"] | s.off[i].on;
+    windowFromJson(o, s.off[i].win);
   }
   // percent; build 10 stored 0..255 under "brightness"/"value", those are dropped
   s.brightness = (uint8_t)clampU(in["brightnessPct"], 1, 100, s.brightness);

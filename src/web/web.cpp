@@ -300,7 +300,8 @@ static void handleRaceStop() {
 // in the off time (409) or without a text or icon to show.
 static void handleBouncer() {
   const Settings& s = settingsNet();
-  if (timeValid() && isOffTime(s, minuteOfDay(time(nullptr)))) {
+  time_t now = time(nullptr);
+  if (timeValid() && isOffTime(s, minuteOfDay(now), localDay(now))) {
     server.send(409, "text/plain", "Ruhezeit, die Tafel ist aus");
     return;
   }
@@ -323,7 +324,8 @@ static void handleBouncerStop() {
 // Like the bouncer, for its own shortcut and the page.
 static void handleLastRound() {
   const Settings& s = settingsNet();
-  if (timeValid() && isOffTime(s, minuteOfDay(time(nullptr)))) {
+  time_t now = time(nullptr);
+  if (timeValid() && isOffTime(s, minuteOfDay(now), localDay(now))) {
     server.send(409, "text/plain", "Ruhezeit, die Tafel ist aus");
     return;
   }
@@ -491,7 +493,7 @@ static void handleStatus() {
   doc["bouncer"] = bouncerRunning();
   doc["lastRound"] = lastRoundRunning();
   if (settingsNet().matchOn) matchToJson(now, doc["match"].to<JsonObject>());
-  doc["off"] = !eventNet().on && timeValid() && isOffTime(settingsNet(), minuteOfDay(now));
+  doc["off"] = !eventNet().on && timeValid() && isOffTime(settingsNet(), minuteOfDay(now), localDay(now));
   doc["rssi"] = WiFi.RSSI();
   doc["ssid"] = WiFi.SSID();
   doc["heap"] = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);

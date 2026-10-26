@@ -41,9 +41,15 @@ struct DimWindow {
   int32_t skipDay = 0;  // localDay() on which the skipped occurrence starts, 0 = none
 };
 
+// Off time of one night: panel dark and no API calls. A time before noon is
+// on the morning after (02:00 of the Saturday night is Sunday 02:00).
+struct OffNight {
+  bool on = false;
+  TimeWindow win;
+};
+
 struct Settings {
-  bool offEnabled = false;  // panel dark and no API calls within `off`
-  TimeWindow off;
+  OffNight off[7];         // [0] = Monday to Tuesday .. [6] = Sunday to Monday
   uint8_t brightness = 0;  // percent (1..100) of BRIGHTNESS_MAX outside the dim windows
   DimWindow dim[MAX_DIM_WINDOWS];
   uint8_t nDim = 0;
@@ -97,7 +103,8 @@ int weekday(int32_t day);
 // time window over midnight counts for the weekday it starts on.
 bool promoOpen(const Promo& p, int minuteOfDay, int32_t day);
 
-bool isOffTime(const Settings& s, int minuteOfDay);
+// whether `minuteOfDay` of `day` (localDay()) lies in one night's off time
+bool isOffTime(const Settings& s, int minuteOfDay, int32_t day);
 // percent; dim windows skipped for the occurrence that started on `day`
 // don't count (day 0: ignore skips)
 uint8_t brightnessAt(const Settings& s, int minuteOfDay, int32_t day = 0);

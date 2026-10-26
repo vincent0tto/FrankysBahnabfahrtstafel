@@ -108,7 +108,16 @@ canvas.icon{background:var(--panel);border-radius:4px;image-rendering:pixelated;
 .tlx{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-top:2px}
 .grp{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .lbl{width:60px}
-.sub{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%;padding-left:26px}
+.night{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
+.night:first-child{border-top:0}
+.night label{width:86px}
+.night input[type=checkbox]{flex:none}
+.night .grp{flex-wrap:wrap}
+.night.today label{font-weight:600}
+.badge{font-size:11px;font-weight:600;color:#fff;background:var(--accent);border-radius:4px;padding:1px 5px;margin-left:8px;white-space:nowrap}
+.night .muted{color:var(--muted);font-size:13px}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.paused .pnote{color:var(--muted);font-size:13px;width:100%}
 /* Event */
 #t-event .row{padding:0;border-top:0}
 #evState{background:var(--card);border:1px solid var(--line);padding:8px 12px;margin-bottom:14px}
@@ -172,7 +181,7 @@ canvas.board{display:block;width:100%;aspect-ratio:3/1;background:var(--panel);b
 /* Technik */
 #log{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;margin:0 0 8px;max-height:60vh;overflow:auto;font:12px/1.35 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-all}
 /* narrow: times and ⏸ ✕ on top, the slider below at full width */
-@media (max-width:560px){#dim .row>button:first-of-type{margin-left:auto}#dim .row>input[type=range],#dim .val{order:1}#dim .sub{order:2}.pbody{padding-left:0}.flabel{width:100%}.tabs a{padding:8px 6px}}
+@media (max-width:560px){#dim .row>button:first-of-type{margin-left:auto}#dim .row>input[type=range],#dim .val{order:1}#dim .pnote{order:2}.badge{margin-left:0}.night label{width:74px}.pbody{padding-left:0}.flabel{width:100%}.tabs a{padding:8px 6px}}
 /* the save bar of the open tab: the settings, or on "Event" the event */
 footer{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 16px}
 .bar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:center}
@@ -306,19 +315,23 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 
 <div class="tab" id="t-zeitplan" hidden>
 <section>
-<h2>Zeitplan</h2>
+<h2 id="tlHead">Heute</h2>
 <div class="tl" id="tl"></div>
 <div class="tlx"><span>0</span><span>6</span><span>12</span><span>18</span><span>24 Uhr</span></div>
-<div class="hint">So hell ist die Tafel über den Tag, der Strich ist jetzt.</div>
-<h3>Ruhezeit</h3>
-<div class="row"><label><input type="checkbox" id="offOn"> Panel aus von</label>
-<span class="grp"><input type="time" id="offFrom"> bis <input type="time" id="offTo"></span></div>
-<div class="hint">Dann ist das Panel dunkel und es werden keine Abfahrten abgerufen.</div>
-<h3>Helligkeit</h3>
+<div class="hint" id="tlNow"></div>
+</section>
+<section>
+<h2>Ruhezeit</h2>
+<div class="hint">Panel dunkel, es werden keine Abfahrten abgerufen. Eine Zeit vor 12 Uhr gehört zum Morgen danach: 03:00 bei „Fr/Sa“ ist Samstag früh.</div>
+<div id="off"></div>
+</section>
+<section>
+<h2>Helligkeit</h2>
 <div class="row"><span class="lbl">Normal</span><input type="range" min="1" max="100" id="bright"><span class="val" id="brightVal"></span><button id="brightReset" title="auf den Standardwert setzen">↺</button></div>
-<div class="hint">Zu bestimmten Zeiten eine andere Helligkeit (überschneiden sich zwei, gilt das obere). ⏸ setzt ein Zeitfenster einmal aus und gilt sofort.</div>
+<h3>Zeitfenster</h3>
+<div class="hint">Zu diesen Zeiten gilt eine andere Helligkeit, jeden Tag (überschneiden sich zwei, gilt das obere). Aussetzen gilt sofort, nur für heute bzw. das nächste Mal.</div>
 <div id="dim"></div>
-<button class="add" id="addDim">+ Zeitfenster</button>
+<div class="acts"><button id="addDim">+ Zeitfenster</button><button id="skipAll"></button></div>
 </section>
 </div>
 
@@ -481,6 +494,31 @@ function iconOptions(sel){
 
 function mins(v){const [h,m]=v.split(':');return h*60+ +m}
 function inWin(from,to,m){const f=mins(from),t=mins(to);return f!==t&&(f<t?m>=f&&m<t:m>=f||m<t)}
+// ---- the off time, one per night ([0] = Monday to Tuesday); like
+// isOffTime() in settings.cpp: a time before noon is on the morning after
+const NIGHTS=DAYS.map((d,i)=>d+'/'+DAYS[(i+1)%7]);
+const wday=t=>(t.getDay()+6)%7;
+function isOff(off,t,m){
+  for(let back=0;back<3;back++){
+    const n=off[(wday(t)-back+7)%7],f=mins(n.from),e=mins(n.to);
+    if(!n.on||f%1440===e%1440)continue;
+    const start=f<720?f+1440:f,at=back*1440+m;
+    if(at>=start&&at<start+(e-f+1440)%1440)return true;
+  }
+  return false;
+}
+// when the off time next begins: "02:00 Uhr", "morgen 02:00 Uhr", "Sa 03:00 Uhr"
+function nextOff(){
+  const now=new Date(),m0=now.getHours()*60+now.getMinutes();
+  const day=m=>new Date(now.getFullYear(),now.getMonth(),now.getDate()+Math.floor(m/1440));
+  const off=m=>isOff(S.off,day(m),m%1440);
+  for(let m=m0+1;m<m0+8*1440;m++){
+    if(!off(m)||off(m-1))continue;
+    const p=n=>String(n).padStart(2,'0');
+    return (m<1440?'':m<2880?'morgen ':DAYS[wday(day(m))]+' ')+p((m%1440)/60|0)+':'+p(m%60)+' Uhr';
+  }
+  return '';
+}
 function ymd(t){const p=n=>String(n).padStart(2,'0');return t.getFullYear()+'-'+p(t.getMonth()+1)+'-'+p(t.getDate())}
 // start date of the window's current occurrence, or of the next one
 function nextStart(d){
@@ -490,12 +528,14 @@ function nextStart(d){
   return f<t&&m>=t?day(1):day(0);
 }
 
-// the day as a bar: off time dark, otherwise orange as bright as the panel
+// today as a bar: off time dark, otherwise orange as bright as the panel
+// (a window set to skip counts as skipped)
 function renderTimeline(){
-  const c=collect(),box=$('tl');box.replaceChildren();
+  const c=collect(),box=$('tl'),now=new Date();box.replaceChildren();
+  const today=ymd(now),yesterday=ymd(new Date(now.getFullYear(),now.getMonth(),now.getDate()-1));
   const at=m=>{
-    if(c.off.on&&inWin(c.off.from,c.off.to,m))return -1;
-    const d=c.dim.find(d=>inWin(d.from,d.to,m));
+    if(isOff(c.off,now,m))return -1;
+    const d=c.dim.find(d=>inWin(d.from,d.to,m)&&d.skip!==(mins(d.from)>mins(d.to)&&m<mins(d.to)?yesterday:today));
     return d?d.pct:c.brightnessPct;
   };
   for(let m=0;m<1440;){
@@ -505,25 +545,58 @@ function renderTimeline(){
       (v<0?'background:var(--ledoff);color:#bbb':`background:rgba(255,120,0,${a.toFixed(2)});color:${a>.6?'#120f0c':'var(--fg)'}`)}));
     m=e;
   }
-  const now=new Date();
-  box.append(el('i',{style:`left:${(now.getHours()*60+now.getMinutes())/14.4}%`}));
+  const m=now.getHours()*60+now.getMinutes(),v=at(m);
+  box.append(el('i',{style:`left:${m/14.4}%`}));
+  $('tlHead').textContent='Heute, '+now.toLocaleDateString('de-DE',{weekday:'long'});
+  const next=nextOff();
+  $('tlNow').textContent='Der Strich ist jetzt: '+(v<0?'Ruhezeit, Panel aus.':v+' % hell.')+(v>=0&&next?' Ruhezeit ab '+next+'.':'');
+}
+
+// the same for every night in one row, or one row per night (also while
+// the nights differ, so that never hides)
+let offPer=null;
+function renderOff(){
+  const box=$('off'),now=new Date();box.replaceChildren();
+  const tonight=(wday(now)+(now.getHours()<12?6:0))%7;
+  const same=S.off.every(n=>n.on===S.off[0].on&&n.from===S.off[0].from&&n.to===S.off[0].to);
+  if(offPer===null||!same)offPer=!same;
+  const row=(label,n,set,badge)=>el('div',{className:'night'+(badge?' today':'')},
+    el('label',{},el('input',{type:'checkbox',checked:n.on,onchange:e=>set({on:e.target.checked})}),label),
+    el('span',{},n.on?el('span',{className:'grp'},
+        el('input',{type:'time',value:time(n.from),'aria-label':label+' von',onchange:e=>{if(e.target.value)set({from:e.target.value})}}),'bis',
+        el('input',{type:'time',value:time(n.to),'aria-label':label+' bis',onchange:e=>{if(e.target.value)set({to:e.target.value})}}))
+      :el('span',{className:'muted',textContent:'Panel bleibt an'}),
+      badge?el('span',{className:'badge',textContent:'heute Nacht'}):''));
+  if(!offPer){
+    box.append(row('Jede Nacht',S.off[0],v=>{for(const n of S.off)Object.assign(n,v);renderOff()}),
+      el('div',{className:'acts'},el('button',{textContent:'Pro Nacht einstellen',onclick:()=>{offPer=true;renderOff()}})));
+    return;
+  }
+  S.off.forEach((n,i)=>box.append(row(NIGHTS[i],n,v=>{Object.assign(n,v);renderOff()},i===tonight)));
+  box.append(el('div',{className:'acts'},el('button',{textContent:'Alle wie '+NIGHTS[0],title:'jede Nacht wie die erste',
+    onclick:()=>{for(const n of S.off)Object.assign(n,{on:S.off[0].on,from:S.off[0].from,to:S.off[0].to});offPer=false;renderOff()}})));
 }
 
 function renderDim(){
   const box=$('dim');box.replaceChildren();
+  const isPaused=d=>!!d.skip&&d.from!==d.to&&d.skip===nextStart(d);
   S.dim.forEach((d,i)=>{
     const val=el('span',{className:'val',textContent:d.pct+' %'});
     const r=el('input',{type:'range',min:1,max:100,value:d.pct,oninput:e=>{d.pct=+e.target.value;val.textContent=d.pct+' %'}});
-    const paused=!!d.skip&&d.from!==d.to&&d.skip===nextStart(d);
+    const paused=isPaused(d);
     box.append(el('div',{className:'row'+(paused?' paused':'')},
       el('span',{className:'grp'},el('input',{type:'time',value:time(d.from),onchange:e=>d.from=e.target.value}),'bis',
         el('input',{type:'time',value:time(d.to),onchange:e=>d.to=e.target.value})),r,val,
       el('button',{textContent:paused?'▶':'⏸',title:paused?'wieder aktivieren':'einmal aussetzen (heute bzw. das nächste Mal)',
         onclick:()=>{if(paused)delete d.skip;else d.skip=nextStart(d);save()}}),
       el('button',{className:'del',textContent:'✕',title:'Zeitfenster löschen',onclick:()=>{S.dim.splice(i,1);renderDim()}}),
-      paused?el('div',{className:'sub',style:'padding-left:0;color:var(--muted);font-size:13px',textContent:'Einmal ausgesetzt, danach gilt das Zeitfenster wieder.'}):''));
+      paused?el('div',{className:'pnote',textContent:'Einmal ausgesetzt, danach gilt das Zeitfenster wieder.'}):''));
   });
   $('addDim').disabled=S.dim.length>=MAX_DIM;
+  const all=S.dim.length>0&&S.dim.every(isPaused);
+  $('skipAll').hidden=!S.dim.length;
+  $('skipAll').textContent=all?'▶ Alle wieder aktivieren':'⏸ Alle einmal aussetzen';
+  $('skipAll').onclick=()=>{for(const d of S.dim)if(all)delete d.skip;else d.skip=nextStart(d);save()};
 }
 
 function renderRow(){
@@ -735,9 +808,8 @@ function render(){
   $('animChance').value=S.animChance;$('animChanceBus').value=S.animChanceBus;
   $('matchOn').checked=S.matchOn;$('goalAnim').checked=S.goalAnim;
   $('fiestaChance').value=S.fiestaChance;$('fiestaText1').value=S.fiestaText1;$('fiestaText2').value=S.fiestaText2;
-  $('offOn').checked=S.off.on;$('offFrom').value=time(S.off.from);$('offTo').value=time(S.off.to);
   setBright(S.brightnessPct);
-  renderRow();renderDim();renderPromos();renderIcons();
+  renderRow();renderOff();renderDim();renderPromos();renderIcons();
 }
 
 function collect(){
@@ -747,7 +819,7 @@ function collect(){
     if((p.days??ALL_DAYS)!==ALL_DAYS)o.days=p.days;
     return o;
   }).filter(p=>p.text||p.icon);
-  return {off:{on:$('offOn').checked,from:$('offFrom').value||'02:00',to:$('offTo').value||'06:00'},
+  return {off:S.off.map(n=>({on:n.on,from:n.from,to:n.to})),
     brightnessPct:S.brightnessPct,dim:S.dim.filter(d=>d.from&&d.to),
     promoShowS:S.promoShowS,promoIntervalS:S.mode==='off'?0:S.interval,promoFullRow:S.mode==='scroll',promoWhite:S.promoWhite,promoWhitePct:S.promoWhitePct,
     disruptOn:S.disruptOn,disruptPasses:S.disruptPasses,animChance:S.animChance,animChanceBus:S.animChanceBus,
@@ -894,7 +966,7 @@ function renderModes(){
   $('raceText').textContent=raceOn?'Rennen läuft …':'';
   $('bouncerCard').classList.toggle('on',bouncerOn);
   $('bouncerStart').hidden=bouncerOn;$('bouncerStop').hidden=!bouncerOn;
-  $('bouncerText').textContent=!bouncerOn?'':S&&S.off.on?'läuft bis zur Ruhezeit ('+S.off.from+' Uhr)':'läuft (keine Ruhezeit eingestellt)';
+  $('bouncerText').textContent=!bouncerOn?'':S&&nextOff()?'läuft bis zur Ruhezeit ('+nextOff()+')':'läuft (keine Ruhezeit eingestellt)';
   $('lastRoundCard').classList.toggle('on',lastRoundOn);
   $('lastRoundStart').hidden=lastRoundOn;$('lastRoundStop').hidden=!lastRoundOn;
   $('lastRoundText').textContent=lastRoundOn?'läuft …':'';

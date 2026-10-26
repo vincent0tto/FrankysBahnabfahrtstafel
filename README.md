@@ -244,10 +244,12 @@ Im Einzelnen:
 - **Icons**: die eingebauten Symbole (Instagram, Grilled Cheese, Flat White, Kuchen, Bier) und
   bis zu 8 eigene, gezeichnet in einem 12×9-Pixel-Editor. Ein neues Icon lässt sich auch direkt
   aus der Icon-Auswahl einer Promo heraus anlegen.
-- **Zeitplan**: Eine Leiste zeigt, wie hell die Tafel über den Tag ist. Darunter die
-  **Ruhezeit** (Standard 02:00–06:00; das Panel ist dunkel und die Tafel ruft keine Daten ab,
-  2 Minuten vor dem Ende holt sie neue, `WAKE_FETCH_LEAD_S`) und die **Helligkeit** in Prozent:
-  ein Normalwert (85 %, ↺ setzt ihn zurück) und bis zu 4 Zeitfenster mit eigener Helligkeit.
+- **Zeitplan**: Eine Leiste zeigt, wie hell die Tafel heute ist. Darunter die
+  **Ruhezeit** (Standard jede Nacht 02:00–06:00; das Panel ist dunkel und die Tafel ruft keine
+  Daten ab, 2 Minuten vor dem Ende holt sie neue, `WAKE_FETCH_LEAD_S`), für alle Nächte gleich
+  oder pro Nacht (Mo/Di … So/Mo, eine Zeit vor 12 Uhr gehört zum Morgen danach), und die
+  **Helligkeit** in Prozent: ein Normalwert (85 %, ↺ setzt ihn zurück) und bis zu 4
+  Zeitfenster mit eigener Helligkeit, die sich einzeln oder alle zusammen einmal aussetzen lassen.
   100 % entsprechen 70 % der Hardware-Helligkeit des Panels (`BRIGHTNESS_MAX`).
 - **Technik**: **WLAN**, Name und Passwort, gilt nach einem Neustart (siehe
   oben); **Log**, die letzten Meldungen der Tafel (dieselben wie am USB-Anschluss, mit Uhrzeit),
