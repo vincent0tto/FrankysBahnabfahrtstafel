@@ -39,6 +39,12 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
 // Fills the board with `p` (icon and text, as large as fits, on up to 4
 // lines; too long even then: scrolling through the middle, `t` ms after it
 // came up), in `color` or, if `white`, in white this bright. For the
-// "Rausschmeißer" and the "Letzte Runde" (Settings::bouncer, ::lastRound).
+// "Rausschmeißer" (Settings::bouncer).
 void renderCallout(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const Settings& s, const Promo& p,
+                   bool white, uint8_t whitePct, uint32_t t);
+
+// `p` (icon and text) as high as the board, scrolling through from the right
+// again and again, `t` ms after it came up; colour as in renderCallout. For
+// the "Letzte Runde" (Settings::lastRound).
+void renderMarquee(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const Settings& s, const Promo& p,
                    bool white, uint8_t whitePct, uint32_t t);

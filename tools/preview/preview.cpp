@@ -425,8 +425,7 @@ int main(int argc, char** argv) {
   goalFrame(Match(), 4000);
   writePpm(argc > 6 ? argv[6] : "preview_match.ppm", mFrames);
 
-  // Over the whole board first: the bouncer's and the last round's default
-  // texts, a short one, only an icon, one too long for 4 lines (scrolling)
+  // Over the whole board first: the bouncer's default text, a short one, only an icon, one too long for 4 lines (scrolling)
   std::vector<Frame> bFrames;
   auto callout = [&](const char* icon, const char* text, uint32_t t) {
     Promo p;
@@ -443,10 +442,26 @@ int main(int argc, char** argv) {
     bFrames.push_back(f);
   };
   callout(settings.bouncer.icon, settings.bouncer.text, 0);
-  callout(settings.lastRound.icon, settings.lastRound.text, 0);
   callout("", "Feierabend!", 0);
   callout("[bi]", "", 0);
   callout("", "Donaudampfschifffahrtsgesellschaftskapitänsmützenabzeichen", 3000);
+  // the last round: as high as the board, scrolling through
+  auto marquee = [&](const char* icon, const char* text, uint32_t t) {
+    Promo p;
+    strcpy(p.icon, icon);
+    strcpy(p.text, text);
+    GFXcanvas16 canvas(W, H);
+    canvas.fillScreen(0);
+    U8G2_FOR_ADAFRUIT_GFX u8;
+    u8.begin(canvas);
+    uint16_t amber = ((COLOR_R & 0xF8) << 8) | ((COLOR_G & 0xFC) << 3) | (COLOR_B >> 3);
+    renderMarquee(canvas, u8, amber, settings, p, false, 100, t);
+    Frame f;
+    f.px.assign(canvas.getBuffer(), canvas.getBuffer() + W * H);
+    bFrames.push_back(f);
+  };
+  marquee(settings.lastRound.icon, settings.lastRound.text, 4000);
+  marquee("", "Zapfhahn zu, Äpfel gibt's morgen", 6500);
 
   // Rausschmeißer then: the default text scrolling in, with an icon, in white,
   // over the live match, and with no WiFi

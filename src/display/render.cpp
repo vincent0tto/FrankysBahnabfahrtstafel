@@ -636,6 +636,9 @@ static const uint8_t* const CALLOUT_FONTS[] = {u8g2_font_logisoso32_tf, u8g2_fon
                                                u8g2_font_helvB14_tf, FONT_ROW};
 static const int CALLOUT_MARGIN = 4;  // to the board's edges, all around
 static const int CALLOUT_MAX_LINES = 4;
+// As high as the board: capitals and descenders 58 px (only the dots on
+// capital umlauts are cut off at the top)
+static const uint8_t* const MARQUEE_FONT = u8g2_font_logisoso46_tf;
 
 struct CalloutLine {
   const char* start;
@@ -684,6 +687,19 @@ static bool wrapText(U8G2_FOR_ADAFRUIT_GFX& u8, const char* text, int lead, int 
   return true;
 }
 
+// `ic` and `text` in the current font scrolling through on baseline `base`,
+// in from the right, again and again, `t` ms after it came up.
+static void drawMarquee(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const IconRef& ic,
+                        const char* text, int base, uint32_t t) {
+  int scale = ic ? u8.getFontAscent() / ic.h : 0;
+  if (ic && scale < 1) scale = 1;
+  int lead = ic ? ic.w * scale + ICON_GAP * scale : 0;
+  int tw = lead + width(u8, text);
+  int x = W - (int)((uint64_t)t * TICKER_SPEED_PX_S / 1000 % (tw + W));
+  if (ic) drawIcon(g, color, ic, x, base, scale);
+  u8.drawUTF8(x + lead, base, text);
+}
+
 void renderCallout(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const Settings& s, const Promo& p,
                    bool white, uint8_t whitePct, uint32_t t) {
   if (white) color = grayColor(whitePct);
@@ -717,12 +733,16 @@ void renderCallout(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, c
   }
   // too long even in the smallest font: scrolls through the middle, again and again
   u8.setFont(CALLOUT_FONTS[1]);
-  int ascent = u8.getFontAscent(), base = (H + ascent) / 2;
-  int scale = ic ? ascent / ic.h : 0;
-  if (ic && scale < 1) scale = 1;
-  int lead = ic ? ic.w * scale + ICON_GAP * scale : 0;
-  int tw = lead + width(u8, p.text);
-  int x = W - (int)((uint64_t)t * TICKER_SPEED_PX_S / 1000 % (tw + W));
-  if (ic) drawIcon(g, color, ic, x, base, scale);
-  u8.drawUTF8(x + lead, base, p.text);
+  drawMarquee(g, u8, color, ic, p.text, (H + u8.getFontAscent()) / 2, t);
+}
+
+void renderMarquee(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const Settings& s, const Promo& p,
+                   bool white, uint8_t whitePct, uint32_t t) {
+  if (white) color = grayColor(whitePct);
+  u8.setFontMode(1);
+  u8.setForegroundColor(color);
+  u8.setFont(MARQUEE_FONT);
+  // capitals and descenders together in the middle of the board
+  int ascent = u8.getFontAscent();
+  drawMarquee(g, u8, color, findIcon(s, p.icon), p.text, (H - ascent + u8.getFontDescent()) / 2 + ascent, t);
 }

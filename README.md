@@ -52,7 +52,7 @@ Schriesheim Bahnhof                     10:42
 - **Rausschmeißer:** Zum Feierabend steht ein eigener Text erst groß auf der ganzen Tafel, dann
   läuft er durch die unterste Zeile, auch mitten im Event, bis die Tafel nachts ausgeht. Auf dem
   iPad läuft dazu das Rausschmeißer-Lied.
-- **Letzte Runde:** Ein eigener Text groß über die ganze Tafel, für ein paar Sekunden, danach geht
+- **Letzte Runde:** Ein eigener Text als Laufschrift so hoch wie die ganze Tafel, für ein paar Sekunden, danach geht
   es weiter wie vorher.
 - **St.-Pauli-Ticker:** Spielt St. Pauli, steht der Spielstand in der untersten Zeile, die
   Abfahrten bleiben darüber. Bei einem Tor für St. Pauli zeigt die ganze Tafel kurz
@@ -398,7 +398,7 @@ eingeschaltet wird er dort auf der Karte oder per Kurzbefehl. Solange er läuft:
   Zeitplan; die Auswahl unter *Jetzt* steht so lange auf „unterbrochen“.
 
 Er endet, wenn die Ruhezeit beginnt (ist dann ein Event an, geht es mit aus, die Tafel wird
-dunkel), bei einem Neustart (er wird nicht gespeichert) oder mit **Aus**. In der Ruhezeit lässt
+dunkel), bei einem Neustart (er wird nicht gespeichert) oder mit **Abbrechen**. In der Ruhezeit lässt
 er sich nicht einschalten (`409`), ebenso ohne Text und Icon. Ein Bahnrennen und eine auf der
 Seite Event getestete Szene gehen vor.
 
@@ -411,7 +411,8 @@ Seite Event getestete Szene gehen vor.
 
 ### Letzte Runde (Kurzbefehl fürs iPad)
 
-Wie der Rausschmeißer groß über die ganze Tafel, aber nur so lange wie unter *Dauer* eingestellt
+Ein Text, wahlweise mit Icon, läuft so hoch wie die ganze Tafel immer wieder von rechts durch
+(nur die Punkte über großen Umlauten wie „Ä“ sind oben abgeschnitten), so lange wie unter *Dauer* eingestellt
 (5 bis 600 Sekunden), danach ist er weg und die Tafel zeigt wieder, was vorher lief, auch das Event
 oder den Rausschmeißer; in der 4. Zeile kommt er nicht. Eingestellt wird er unter **Jetzt** →
 *Letzte Runde* → *Text bearbeiten* (Text, Icon, Dauer, Farbe), auch hier gehen ein Bahnrennen, ein

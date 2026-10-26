@@ -89,7 +89,7 @@ bool displayRender(const Board& b, const Settings& s, const Event& ev, const Kar
   matrix->clearScreen();
   if (race) drawRace(*matrix, u8, amber, *race, raceMs, s.fiestaText1, s.fiestaText2);
   else if (goal) drawGoal(*matrix, u8, m, goalMs);
-  else if (lastRound) renderCallout(*matrix, u8, amber, s, *lastRound, s.lastRoundWhite, s.lastRoundWhitePct, lastRoundMs);
+  else if (lastRound) renderMarquee(*matrix, u8, amber, s, *lastRound, s.lastRoundWhite, s.lastRoundWhitePct, lastRoundMs);
   else if (bouncerFull) renderCallout(*matrix, u8, amber, s, *bouncer, s.bouncerWhite, s.bouncerWhitePct, bouncerMs);
   else if (evOn && ev.karaoke) renderKaraoke(*matrix, u8, k, ms);
   else if (evOn) renderEvent(*matrix, u8, ev, eventMs);
