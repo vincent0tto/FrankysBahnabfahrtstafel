@@ -87,7 +87,7 @@
 //  - PANEL_DRIVER: SHIFTREG for plain panels; FM6126A / FM6124 / ICN2038S /
 //    MBI5124 / DP3246 if that chip name is printed on the panel back.
 #define PANEL_CLKPHASE      true
-#define PANEL_LAT_BLANKING  3
+#define PANEL_LAT_BLANKING  4
 #define PANEL_I2S_SPEED     HUB75_I2S_CFG::HZ_8M
 #define PANEL_DRIVER        HUB75_I2S_CFG::SHIFTREG
 // GPIO drive strength of the six colour pins (R1..B2), 0..3 (~5/10/20/40 mA).
