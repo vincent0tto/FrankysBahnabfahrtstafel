@@ -82,12 +82,20 @@
 //  - PANEL_I2S_SPEED: ignored on the ESP32-S3 because S3_LCD_DIV_NUM in
 //    platformio.ini sets the clock (pixels that flicker in a wrong colour and
 //    move with the text -> raise it).
+//  - PANEL_DRIVE_CAP: lower it if wrong-colour pixels flicker next to
+//    bright (white) content; raise it if colours smear or break up.
 //  - PANEL_DRIVER: SHIFTREG for plain panels; FM6126A / FM6124 / ICN2038S /
 //    MBI5124 / DP3246 if that chip name is printed on the panel back.
 #define PANEL_CLKPHASE      true
 #define PANEL_LAT_BLANKING  3
 #define PANEL_I2S_SPEED     HUB75_I2S_CFG::HZ_8M
 #define PANEL_DRIVER        HUB75_I2S_CFG::SHIFTREG
+// GPIO drive strength of the six colour pins (R1..B2), 0..3 (~5/10/20/40 mA).
+// The library sets 3; the hard edges of all six switching together (white
+// text) coupled over the jumper wires into red/blue pixels. Softer colour
+// edges fix that without slowing the clock (a slower clock broke WiFi).
+// Address, LAT, OE and CLK keep 3: softer there gave ghost rows.
+#define PANEL_DRIVE_CAP     1
 // The library trades colour depth for refresh to reach this. It calculates
 // with 8 MHz although S3_LCD_DIV_NUM=24 really clocks 6.7 MHz, so the real
 // rate is ~17 % lower than requested.
