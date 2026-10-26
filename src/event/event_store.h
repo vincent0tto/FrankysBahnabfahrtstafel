@@ -66,3 +66,15 @@ bool raceRunning();
 // Render loop: like eventTestFetch() for the race: `seed` of the one to
 // start if `active`, worked out with `fiestaChance`.
 bool raceFetch(uint32_t& seed, uint8_t& fiestaChance, bool& active, uint32_t& version);
+
+// Network task: starts the "Rausschmeißer" (Settings::bouncer in the 4th row,
+// with the departures even while the event is on) until bouncerStop(); the
+// network task stops it when the off time begins. Not stored: a restart ends it.
+void bouncerStart();
+void bouncerStop();
+
+// Network task: whether it is on.
+bool bouncerRunning();
+
+// Render loop: like eventTestFetch(), whether it is on (`active`).
+bool bouncerFetch(bool& active, uint32_t& version);

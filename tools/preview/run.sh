@@ -14,11 +14,12 @@ eval $CXX -std=c++17 $CXXFLAGS $INC $LDFLAGS -Wno-macro-redefined \
   tools/preview/preview.cpp src/display/render.cpp src/display/depart_anim.cpp src/departures/parse.cpp src/core/settings.cpp src/display/icons.cpp src/event/event.cpp src/event/event_render.cpp src/race/race.cpp src/race/race_render.cpp src/karaoke/karaoke.cpp src/karaoke/karaoke_render.cpp src/match/match.cpp src/match/goal_render.cpp \
   \"$L/Adafruit GFX Library/Adafruit_GFX.cpp\" $L/U8g2_for_Adafruit_GFX/src/U8g2_for_Adafruit_GFX.cpp \
   $OUT/u8g2_fonts.o -o $OUT/preview
-$OUT/preview $OUT/preview.ppm $OUT/preview_anim.ppm $OUT/preview_event.ppm $OUT/preview_race.ppm $OUT/preview_karaoke.ppm $OUT/preview_match.ppm
+$OUT/preview $OUT/preview.ppm $OUT/preview_anim.ppm $OUT/preview_event.ppm $OUT/preview_race.ppm $OUT/preview_karaoke.ppm $OUT/preview_match.ppm $OUT/preview_bouncer.ppm
 sips -s format png $OUT/preview.ppm --out tools/preview/preview.png >/dev/null
 sips -s format png $OUT/preview_anim.ppm --out tools/preview/preview_anim.png >/dev/null
 sips -s format png $OUT/preview_event.ppm --out tools/preview/preview_event.png >/dev/null
 sips -s format png $OUT/preview_race.ppm --out tools/preview/preview_race.png >/dev/null
 sips -s format png $OUT/preview_karaoke.ppm --out tools/preview/preview_karaoke.png >/dev/null
 sips -s format png $OUT/preview_match.ppm --out tools/preview/preview_match.png >/dev/null
-echo "tools/preview/preview.png tools/preview/preview_anim.png tools/preview/preview_event.png tools/preview/preview_race.png tools/preview/preview_karaoke.png tools/preview/preview_match.png"
+sips -s format png $OUT/preview_bouncer.ppm --out tools/preview/preview_bouncer.png >/dev/null
+echo "tools/preview/preview.png tools/preview/preview_anim.png tools/preview/preview_event.png tools/preview/preview_race.png tools/preview/preview_karaoke.png tools/preview/preview_match.png tools/preview/preview_bouncer.png"

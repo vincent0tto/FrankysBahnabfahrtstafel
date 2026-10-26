@@ -73,6 +73,7 @@ void settingsDefaults(Settings& s) {
   s.fiestaChance = RACE_FIESTA_CHANCE;
   snprintf(s.fiestaText1, sizeof(s.fiestaText1), "%s", "¡FIESTA!");
   snprintf(s.fiestaText2, sizeof(s.fiestaText2), "%s", "Mexikaner-Shots!");
+  snprintf(s.bouncer.text, sizeof(s.bouncer.text), "%s", "Feierabend! Danke für euren Besuch, bis bald!");
 }
 
 bool inWindow(const TimeWindow& w, int m) {
@@ -250,6 +251,11 @@ void settingsToJson(const Settings& s, JsonObject out, bool forWeb) {
   out["fiestaChance"] = s.fiestaChance;
   out["fiestaText1"] = (const char*)s.fiestaText1;
   out["fiestaText2"] = (const char*)s.fiestaText2;
+  JsonObject bouncer = out["bouncer"].to<JsonObject>();
+  bouncer["icon"] = (const char*)s.bouncer.icon;
+  bouncer["text"] = (const char*)s.bouncer.text;
+  out["bouncerWhite"] = s.bouncerWhite;
+  out["bouncerWhitePct"] = s.bouncerWhitePct;
 
   JsonArray promos = out["promos"].to<JsonArray>();
   for (int i = 0; i < s.nPromos; i++) {
@@ -319,6 +325,9 @@ bool settingsFromJson(JsonVariantConst in, Settings& s) {
   s.fiestaChance = (uint8_t)clampU(in["fiestaChance"], 0, 100, s.fiestaChance);
   if (in["fiestaText1"].is<const char*>()) copyText(s.fiestaText1, sizeof(s.fiestaText1), in["fiestaText1"]);
   if (in["fiestaText2"].is<const char*>()) copyText(s.fiestaText2, sizeof(s.fiestaText2), in["fiestaText2"]);
+  if (in["bouncer"].is<JsonObjectConst>()) promoFieldsFromJson(in["bouncer"], s.bouncer);
+  s.bouncerWhite = in["bouncerWhite"] | s.bouncerWhite;
+  s.bouncerWhitePct = (uint8_t)clampU(in["bouncerWhitePct"], 1, 100, s.bouncerWhitePct);
 
   if (in["promos"].is<JsonArrayConst>()) {
     for (JsonVariantConst o : in["promos"].as<JsonArrayConst>()) {

@@ -51,6 +51,8 @@ void test_defaults() {
   TEST_ASSERT_EQUAL(RACE_FIESTA_CHANCE, s.fiestaChance);
   TEST_ASSERT_EQUAL_STRING("¡FIESTA!", s.fiestaText1);
   TEST_ASSERT_EQUAL_STRING("Mexikaner-Shots!", s.fiestaText2);
+  TEST_ASSERT_TRUE(s.bouncer.text[0] != 0);
+  TEST_ASSERT_FALSE(s.bouncerWhite);
   TEST_ASSERT_EQUAL(BRIGHTNESS_MAX, brightnessToPanel(100));
   TEST_ASSERT_EQUAL(151, brightnessToPanel(85));
   TEST_ASSERT_EQUAL(BRIGHTNESS_MAX, brightnessToPanel(200));
@@ -100,6 +102,10 @@ void test_json_roundtrip() {
   s.fiestaChance = 2;
   strcpy(s.fiestaText1, "Olé!");
   s.fiestaText2[0] = 0;
+  strcpy(s.bouncer.icon, "[bi]");
+  strcpy(s.bouncer.text, "Letzte Runde!");
+  s.bouncerWhite = true;
+  s.bouncerWhitePct = 30;
   promoFromText("[ig]@frankys", s.promos[s.nPromos]);
   s.promos[s.nPromos++].on = false;
   Promo own;
@@ -136,6 +142,10 @@ void test_json_roundtrip() {
   TEST_ASSERT_EQUAL(2, t.fiestaChance);
   TEST_ASSERT_EQUAL_STRING("Olé!", t.fiestaText1);
   TEST_ASSERT_EQUAL_STRING("", t.fiestaText2);
+  TEST_ASSERT_EQUAL_STRING("[bi]", t.bouncer.icon);
+  TEST_ASSERT_EQUAL_STRING("Letzte Runde!", t.bouncer.text);
+  TEST_ASSERT_TRUE(t.bouncerWhite);
+  TEST_ASSERT_EQUAL(30, t.bouncerWhitePct);
   TEST_ASSERT_EQUAL(s.nPromos, t.nPromos);
   TEST_ASSERT_FALSE(t.promos[0].on);
   TEST_ASSERT_EQUAL_STRING("@frankys", t.promos[0].text);

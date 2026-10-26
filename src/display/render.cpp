@@ -441,7 +441,8 @@ static void drawHeader(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t colo
 }
 
 void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, const Board& b,
-                 const Settings& s, const DisplayStatus& st, time_t now, uint32_t ms, const Match& m) {
+                 const Settings& s, const DisplayStatus& st, time_t now, uint32_t ms, const Match& m,
+                 const Promo* bouncer, uint32_t bouncerMs) {
   u8.setFontMode(1);
   u8.setForegroundColor(color);
 
@@ -460,12 +461,14 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
   ROW_ASCENT = u8.getFontAscent();
   ROW_DESCENT = -u8.getFontDescent();
 
-  // Bottom line: own status messages stay there for good (VRN disruption
-  // texts take turns with the promos, see below)
+  // Bottom line: the bouncer, else own status messages stay there for good
+  // (the header's "!" still warns under the bouncer; VRN disruption texts
+  // take turns with the promos, see below)
   const char* tickerMsg = nullptr;
-  if (!st.wifi) tickerMsg = "Keine WLAN-Verbindung";
-  else if (stale && haveData) tickerMsg = "Daten nicht aktuell";
-  int maxRows = tickerMsg ? MAX_ROWS : MAX_ROWS + 1;
+  if (!bouncer && !st.wifi) tickerMsg = "Keine WLAN-Verbindung";
+  else if (!bouncer && stale && haveData) tickerMsg = "Daten nicht aktuell";
+  bool rowTaken = tickerMsg || bouncer;
+  int maxRows = rowTaken ? MAX_ROWS : MAX_ROWS + 1;
 
   // St.-Pauli-Ticker: while the match runs the 4th row shows its score (no
   // promos or disruption texts meanwhile, a running one ends first); after
@@ -510,7 +513,7 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
   long rowMins = n == MAX_ROWS + 1 ? minutesUntil(rows[MAX_ROWS]->when, now) : -1;
   const char* promoMsg = promoText(u8, s, !live && haveData && (s.promoFullRow || rowMins >= PROMO_MIN_MINUTES),
                                    !live && (n <= MAX_ROWS || rowMins >= DISRUPTION_MIN_MINUTES),
-                                   tickerMsg || animRow == MAX_ROWS,
+                                   rowTaken || animRow == MAX_ROWS,
                                    haveDisruption ? disruption : nullptr,
                                    haveDisruption ? width(u8, disruption) : 0, minute, day, ms);
   bool showDisruption = promoMsg && promo.disruption;
@@ -523,7 +526,7 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
 
   // The match's row: the teams left and right, the score in the middle;
   // every MATCH_GOAL_EVERY_S the last goal scrolls through instead
-  bool matchRow = live && !tickerMsg && !promoMsg;
+  bool matchRow = live && !rowTaken && !promoMsg;
   if (matchRow && n > MAX_ROWS) n = MAX_ROWS;
   static char goalLine[64];
   snprintf(goalLine, sizeof(goalLine), "Tor: %s", m.lastGoal);
@@ -547,7 +550,7 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
     showPlatforms |= rows[i]->platformLabel[0] != 0;
 
   if (n == 0) {
-    int mid = (RULE_Y + (tickerMsg || showDisruption || matchRow ? rowBase(MAX_ROWS) - ROW_ASCENT : H)) / 2;
+    int mid = (RULE_Y + (rowTaken || showDisruption || matchRow ? rowBase(MAX_ROWS) - ROW_ASCENT : H)) / 2;
     if (!st.timeValid || (b.fetchedAt == 0 && st.wifi)) {
       centered(u8, mid + ROW_ASCENT / 2, st.wifi ? "Lade Abfahrten ..." : "Verbinde mit WLAN ...");
     } else {
@@ -616,6 +619,12 @@ void renderFrame(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, con
   if (showDisruption) drawTicker(g, u8, promoMsg, ms - promo.start, true);
 
   if (tickerMsg) drawTicker(g, u8, tickerMsg, ms, false);
+  if (bouncer) {  // like a promo with promoFullRow, again and again
+    uint16_t c = s.bouncerWhite ? grayColor(s.bouncerWhitePct) : color;
+    u8.setForegroundColor(c);
+    drawPromo(g, u8, c, s, rowBase(MAX_ROWS), *bouncer, ms, true, bouncerMs);
+    u8.setForegroundColor(color);
+  }
 
   drawHeader(g, u8, color, st, now, stale || !st.wifi, showPlatforms);
 }

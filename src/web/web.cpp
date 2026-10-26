@@ -294,6 +294,29 @@ static void handleRaceStop() {
   server.send(200, "text/plain", "ok");
 }
 
+// ---- Rausschmeißer (Settings::bouncer) ----------------------------------------------
+
+// For the iPad shortcut that plays the song, and the page. Nothing happens
+// in the off time (409) or without a text or icon to show.
+static void handleBouncer() {
+  const Settings& s = settingsNet();
+  if (timeValid() && isOffTime(s, minuteOfDay(time(nullptr)))) {
+    server.send(409, "text/plain", "Ruhezeit, die Tafel ist aus");
+    return;
+  }
+  if (!s.bouncer.text[0] && !s.bouncer.icon[0]) {
+    server.send(409, "text/plain", "kein Text eingestellt (Tab Tafel)");
+    return;
+  }
+  bouncerStart();
+  server.send(200, "text/plain", "ok");
+}
+
+static void handleBouncerStop() {
+  bouncerStop();
+  server.send(200, "text/plain", "ok");
+}
+
 // ---- St.-Pauli-Ticker (src/match/match.h) -------------------------------------------
 
 static void handleGoalTest() {
@@ -442,6 +465,7 @@ static void handleStatus() {
   doc["karaokeRev"] = karaokeRev();
   doc["eventRev"] = eventRev();
   doc["race"] = raceRunning();
+  doc["bouncer"] = bouncerRunning();
   if (settingsNet().matchOn) matchToJson(now, doc["match"].to<JsonObject>());
   doc["off"] = !eventNet().on && timeValid() && isOffTime(settingsNet(), minuteOfDay(now));
   doc["rssi"] = WiFi.RSSI();
@@ -543,6 +567,8 @@ void webBegin() {
   server.on("/api/race", HTTP_POST, handleRace);
   server.on("/api/race/stop", HTTP_POST, handleRaceStop);
   server.on("/api/goal/test", HTTP_POST, handleGoalTest);
+  server.on("/api/rausschmeisser", HTTP_POST, handleBouncer);
+  server.on("/api/rausschmeisser/stop", HTTP_POST, handleBouncerStop);
   server.on("/api/images", HTTP_GET, [] { sendImages(); });
   server.on("/api/image", HTTP_GET, handleImageGet);
   server.on("/api/image", HTTP_POST, handleImageSave, handleImageUpload);

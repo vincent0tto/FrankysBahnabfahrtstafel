@@ -48,13 +48,14 @@ struct Frame { std::vector<uint16_t> px; };
 
 static Settings settings;  // config.h defaults
 
-static Frame render(const Board& b, DisplayStatus st, time_t now, uint32_t ms, const Match& m = Match()) {
+static Frame render(const Board& b, DisplayStatus st, time_t now, uint32_t ms, const Match& m = Match(),
+                    const Promo* bouncer = nullptr, uint32_t bouncerMs = 0) {
   GFXcanvas16 canvas(W, H);
   canvas.fillScreen(0);
   U8G2_FOR_ADAFRUIT_GFX u8;
   u8.begin(canvas);
   uint16_t amber = ((COLOR_R & 0xF8) << 8) | ((COLOR_G & 0xFC) << 3) | (COLOR_B >> 3);
-  renderFrame(canvas, u8, amber, b, settings, st, now, ms, m);
+  renderFrame(canvas, u8, amber, b, settings, st, now, ms, m, bouncer, bouncerMs);
   Frame f;
   f.px.assign(canvas.getBuffer(), canvas.getBuffer() + W * H);
   return f;
@@ -423,5 +424,23 @@ int main(int argc, char** argv) {
   for (uint32_t t : {100u, 800u, 1300u, 3000u, 5500u}) goalFrame(m, t);
   goalFrame(Match(), 4000);
   writePpm(argc > 6 ? argv[6] : "preview_match.ppm", mFrames);
+
+  // Rausschmeißer: the default text scrolling in, with an icon, in white,
+  // over the live match, and with no WiFi
+  std::vector<Frame> bFrames;
+  Promo bouncer = settings.bouncer;
+  bFrames.push_back(render(normal, ok, now, 1000, Match(), &bouncer, 3000));
+  bFrames.push_back(render(normal, ok, now, 1000, Match(), &bouncer, 9000));
+  strcpy(bouncer.icon, "[bi]");
+  strcpy(bouncer.text, "Letzte Runde!");
+  bFrames.push_back(render(normal, ok, now, 1000, Match(), &bouncer, 5000));
+  settings.bouncerWhite = true;
+  settings.bouncerWhitePct = 60;
+  m.finished = false;
+  bFrames.push_back(render(normal, ok, now, 1000, m, &bouncer, 5000));
+  DisplayStatus noWifi = ok;
+  noWifi.wifi = false;
+  bFrames.push_back(render(normal, noWifi, now, 1000, Match(), &bouncer, 5000));
+  writePpm(argc > 7 ? argv[7] : "preview_bouncer.ppm", bFrames);
   return 0;
 }

@@ -44,9 +44,9 @@ bool displayBegin() {
 static bool asleep = false;
 
 // Brightness from the settings' dim windows; the default one while the time
-// isn't known. The event has one of its own.
-static void updateBrightness(const Settings& s, const Event& ev, const DisplayStatus& st, time_t now) {
-  uint8_t want = brightnessToPanel(ev.on          ? ev.brightness
+// isn't known. The event (`evOn`) has one of its own.
+static void updateBrightness(const Settings& s, const Event& ev, bool evOn, const DisplayStatus& st, time_t now) {
+  uint8_t want = brightnessToPanel(evOn           ? ev.brightness
                                    : st.timeValid ? brightnessAt(s, minuteOfDay(now), localDay(now))
                                                   : s.brightness);
   if (want != currentBrightness) {
@@ -57,13 +57,14 @@ static void updateBrightness(const Settings& s, const Event& ev, const DisplaySt
 
 bool displayRender(const Board& b, const Settings& s, const Event& ev, const Karaoke& k, const Match& m,
                    const DisplayStatus& st, time_t now, uint32_t ms, uint32_t eventMs, const Race* race,
-                   uint32_t raceMs, uint32_t goalMs) {
+                   uint32_t raceMs, uint32_t goalMs, const Promo* bouncer, uint32_t bouncerMs) {
   if (!matrix) return false;
+  bool evOn = ev.on && !bouncer;
   // Off time: blank both buffers once and switch the LEDs off (also while
   // the nightly update installs). Never while the time is unknown, nor
   // while the event is on, a race runs or a goal is shown.
   bool goal = goalMs != NO_GOAL;
-  bool off = !ev.on && !race && !goal && st.timeValid && isOffTime(s, minuteOfDay(now));
+  bool off = !evOn && !race && !goal && st.timeValid && isOffTime(s, minuteOfDay(now));
   if (off) {
     if (!asleep) {
       Log.println("[display] off time, panel dark");
@@ -81,13 +82,13 @@ bool displayRender(const Board& b, const Settings& s, const Event& ev, const Kar
     Log.println("[display] off time over");
     asleep = false;
   }
-  updateBrightness(s, ev, st, now);
+  updateBrightness(s, ev, evOn, st, now);
   matrix->clearScreen();
   if (race) drawRace(*matrix, u8, amber, *race, raceMs, s.fiestaText1, s.fiestaText2);
   else if (goal) drawGoal(*matrix, u8, m, goalMs);
-  else if (ev.on && ev.karaoke) renderKaraoke(*matrix, u8, k, ms);
-  else if (ev.on) renderEvent(*matrix, u8, ev, eventMs);
-  else renderFrame(*matrix, u8, amber, b, s, st, now, ms, m);
+  else if (evOn && ev.karaoke) renderKaraoke(*matrix, u8, k, ms);
+  else if (evOn) renderEvent(*matrix, u8, ev, eventMs);
+  else renderFrame(*matrix, u8, amber, b, s, st, now, ms, m, bouncer, bouncerMs);
   matrix->flipDMABuffer();
   return false;
 }

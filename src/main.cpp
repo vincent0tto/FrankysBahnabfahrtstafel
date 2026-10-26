@@ -5,7 +5,7 @@
 // Core 0: netTask   – WiFi, NTP, OTA, settings web page, firmware update
 //                     check after start, API polling, the St.-Pauli-Ticker
 // Core 1: loop()    – renders ~30 fps from the last good data, the event,
-//                     the tram race or a goal
+//                     the tram race, a goal or the bouncer
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -64,25 +64,39 @@ static void netTask(void*) {
     esp_task_wdt_reset();
     bool online = netMaintain();
 
-    // Event mode: no departures needed, and no update that would restart
-    // the board in the middle of it (checked once it is switched off)
-    bool event = eventNet().on;
+    // The bouncer ends when the off time begins, and with it the event, so
+    // the board goes dark (the event first, or it would light up in between)
+    time_t now = time(nullptr);
+    const Settings& s = settingsNet();
+    if (bouncerRunning() && timeValid() && isOffTime(s, minuteOfDay(now))) {
+      if (eventNet().on) {
+        Event& e = eventScratch();
+        e = eventNet();
+        e.on = e.karaoke = false;
+        eventSave(e);
+      }
+      bouncerStop();
+    }
+
+    // Event mode: no departures needed (unless the bouncer shows them), and
+    // no update that would restart the board in the middle of it or of the
+    // bouncer (checked once both are off)
+    bool busy = eventNet().on || bouncerRunning();
+    bool departures = !eventNet().on || bouncerRunning();
 
     // once per start, before the first fetch (the daily reboot falls into
     // the off time, so the update usually happens while the panel is dark)
-    if (online && timeValid() && !updateChecked && !event) {
+    if (online && timeValid() && !updateChecked && !busy) {
       updateChecked = true;
       updateCheckAndInstall();  // restarts if it installed one
     }
 
     // Off time: no API calls; WAKE_FETCH_LEAD_S before its end they start
     // again so the panel comes on with fresh data
-    time_t now = time(nullptr);
-    const Settings& s = settingsNet();
     bool sleeping = timeValid() && isOffTime(s, minuteOfDay(now)) &&
                     isOffTime(s, minuteOfDay(now + WAKE_FETCH_LEAD_S));
 
-    if (online && timeValid() && !sleeping && !event && (int32_t)(millis() - nextFetchMs) >= 0) {
+    if (online && timeValid() && !sleeping && departures && (int32_t)(millis() - nextFetchMs) >= 0) {
       FetchResult r = fetchBoard(fresh);
       if (r == FetchResult::Ok) {
         xSemaphoreTake(boardMutex, portMAX_DELAY);
@@ -102,7 +116,7 @@ static void netTask(void*) {
       nextFetchMs = millis() + (r == FetchResult::Ok ? POLL_INTERVAL_S : POLL_RETRY_S) * 1000UL;
     }
     esp_task_wdt_reset();
-    matchMaintain(online && timeValid() && !sleeping && !event && s.matchOn);
+    matchMaintain(online && timeValid() && !sleeping && departures && s.matchOn);
 
     rebootChecks();
     vTaskDelay(pdMS_TO_TICKS(100));
@@ -156,6 +170,9 @@ void loop() {
   static uint32_t goalVersion = 0;
   static uint32_t goalStartMs = 0;
   static bool goal = false;
+  static bool bouncer = false;
+  static uint32_t bouncerVersion = 0;
+  static uint32_t bouncerStartMs = 0;
 
   esp_task_wdt_reset();
   if (boardVersion != localVersion && xSemaphoreTake(boardMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
@@ -185,9 +202,11 @@ void loop() {
   }
   if (racing && millis() - raceStartMs >= raceTotalMs(race)) racing = false;
 
+  if (bouncerFetch(bouncer, bouncerVersion) && bouncer) bouncerStartMs = millis();
+
   // a goal interrupts the departures only, not the event
   matchFetch(match, matchVersion);
-  if (goalFetch(goalVersion) && !event.on) {
+  if (goalFetch(goalVersion) && (!event.on || bouncer)) {
     goal = true;
     goalStartMs = millis();
   }
@@ -200,10 +219,12 @@ void loop() {
   uint32_t ms = millis();
   const Race* r = racing ? &race : nullptr;
   uint32_t goalMs = goal ? ms - goalStartMs : NO_GOAL;
+  // a scene tested from the event page shows even over the bouncer
   bool dark = testing ? displayRender(local, settings, test, karaoke, match, st, time(nullptr), ms, ms - testStartMs, r,
-                                      ms - raceStartMs, goalMs)
+                                      ms - raceStartMs, goalMs, nullptr, 0)
                       : displayRender(local, settings, event, karaoke, match, st, time(nullptr), ms, ms - eventStartMs, r,
-                                      ms - raceStartMs, goalMs);
+                                      ms - raceStartMs, goalMs, bouncer ? &settings.bouncer : nullptr,
+                                      ms - bouncerStartMs);
   // a fixed frame rate however long the frame took (off time: nothing to
   // draw); if one took longer than that, wait a tick anyway and go on from now
   static TickType_t lastWake = xTaskGetTickCount();

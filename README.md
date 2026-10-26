@@ -49,6 +49,8 @@ Schriesheim Bahnhof                     10:42
 - **Event-Modus:** Für eine Party oder einen besonderen Abend übernimmt die Tafel auf Knopfdruck
   ganz eigene Texte und Bilder in Farbe, bis man sie wieder auf die Abfahrten zurückschaltet.
 - **Karaoke-Liste:** Beim Karaoke-Abend zeigt die Tafel, wer als Nächstes singt und was.
+- **Rausschmeißer:** Zum Feierabend läuft ein eigener Text durch die unterste Zeile, auch mitten
+  im Event, bis die Tafel nachts ausgeht. Auf dem iPad läuft dazu das Rausschmeißer-Lied.
 - **St.-Pauli-Ticker:** Spielt St. Pauli, steht der Spielstand in der untersten Zeile, die
   Abfahrten bleiben darüber. Bei einem Tor für St. Pauli zeigt die ganze Tafel kurz
   „TOOOR!“ mit Feuerwerk, nach dem Abpfiff kommt der Endstand noch ein paar Stunden.
@@ -75,8 +77,8 @@ Schriften und Layout stehen oben in `src/display/render.cpp`. Um ein Layout ohne
 `tools/preview/run.sh` ausführen; es schreibt `tools/preview/preview.png`, die Bilder der
 Abfahrtsanimation nach `tools/preview/preview_anim.png`, Beispiele des Event-Modus nach
 `tools/preview/preview_event.png`, ein Bahnrennen nach `tools/preview/preview_race.png` und die
-Karaoke-Liste nach `tools/preview/preview_karaoke.png` und den St.-Pauli-Ticker nach
-`tools/preview/preview_match.png`.
+Karaoke-Liste nach `tools/preview/preview_karaoke.png`, den St.-Pauli-Ticker nach
+`tools/preview/preview_match.png` und den Rausschmeißer nach `tools/preview/preview_bouncer.png`.
 
 ## Datenquelle
 
@@ -202,11 +204,11 @@ eine Seite unter *Jetzt*, die man über ihre Karte dort öffnet (`/#event`, `/#k
 Leiste mit jedem neuen Event nicht länger wird:
 
 - **Jetzt**: *Was zeigt die Tafel?* – *Abfahrten*, *Event* oder *Karaoke*, immer eins davon, gilt sofort,
-  ohne Speichern. Darunter *Zwischendurch* mit dem Knopf für ein **Bahnrennen**: Es unterbricht
-  die Tafel nur, die Auswahl oben steht so lange auf „unterbrochen“.
+  ohne Speichern. Darunter *Zwischendurch* mit dem Knopf für ein **Bahnrennen** und dem
+  **Rausschmeißer**: Sie unterbrechen die Tafel nur, die Auswahl oben steht so lange auf „unterbrochen“.
   - **Event bearbeiten**: Szenen, Bilder und Helligkeit des Events (siehe *Event-Modus*).
   - **Liste bearbeiten**: die Karaoke-Liste (siehe *Karaoke*).
-- **Tafel**: Promos, 4. Zeile, Abfahrts-Animation, St.-Pauli-Ticker, Mexikaner im Bahnrennen und Icons.
+- **Tafel**: Promos, Rausschmeißer, 4. Zeile, Abfahrts-Animation, St.-Pauli-Ticker, Mexikaner im Bahnrennen und Icons.
 - **Zeitplan**: Ruhezeit und Helligkeit.
 - **Technik**: WLAN, Log, Neustart.
 
@@ -376,6 +378,30 @@ Das Lied wird so nur eingeschoben. Nach der Ehrenrunde läuft die Playlist weite
 Wechselt jemand während des Rennens das Lied von Hand, überspringt der letzte Schritt ein anderes.
 Startet man das Rennen über die Webseite, kommt der Mexikaner trotzdem, es läuft aber keine Musik.
 
+### Rausschmeißer (Kurzbefehl fürs iPad)
+
+Zum Feierabend läuft ein Text, wahlweise mit Icon, als Laufschrift durch die 4. Zeile, immer
+wieder, so wie die Promos bei *Nur Promos*. Text, Icon und Farbe (Orange oder Weiß mit eigener
+Helligkeit) stellt man auf dem Tab **Tafel** unter *Rausschmeißer* ein, eingeschaltet wird er
+unter **Jetzt** → *Zwischendurch* oder per Kurzbefehl. Solange er läuft:
+
+- hat er die 4. Zeile für sich: keine Promos, Störmeldungen, kein Spielstand, auch nicht
+  „Keine WLAN-Verbindung“ (das „!“ oben rechts warnt trotzdem),
+- zeigt die Tafel bei *Event* oder *Karaoke* wieder die Abfahrten, mit der Helligkeit aus dem
+  Zeitplan; die Auswahl unter *Jetzt* steht so lange auf „unterbrochen“.
+
+Er endet, wenn die Ruhezeit beginnt (ist dann ein Event an, geht es mit aus, die Tafel wird
+dunkel), bei einem Neustart (er wird nicht gespeichert) oder mit **Aus**. In der Ruhezeit lässt
+er sich nicht einschalten (`409`), ebenso ohne Text und Icon. Ein Bahnrennen und eine auf der
+Seite Event getestete Szene gehen vor.
+
+`POST /api/rausschmeisser` schaltet ihn ein, `POST /api/rausschmeisser/stop` aus. Der Kurzbefehl
+(Kurzbefehle-App, dann zum Home-Bildschirm hinzufügen):
+
+1. **Inhalte von URL abrufen**: `http://abfahrtstafel.local/api/rausschmeisser`, Methode **POST**
+2. **Musik suchen**: Titel ist das Rausschmeißer-Lied, Limit 1 (es muss in der Mediathek sein)
+3. **Musik abspielen**: *Musik* aus Schritt 2
+
 ### Tests (Parser, laufen auf dem Mac)
 
 ```bash
@@ -431,7 +457,7 @@ vorher einmal `sudo xcodebuild -license` aus.
 | `src/core/settings_store.cpp` | Einstellungen im Flash (LittleFS), Übergabe an die Render-Schleife |
 | `src/web/web.cpp`, `src/web/index.html` | die Webseite (alle Tabs, auch der Event-Editor) und ihre JSON-API; `tools/web_assets.py` packt sie beim Build per gzip in die Firmware |
 | `src/event/event.cpp` | Event-Modus: Szenen und Zeilen, JSON (auf dem Host getestet) |
-| `src/event/event_store.cpp` | Event und Karaoke-Liste im Flash (LittleFS), Übergabe an die Render-Schleife |
+| `src/event/event_store.cpp` | Event und Karaoke-Liste im Flash (LittleFS), Übergabe an die Render-Schleife, auch von Bahnrennen und Rausschmeißer |
 | `src/event/event_render.cpp` | zeichnet die Szenen, für das Panel und die Vorschau auf der Seite |
 | `src/karaoke/karaoke.cpp` | Karaoke-Liste: Einträge, Farben, JSON (auf dem Host getestet) |
 | `src/karaoke/karaoke_render.cpp` | zeichnet die Karaoke-Liste, für das Panel und die Vorschau auf der Seite |

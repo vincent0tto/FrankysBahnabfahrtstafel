@@ -208,11 +208,16 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 
 <section>
 <h2>Zwischendurch</h2>
-<div class="hint">Unterbricht die Tafel kurz, danach zeigt sie wieder, was oben gewählt ist.</div>
+<div class="hint">Unterbricht die Tafel, danach zeigt sie wieder, was oben gewählt ist.</div>
 <div class="show" id="raceCard">
 <h3>Bahnrennen</h3>
 <div class="hint">Wie das Pferderennen auf der Kirmes: 4 Bahnen, 12 Felder, wer zuerst im Ziel ist, gewinnt. Setzt auf eine Nummer! Dauert etwa eine halbe Minute. Ab und zu (wie oft: Tab Tafel) tanzt mittendrin ein Mexikaner mit Gitarre; mit dem Kurzbefehl auf dem iPad läuft dazu „Fiesta Mexicana“.</div>
 <div class="row"><button class="primary" id="raceStart">▶ Rennen starten</button><button id="raceFiesta">🌮 Mit Mexikaner</button><button id="raceStop" hidden>Abbrechen</button><span class="hint" id="raceText" style="margin:0"></span></div>
+</div>
+<div class="show" id="bouncerCard" style="margin-top:8px">
+<h3>Rausschmeißer</h3>
+<div class="hint">Zum Feierabend: Der Text vom Tab Tafel läuft durch die 4. Zeile, statt Promos und Spielstand. Bei Event oder Karaoke zeigt die Tafel so lange wieder die Abfahrten. Bleibt bis zur Ruhezeit (dann geht auch das Event aus), bis zum Neustart oder bis „Aus“. Mit dem Kurzbefehl auf dem iPad läuft dazu das Lied.</div>
+<div class="row"><button class="primary" id="bouncerStart">▶ Anzeigen</button><button id="bouncerStop" hidden>Aus</button><span class="hint" id="bouncerText" style="margin:0"></span></div>
 </div>
 </section>
 </div>
@@ -224,6 +229,12 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 <div class="note" id="promoOff" hidden>Promos sind gerade aus (unten unter „4. Zeile“ einschalten).</div>
 <div id="promos"></div>
 <button class="add" id="addPromo">+ Eigene Promo</button>
+</section>
+
+<section>
+<h2>Rausschmeißer</h2>
+<div class="hint">Läuft zum Feierabend durch die 4. Zeile, egal was die Tafel gerade zeigt, bis zur Ruhezeit. Einschalten unter Jetzt oder mit dem Kurzbefehl auf dem iPad; Änderungen hier gelten nach „Änderungen speichern“.</div>
+<div id="bouncer"></div>
 </section>
 
 <section>
@@ -601,6 +612,32 @@ function renderPromos(){
     box.append(card);
   });
   $('addPromo').disabled=S.promos.length>=MAX_PROMOS;
+  renderBouncer();
+}
+// one text with an icon, scrolling like the promos with "Nur Promos"
+function renderBouncer(){
+  const b=S.bouncer,pv=el('div',{style:'margin:6px 0'});
+  const upd=()=>{
+    const ic=b.icon&&iconRows(b.icon)?iconCanvas(b.icon,2):'';
+    pv.replaceChildren(el('div',{className:'led left'},el('span',{className:'tx'},ic,
+      b.text?el('span',{className:'t',textContent:b.text}):el('span',{className:'t empty',textContent:'(kein Text)'}))));
+  };upd();
+  const sel=iconOptions(b.icon||'');
+  sel.onchange=e=>{
+    if(e.target.value!=='new'){b.icon=e.target.value;upd();return}
+    const ic=newIcon();b.icon='[c'+ic.id+']';
+    renderIcons();renderPromos();edit(ic);
+  };
+  const row=el('div',{className:'row'},
+    el('label',{},el('input',{type:'checkbox',checked:S.bouncerWhite,onchange:e=>{S.bouncerWhite=e.target.checked;renderBouncer()}}),'in Weiß statt Orange'));
+  if(S.bouncerWhite){
+    const val=el('span',{className:'val',textContent:S.bouncerWhitePct+' %'});
+    row.append(el('label',{},'Helligkeit',el('input',{type:'range',min:1,max:100,value:S.bouncerWhitePct,
+      oninput:e=>{S.bouncerWhitePct=+e.target.value;val.textContent=S.bouncerWhitePct+' %'}}),val));
+  }
+  $('bouncer').replaceChildren(pv,
+    field('Text',el('input',{type:'text',value:b.text,maxLength:60,placeholder:'Text',oninput:e=>{b.text=e.target.value;upd()}})),
+    field('Icon',sel),row);
 }
 
 function renderIcons(){
@@ -616,9 +653,9 @@ function renderIcons(){
 
 function delIcon(i){
   const tag='[c'+i.id+']';
-  if(S.promos.some(p=>p.icon===tag)&&!confirm('Das Icon wird noch benutzt. Trotzdem löschen?'))return;
+  if((S.promos.some(p=>p.icon===tag)||S.bouncer.icon===tag)&&!confirm('Das Icon wird noch benutzt. Trotzdem löschen?'))return;
   S.icons=S.icons.filter(x=>x!==i);
-  for(const p of S.promos)if(p.icon===tag)p.icon='';
+  for(const p of [...S.promos,S.bouncer])if(p.icon===tag)p.icon='';
   if(editing===i)$('editBox').hidden=true;
   renderIcons();renderPromos();
 }
@@ -680,6 +717,7 @@ function collect(){
     disruptOn:S.disruptOn,disruptPasses:S.disruptPasses,animChance:S.animChance,animChanceBus:S.animChanceBus,
     matchOn:$('matchOn').checked,goalAnim:$('goalAnim').checked,
     fiestaChance:+$('fiestaChance').value,fiestaText1:$('fiestaText1').value,fiestaText2:$('fiestaText2').value,
+    bouncer:{icon:S.bouncer.icon||'',text:S.bouncer.text},bouncerWhite:S.bouncerWhite,bouncerWhitePct:S.bouncerWhitePct,
     promos,icons:S.icons};
 }
 
@@ -693,7 +731,7 @@ function updateSave(){
 }
 // which tab holds which settings, for the dot at a tab with unsaved changes
 // (the event's are on "Jetzt", its page is below it; the card's link gets the dot too)
-const TAB_KEYS={tafel:['promos','icons','promoShowS','promoIntervalS','promoFullRow','promoWhite','promoWhitePct','disruptOn','disruptPasses','matchOn','goalAnim','fiestaChance','fiestaText1','fiestaText2','animChance','animChanceBus'],
+const TAB_KEYS={tafel:['promos','icons','promoShowS','promoIntervalS','promoFullRow','promoWhite','promoWhitePct','disruptOn','disruptPasses','matchOn','goalAnim','fiestaChance','fiestaText1','fiestaText2','bouncer','bouncerWhite','bouncerWhitePct','animChance','animChanceBus'],
   zeitplan:['off','brightnessPct','dim']};
 function markTabs(){
   const c=S&&collect(),b=S&&JSON.parse(base);
@@ -762,8 +800,8 @@ async function status(){
     const age=s.dataAgeS<0?'noch keine Daten':'Daten von vor '+(s.dataAgeS<120?s.dataAgeS+' s':Math.round(s.dataAgeS/60)+' min');
     const up=s.uptimeS<7200?Math.round(s.uptimeS/60)+' min':Math.round(s.uptimeS/3600)+' h';
     $('ssidNow').textContent=s.ssid;
-    $('status').textContent=`Firmware ${s.build} · läuft seit ${up} · ${age} · ${s.race?'Bahnrennen':s.karaoke?'Karaoke läuft':s.event?'Event läuft':s.off?'Ruhezeit':'Panel an'} · WLAN ${s.rssi} dBm`;
-    shown=s.karaoke?'karaoke':s.event?'event':'dep';raceOn=!!s.race;renderModes();
+    $('status').textContent=`Firmware ${s.build} · läuft seit ${up} · ${age} · ${s.race?'Bahnrennen':s.bouncer?'Rausschmeißer':s.karaoke?'Karaoke läuft':s.event?'Event läuft':s.off?'Ruhezeit':'Panel an'} · WLAN ${s.rssi} dBm`;
+    shown=s.karaoke?'karaoke':s.event?'event':'dep';raceOn=!!s.race;bouncerOn=!!s.bouncer;renderModes();
     renderMatch(s.match);
     if(S)renderTimeline();
     sync(s.rev);
@@ -789,12 +827,14 @@ $('goalTest').onclick=()=>act(()=>post('/api/goal/test'));
 // What the board shows: the departures, the event or the karaoke list
 // ('dep', 'event', 'karaoke'), switched at once (no saving). A race only
 // interrupts that for a while, then it shows again.
-let shown='dep',raceOn=false,raceTimer=0,switching=false;
+// The bouncer interrupts the event and karaoke until it is switched off.
+let shown='dep',raceOn=false,bouncerOn=false,raceTimer=0,switching=false;
 function renderModes(){
   const set=(id,on)=>{
-    const m=$(id);m.classList.toggle('on',on);m.classList.toggle('paused',on&&raceOn);
+    const paused=on&&(raceOn||bouncerOn&&id!=='mDep');
+    const m=$(id);m.classList.toggle('on',on);m.classList.toggle('paused',paused);
     m.querySelector('.pick').setAttribute('aria-checked',on);
-    m.querySelector('em').textContent=on?raceOn?'unterbrochen':'läuft':'';
+    m.querySelector('em').textContent=on?paused?'unterbrochen':'läuft':'';
   };
   set('mDep',shown==='dep');
   set('mEvent',shown==='event');
@@ -802,6 +842,9 @@ function renderModes(){
   $('raceCard').classList.toggle('on',raceOn);
   $('raceStart').hidden=$('raceFiesta').hidden=raceOn;$('raceStop').hidden=!raceOn;
   $('raceText').textContent=raceOn?'Rennen läuft …':'';
+  $('bouncerCard').classList.toggle('on',bouncerOn);
+  $('bouncerStart').hidden=bouncerOn;$('bouncerStop').hidden=!bouncerOn;
+  $('bouncerText').textContent=!bouncerOn?'':S&&S.off.on?'läuft bis zur Ruhezeit ('+S.off.from+' Uhr)':'läuft (keine Ruhezeit eingestellt)';
   EV.setShown(shown);KA.setShown(shown);
   clearTimeout(raceTimer);
   if(raceOn)raceTimer=setTimeout(status,3000);  // the race ends by itself, so ask more often meanwhile
@@ -833,6 +876,8 @@ $('mKaraoke').querySelector('.pick').onclick=()=>pick('karaoke');
 $('raceStart').onclick=()=>act(async()=>{await post('/api/race');raceOn=true});
 $('raceFiesta').onclick=()=>act(async()=>{await post('/api/race?fiesta=1');raceOn=true});
 $('raceStop').onclick=()=>act(async()=>{await post('/api/race/stop');raceOn=false});
+$('bouncerStart').onclick=()=>act(async()=>{await post('/api/rausschmeisser');bouncerOn=true});
+$('bouncerStop').onclick=()=>act(async()=>{await post('/api/rausschmeisser/stop');bouncerOn=false});
 // waits for the board to come back after a restart, then reloads the page
 async function afterRestart(msg){
   const t0=Date.now();

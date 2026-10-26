@@ -25,6 +25,8 @@ static uint8_t raceFiestaPct = 0;
 static bool raceActive = false;
 static uint32_t raceEndMs = 0;  // millis() when it is over
 static volatile uint32_t raceVersion = 0;
+static bool bouncerActive = false;  // same
+static volatile uint32_t bouncerVersion = 0;
 static SemaphoreHandle_t mutex;
 
 Event& eventScratch() {
@@ -189,6 +191,32 @@ bool raceFetch(uint32_t& seed, uint8_t& fiestaChance, bool& active, uint32_t& ve
   fiestaChance = raceFiestaPct;
   active = raceActive;
   version = raceVersion;
+  xSemaphoreGive(mutex);
+  return true;
+}
+
+void bouncerStart() {
+  xSemaphoreTake(mutex, portMAX_DELAY);
+  bouncerActive = true;
+  bouncerVersion++;
+  xSemaphoreGive(mutex);
+  Log.println("[bouncer] on");
+}
+
+void bouncerStop() {
+  xSemaphoreTake(mutex, portMAX_DELAY);
+  bouncerActive = false;
+  bouncerVersion++;
+  xSemaphoreGive(mutex);
+  Log.println("[bouncer] off");
+}
+
+bool bouncerRunning() { return bouncerActive; }
+
+bool bouncerFetch(bool& active, uint32_t& version) {
+  if (version == bouncerVersion || xSemaphoreTake(mutex, pdMS_TO_TICKS(10)) != pdTRUE) return false;
+  active = bouncerActive;
+  version = bouncerVersion;
   xSemaphoreGive(mutex);
   return true;
 }

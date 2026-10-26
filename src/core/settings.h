@@ -62,12 +62,16 @@ struct Settings {
   uint8_t fiestaChance = 0;     // 1 in N races has the dancing Mexican (src/race/race.h), 0 = never
   char fiestaText1[32] = "";    // the race's dancing Mexican (src/race/race.h): over him first,
   char fiestaText2[32] = "";    // then this; "" shows nothing
+  Promo bouncer;                // "Rausschmeißer": icon and text only; once started
+                                // (src/event/event_store.h) it scrolls through the 4th row
+  bool bouncerWhite = false;    // in white instead of amber,
+  uint8_t bouncerWhitePct = 100;  // this bright, percent (1..100)
   Promo promos[MAX_PROMOS];
   uint8_t nPromos = 0;
   CustomIcon icons[MAX_CUSTOM_ICONS];  // index = number in the tag
 };
 
-// config.h values, no promos.
+// config.h values, no promos, a bouncer text.
 void settingsDefaults(Settings& s);
 
 // Fills `p` from a text in the former PROMO_TEXTS form
