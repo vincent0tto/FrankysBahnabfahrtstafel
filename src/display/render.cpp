@@ -742,7 +742,11 @@ void renderMarquee(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, uint16_t color, c
   u8.setFontMode(1);
   u8.setForegroundColor(color);
   u8.setFont(MARQUEE_FONT);
-  // capitals and descenders together in the middle of the board
+  // in the middle of the board: the capitals, with descenders (or an icon
+  // reaching below the baseline) the capitals and descenders together
+  IconRef ic = findIcon(s, p.icon);
   int ascent = u8.getFontAscent();
-  drawMarquee(g, u8, color, findIcon(s, p.icon), p.text, (H - ascent + u8.getFontDescent()) / 2 + ascent, t);
+  bool below = strpbrk(p.text, "gjpqy,;()[]{}|") || (ic && ic.drop > 0);
+  int belowPx = below ? -u8.getFontDescent() : 0;
+  drawMarquee(g, u8, color, ic, p.text, (H - ascent - belowPx) / 2 + ascent, t);
 }

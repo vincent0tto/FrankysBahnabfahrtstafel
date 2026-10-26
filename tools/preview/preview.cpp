@@ -445,7 +445,7 @@ int main(int argc, char** argv) {
   callout("", "Feierabend!", 0);
   callout("[bi]", "", 0);
   callout("", "Donaudampfschifffahrtsgesellschaftskapitänsmützenabzeichen", 3000);
-  // the last round: as high as the board, scrolling through
+  // the last round: as high as the board, scrolling through (without and with descenders)
   auto marquee = [&](const char* icon, const char* text, uint32_t t) {
     Promo p;
     strcpy(p.icon, icon);
