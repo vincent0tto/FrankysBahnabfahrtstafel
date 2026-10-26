@@ -75,13 +75,14 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff;fo
 .show.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);background:var(--card)}
 .show h3{margin-top:10px}
 a.more{font-weight:600;text-decoration:none;font-size:14px}
+.show .more{display:block;margin-top:2px}
 /* Tafel */
-.promo{border-top:1px solid var(--line);padding:8px 0}
+.promo{border-top:1px solid var(--line);padding:5px 0}
 .promo:first-child{border-top:0}
 .phead{display:flex;gap:8px;align-items:center}
 .pv{flex:1;min-width:0;cursor:pointer}
 .promo.off .pv{opacity:.4}
-.pinfo{color:var(--muted);font-size:13px;padding:3px 0 0 26px}
+.pinfo{flex:none;width:76px;color:var(--muted);font-size:12px;line-height:1.2;white-space:pre-line}
 .chev{width:36px;padding:5px 0}
 .pbody{padding:6px 0 4px 26px}
 .led{display:flex;align-items:center;gap:8px;background:var(--panel);color:var(--led);border-radius:6px;padding:0 10px;height:32px;font:600 14px ui-monospace,Menlo,monospace;white-space:nowrap;overflow:hidden;justify-content:center}
@@ -211,13 +212,15 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 <div class="hint">Unterbricht die Tafel, danach zeigt sie wieder, was oben gewählt ist.</div>
 <div class="show" id="raceCard">
 <h3>Bahnrennen</h3>
-<div class="hint">Wie das Pferderennen auf der Kirmes: 4 Bahnen, 12 Felder, wer zuerst im Ziel ist, gewinnt. Setzt auf eine Nummer! Dauert etwa eine halbe Minute. Ab und zu (wie oft: Tab Tafel) tanzt mittendrin ein Mexikaner mit Gitarre; mit dem Kurzbefehl auf dem iPad läuft dazu „Fiesta Mexicana“.</div>
+<div class="hint">Wie das Pferderennen auf der Kirmes: 4 Bahnen, 12 Felder, wer zuerst im Ziel ist, gewinnt. Setzt auf eine Nummer! Dauert etwa eine halbe Minute. Ab und zu tanzt mittendrin ein Mexikaner mit Gitarre; mit dem Kurzbefehl auf dem iPad läuft dazu „Fiesta Mexicana“.</div>
 <div class="row"><button class="primary" id="raceStart">▶ Rennen starten</button><button id="raceFiesta">🌮 Mit Mexikaner</button><button id="raceStop" hidden>Abbrechen</button><span class="hint" id="raceText" style="margin:0"></span></div>
+<a class="more" href="#mexikaner">Mexikaner einstellen ›</a>
 </div>
 <div class="show" id="bouncerCard" style="margin-top:8px">
 <h3>Rausschmeißer</h3>
-<div class="hint">Zum Feierabend: Der Text vom Tab Tafel läuft durch die 4. Zeile, statt Promos und Spielstand. Bei Event oder Karaoke zeigt die Tafel so lange wieder die Abfahrten. Bleibt bis zur Ruhezeit (dann geht auch das Event aus), bis zum Neustart oder bis „Aus“. Mit dem Kurzbefehl auf dem iPad läuft dazu das Lied.</div>
+<div class="hint">Zum Feierabend: Dein Text läuft durch die 4. Zeile, statt Promos und Spielstand. Bei Event oder Karaoke zeigt die Tafel so lange wieder die Abfahrten. Bleibt bis zur Ruhezeit (dann geht auch das Event aus), bis zum Neustart oder bis „Aus“. Mit dem Kurzbefehl auf dem iPad läuft dazu das Lied.</div>
 <div class="row"><button class="primary" id="bouncerStart">▶ Anzeigen</button><button id="bouncerStop" hidden>Aus</button><span class="hint" id="bouncerText" style="margin:0"></span></div>
+<a class="more" href="#rausschmeisser">Text bearbeiten ›</a>
 </div>
 </section>
 </div>
@@ -229,12 +232,6 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 <div class="note" id="promoOff" hidden>Promos sind gerade aus (unten unter „4. Zeile“ einschalten).</div>
 <div id="promos"></div>
 <button class="add" id="addPromo">+ Eigene Promo</button>
-</section>
-
-<section>
-<h2>Rausschmeißer</h2>
-<div class="hint">Läuft zum Feierabend durch die 4. Zeile, egal was die Tafel gerade zeigt, bis zur Ruhezeit. Einschalten unter Jetzt oder mit dem Kurzbefehl auf dem iPad; Änderungen hier gelten nach „Änderungen speichern“.</div>
-<div id="bouncer"></div>
 </section>
 
 <section>
@@ -259,14 +256,6 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 </section>
 
 <section>
-<h2>Bahnrennen: Mexikaner</h2>
-<div class="hint">Wie oft er kommt (1 = in jedem Rennen, 0 = nie; nie zusammen mit einer Entgleisung) und die Texte über ihm, erst der eine, dann der andere. Leer lassen: kein Text. Testen mit „🌮 Mit Mexikaner“ unter Jetzt.</div>
-<div class="field"><span class="flabel">Wie oft</span><div class="fctl"><label>jedes <input type="number" min="0" max="100" id="fiestaChance">. Rennen</label></div></div>
-<div class="field"><span class="flabel">Zuerst</span><div class="fctl"><input type="text" id="fiestaText1" maxlength="20" placeholder="z. B. ¡FIESTA!"></div></div>
-<div class="field"><span class="flabel">Danach</span><div class="fctl"><input type="text" id="fiestaText2" maxlength="20" placeholder="z. B. Mexikaner-Shots!"></div></div>
-</section>
-
-<section>
 <h2>Icons</h2>
 <div class="hint">Symbole für die Promos. Eigene lassen sich ändern.</div>
 <div class="icons" id="icons"></div>
@@ -277,6 +266,26 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 <button id="editClear">Leeren</button><button id="editDone">Fertig</button></div>
 </div>
 <button class="add" id="addIcon">+ Eigenes Icon</button>
+</section>
+</div>
+
+<div class="tab" id="t-rausschmeisser" hidden>
+<div class="sub"><a href="#jetzt">‹ Jetzt</a><b>Rausschmeißer</b></div>
+<section>
+<h2>Text</h2>
+<div class="hint">Läuft zum Feierabend durch die 4. Zeile, egal was die Tafel gerade zeigt, bis zur Ruhezeit. Änderungen gelten nach „Änderungen speichern“.</div>
+<div id="bouncer"></div>
+</section>
+</div>
+
+<div class="tab" id="t-mexikaner" hidden>
+<div class="sub"><a href="#jetzt">‹ Jetzt</a><b>Mexikaner</b></div>
+<section>
+<h2>Mexikaner im Bahnrennen</h2>
+<div class="hint">Wie oft er kommt (1 = in jedem Rennen, 0 = nie; nie zusammen mit einer Entgleisung) und die Texte über ihm, erst der eine, dann der andere. Leer lassen: kein Text. Testen mit „🌮 Mit Mexikaner“ unter Jetzt.</div>
+<div class="field"><span class="flabel">Wie oft</span><div class="fctl"><label>jedes <input type="number" min="0" max="100" id="fiestaChance">. Rennen</label></div></div>
+<div class="field"><span class="flabel">Zuerst</span><div class="fctl"><input type="text" id="fiestaText1" maxlength="20" placeholder="z. B. ¡FIESTA!"></div></div>
+<div class="field"><span class="flabel">Danach</span><div class="fctl"><input type="text" id="fiestaText2" maxlength="20" placeholder="z. B. Mexikaner-Shots!"></div></div>
 </section>
 </div>
 
@@ -542,12 +551,13 @@ function daysText(m){
   return out.join(', ');
 }
 const hasWin=p=>!!(p.win&&p.win.from&&p.win.to&&p.win.from!==p.win.to);
+// days and hours, one per line next to the preview (off shows in the checkbox)
 function promoInfo(p){
   const parts=[];
-  if(!p.on)parts.push('aus');
   const d=daysText(p.days??ALL_DAYS);if(d)parts.push(d);
-  if(hasWin(p))parts.push(p.win.from+'–'+p.win.to+' Uhr');
-  return parts.join(' · ')||'immer';
+  const hm=t=>t.replace(/^0?(\d+):00$/,'$1');  // 12:00 -> 12
+  if(hasWin(p))parts.push(hm(p.win.from)+'–'+hm(p.win.to)+' Uhr');
+  return parts.join('\n');
 }
 // roughly how the promo looks on the board
 function ledPreview(p){
@@ -603,11 +613,11 @@ function renderPromos(){
     p._dep??=!!p.right;
     const card=el('div',{className:'promo'+(p.on?'':' off')});
     const toggle=()=>{p._open=!p._open;renderPromos()};
-    const pv=el('div',{className:'pv',title:p._open?'zuklappen':'bearbeiten',onclick:toggle}),info=el('div',{className:'pinfo'});
+    const pv=el('div',{className:'pv',title:p._open?'zuklappen':'bearbeiten',onclick:toggle}),info=el('span',{className:'pinfo'});
     const upd=()=>{pv.replaceChildren(ledPreview(p));info.textContent=promoInfo(p)};upd();
     card.append(el('div',{className:'phead'},
       el('input',{type:'checkbox',checked:p.on,title:'anzeigen',onchange:e=>{p.on=e.target.checked;card.classList.toggle('off',!p.on);upd()}}),
-      pv,el('button',{className:'chev',textContent:p._open?'▴':'▾',title:p._open?'zuklappen':'bearbeiten',onclick:toggle})),info);
+      pv,info,el('button',{className:'chev',textContent:p._open?'▴':'▾',title:p._open?'zuklappen':'bearbeiten',onclick:toggle})));
     if(p._open)card.append(promoBody(p,i,upd));
     box.append(card);
   });
@@ -626,6 +636,7 @@ function renderBouncer(){
   sel.onchange=e=>{
     if(e.target.value!=='new'){b.icon=e.target.value;upd();return}
     const ic=newIcon();b.icon='[c'+ic.id+']';
+    location.hash='tafel';showTab();  // the icon editor is there
     renderIcons();renderPromos();edit(ic);
   };
   const row=el('div',{className:'row'},
@@ -730,16 +741,19 @@ function updateSave(){
   renderTimeline();markTabs();
 }
 // which tab holds which settings, for the dot at a tab with unsaved changes
-// (the event's are on "Jetzt", its page is below it; the card's link gets the dot too)
-const TAB_KEYS={tafel:['promos','icons','promoShowS','promoIntervalS','promoFullRow','promoWhite','promoWhitePct','disruptOn','disruptPasses','matchOn','goalAnim','fiestaChance','fiestaText1','fiestaText2','bouncer','bouncerWhite','bouncerWhitePct','animChance','animChanceBus'],
-  zeitplan:['off','brightnessPct','dim']};
+// (the event's and the PAGE_KEYS are on "Jetzt", their pages are below it; the card's link gets the dot too)
+const PAGE_KEYS={rausschmeisser:['bouncer','bouncerWhite','bouncerWhitePct'],mexikaner:['fiestaChance','fiestaText1','fiestaText2']};
+const TAB_KEYS={tafel:['promos','icons','promoShowS','promoIntervalS','promoFullRow','promoWhite','promoWhitePct','disruptOn','disruptPasses','matchOn','goalAnim','animChance','animChanceBus'],
+  jetzt:Object.values(PAGE_KEYS).flat(),zeitplan:['off','brightnessPct','dim']};
 function markTabs(){
   const c=S&&collect(),b=S&&JSON.parse(base);
+  const changed=keys=>!!c&&keys.some(k=>JSON.stringify(c[k])!==JSON.stringify(b[k]));
   for(const a of $('tabs').children){
-    const t=a.hash.slice(1),keys=TAB_KEYS[t]||[];
-    a.classList.toggle('dirty',t==='jetzt'&&EV.dirty()||!!c&&keys.some(k=>JSON.stringify(c[k])!==JSON.stringify(b[k])));
+    const t=a.hash.slice(1);
+    a.classList.toggle('dirty',t==='jetzt'&&EV.dirty()||changed(TAB_KEYS[t]||[]));
   }
   document.querySelector('#mEvent .more').classList.toggle('dirty',EV.dirty());
+  for(const t in PAGE_KEYS)document.querySelector(`a.more[href="#${t}"]`).classList.toggle('dirty',changed(PAGE_KEYS[t]));
 }
 for(const ev of ['input','change','click'])document.addEventListener(ev,updateSave);
 const content=s=>JSON.stringify({...s,rev:''});
@@ -1806,7 +1820,7 @@ return {
 
 // ---- tabs: the one in the address (#zeitplan), without one "Jetzt" ----
 // pages without a tab of their own and the tab they belong to
-const PARENT={event:'jetzt',karaoke:'jetzt'};
+const PARENT={event:'jetzt',karaoke:'jetzt',rausschmeisser:'jetzt',mexikaner:'jetzt'};
 let tab='';
 function showTab(){
   const want=location.hash.slice(1),t=want&&$('t-'+want)?want:'jetzt';
