@@ -196,16 +196,18 @@ CI nur Builds, die die Tests bestehen.
 ### Einstellungsseite
 
 `http://abfahrtstafel.local` (oder die IP aus dem seriellen Log) von einem beliebigen Gerät im
-selben WLAN öffnen. Es gibt kein Login. Die Seite hat sechs Tabs; der offene steht in der Adresse
-(`/#zeitplan`), so lässt sich jeder direkt aufrufen:
+selben WLAN öffnen. Es gibt kein Login. Die Seite hat vier Tabs; der offene steht in der Adresse
+(`/#zeitplan`), so lässt sich jeder direkt aufrufen. Die Events haben keinen eigenen Tab, sondern
+eine Seite unter *Jetzt*, die man über ihre Karte dort öffnet (`/#event`, `/#karaoke`), damit die
+Leiste mit jedem neuen Event nicht länger wird:
 
 - **Jetzt**: *Was zeigt die Tafel?* – *Abfahrten*, *Event* oder *Karaoke*, immer eins davon, gilt sofort,
   ohne Speichern. Darunter *Zwischendurch* mit dem Knopf für ein **Bahnrennen**: Es unterbricht
   die Tafel nur, die Auswahl oben steht so lange auf „unterbrochen“.
+  - **Event bearbeiten**: Szenen, Bilder und Helligkeit des Events (siehe *Event-Modus*).
+  - **Liste bearbeiten**: die Karaoke-Liste (siehe *Karaoke*).
 - **Tafel**: Promos, 4. Zeile, Abfahrts-Animation, St.-Pauli-Ticker, Mexikaner im Bahnrennen und Icons.
 - **Zeitplan**: Ruhezeit und Helligkeit.
-- **Event**: Szenen, Bilder und Helligkeit des Events (siehe *Event-Modus*).
-- **Karaoke**: die Karaoke-Liste (siehe *Karaoke*).
 - **Technik**: WLAN, Log, Neustart.
 
 Im Einzelnen:
@@ -246,8 +248,9 @@ Im Einzelnen:
   hält etwa 32 KB davon im PSRAM, `LOG_BUFFER_BYTES`; nach einem Neustart beginnt es von vorn);
   **Neu starten**.
 
-Der Knopf unten zeigt, ob es ungespeicherte Änderungen gibt, auf dem Tab *Event* für das Event,
-sonst für die Einstellungen; ein Punkt am Tab zeigt, wo sie sind. Verlässt man die Seite mit
+Der Knopf unten zeigt, ob es ungespeicherte Änderungen gibt, auf der Seite *Event* für das Event,
+sonst für die Einstellungen; ein Punkt am Tab zeigt, wo sie sind (beim Event an *Jetzt* und am
+Link „Event bearbeiten“). Verlässt man die Seite mit
 welchen, fragt der Browser nach.
 
 Ändert jemand die Einstellungen auf einem anderen Gerät, übernimmt eine offene Seite das von
@@ -277,7 +280,7 @@ ganze Tafel an das Event, bis man wieder *Abfahrten* wählt. Solange:
 
 Ein- und Ausschalten überstehen Neustarts, auch den täglichen um 04:00.
 
-Auf dem Tab **Event** (`/#event`, die alte Adresse `/event` leitet dorthin) bearbeitet man bis zu 8 **Szenen**, die der Reihe nach in einer Schleife laufen. Jede
+Auf der Seite **Event** (`/#event`, unter *Jetzt* über „Event bearbeiten“, die alte Adresse `/event` leitet dorthin) bearbeitet man bis zu 8 **Szenen**, die der Reihe nach in einer Schleife laufen. Jede
 hat eine Anzeigedauer, einen Hintergrund (Schwarz oder eine Farbe, darauf optional ein **Bild**,
 siehe unten), einen **Übergang** zur
 nächsten Szene (*Schnitt*, *Schieben* oder *Wischen*, je 0,6 s, `TRANSITION_MS`) und bis zu 4
@@ -301,7 +304,7 @@ wieder mit der ersten Szene.
 
 **Bilder** sind Pixelgrafiken über die ganze Tafel (192 × 64), die eine Szene unter ihren Texten
 zeigt; schwarze Pixel sind durchsichtig, dort scheint die Hintergrundfarbe durch. Unter
-„Bilder“ auf dem Tab Event zeichnet man sie selbst:
+„Bilder“ auf der Seite Event zeichnet man sie selbst:
 
 - *Stift* und *Radierer* mit Stärke 1–4, *Füllen*, *Pipette*,
 - *Linie* (rastet waagerecht, senkrecht und diagonal ein), *Rechteck* und *Kreis*, auch gefüllt,
@@ -324,7 +327,7 @@ die es zeigen.
 **Farben auf dem Panel:** Mit `PIXEL_COLOR_DEPTH_BITS=4` hat jede Grundfarbe nur 16 Stufen, und die
 Bibliothek legt sie über eine Helligkeitskurve (CIE 1931, `cie_luts.h`): Ein Kanal unter 55 von 255
 bleibt ganz aus, darüber kommen die Stufen grob (z. B. 120 und 96 sind dieselbe). Dunkle Töne
-und weiche Verläufe gehen dabei verloren. Alle Vorschauen auf dem Tab Event (Szene, Editor, Bilder)
+und weiche Verläufe gehen dabei verloren. Alle Vorschauen auf der Seite Event (Szene, Editor, Bilder)
 rechnen genau so und zeigen deshalb, was das Panel zeigt; die Hintergrundfarben zur Auswahl
 sind die dunkelsten, die noch leuchten.
 
@@ -342,7 +345,7 @@ bei den Abfahrten eine Überschrift (frei wählbar, leer lassen geht auch) und d
 4 Einträge, Name links, Song daneben; zu lange laufen hin und her. Stehen mehr auf der Liste,
 zeigt die Überschrift rechts „+N weitere“.
 
-Auf dem Tab **Karaoke** (`/#karaoke`) trägt man bis zu 30 Namen mit Song ein, ändert sie direkt
+Auf der Seite **Karaoke** (`/#karaoke`, unter *Jetzt* über „Liste bearbeiten“) trägt man bis zu 30 Namen mit Song ein, ändert sie direkt
 in der Liste, schiebt sie mit ▲/▼ um und nimmt sie mit ✕ heraus; beim ersten heißt der Knopf
 **✓ Fertig**, danach rücken alle nach (für 15 s gibt es *Rückgängig*). Dasselbe macht der große
 Knopf oben im Tab („✓ Franky ist fertig“, darunter, wer als Nächstes dran ist). Die Farben gehören zu den

@@ -527,7 +527,7 @@ void webBegin() {
   server.on("/api/restart", HTTP_POST, handleRestart);
   server.on("/api/wifi", HTTP_POST, handleWifi);
   server.on("/api/log", HTTP_GET, handleLog);
-  server.on("/event", HTTP_GET, [] {  // the old event page, now a tab
+  server.on("/event", HTTP_GET, [] {  // the old event page, now a page below "Jetzt"
     server.sendHeader("Location", "/#event");
     server.send(302, "text/plain", "");
   });

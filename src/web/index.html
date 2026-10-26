@@ -19,12 +19,16 @@ h1{font-size:22px;margin:4px 0 2px}
 h2{font-size:17px;margin:0 0 10px}
 h3{font-size:15px;margin:16px 0 4px}
 .status{color:var(--muted);font-size:13px;margin-bottom:10px}
-/* tabs: one link per tab, the page shows the one in the address (#zeitplan) */
+/* tabs: one link per tab, the page shows the one in the address (#zeitplan);
+   an event has no tab of its own but a page below "Jetzt" (#event), opened from its card */
 .tabs{position:sticky;top:0;z-index:2;display:flex;gap:4px;background:var(--bg);padding:6px 0 10px;margin-bottom:4px;overflow-x:auto}
 .tabs a{flex:1;text-align:center;white-space:nowrap;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:inherit;text-decoration:none;font-size:14px}
 .tabs a.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
-.tabs a.dirty::after{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-left:5px;vertical-align:2px}
+.tabs a.dirty::after,a.more.dirty::after{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-left:5px;vertical-align:2px}
 .tabs a.dirty:not(.on)::after{background:var(--accent)}
+.sub{display:flex;align-items:baseline;gap:12px;margin:0 0 10px}
+.sub a{font-weight:600;text-decoration:none;font-size:14px}
+.sub b{font-size:18px}
 section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
 .hint{color:var(--muted);font-size:13px;margin:4px 0 10px}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
@@ -183,7 +187,7 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 <h1>Abfahrtstafel</h1>
 <div class="status" id="status">Lade ...</div>
 <nav class="tabs" id="tabs">
-<a href="#jetzt">Jetzt</a><a href="#tafel">Tafel</a><a href="#zeitplan">Zeitplan</a><a href="#event">Event</a><a href="#karaoke">Karaoke</a><a href="#technik">Technik</a>
+<a href="#jetzt">Jetzt</a><a href="#tafel">Tafel</a><a href="#zeitplan">Zeitplan</a><a href="#technik">Technik</a>
 </nav>
 
 <div class="tab" id="t-jetzt">
@@ -284,6 +288,7 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 </div>
 
 <div class="tab" id="t-event" hidden>
+<div class="sub"><a href="#jetzt">‹ Jetzt</a><b>Event</b></div>
 <div class="note" id="evState" hidden></div>
 <section>
 <h2>Vorschau</h2>
@@ -332,6 +337,7 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 </div>
 
 <div class="tab" id="t-karaoke" hidden>
+<div class="sub"><a href="#jetzt">‹ Jetzt</a><b>Karaoke</b></div>
 <div class="note" id="kaState" hidden></div>
 <section>
 <button class="primary" id="kaNext" hidden></button>
@@ -357,7 +363,7 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 <h2>Aussehen</h2>
 <div class="field"><span class="flabel">Überschrift</span><div class="fctl"><input type="text" id="kaTitle" maxlength="30" placeholder="leer: keine"></div></div>
 <div id="kaColors"></div>
-<div class="hint">Die Farben gehören zu den Zeilen der Tafel, nicht zu den Namen: Wer nachrückt, bekommt die Farbe seiner neuen Zeile. Die Helligkeit ist die des Events (Tab Event).</div>
+<div class="hint">Die Farben gehören zu den Zeilen der Tafel, nicht zu den Namen: Wer nachrückt, bekommt die Farbe seiner neuen Zeile. Die Helligkeit ist die des Events (unter Event bearbeiten).</div>
 </section>
 </div>
 
@@ -686,14 +692,16 @@ function updateSave(){
   renderTimeline();markTabs();
 }
 // which tab holds which settings, for the dot at a tab with unsaved changes
+// (the event's are on "Jetzt", its page is below it; the card's link gets the dot too)
 const TAB_KEYS={tafel:['promos','icons','promoShowS','promoIntervalS','promoFullRow','promoWhite','promoWhitePct','disruptOn','disruptPasses','matchOn','goalAnim','fiestaChance','fiestaText1','fiestaText2','animChance','animChanceBus'],
   zeitplan:['off','brightnessPct','dim']};
 function markTabs(){
   const c=S&&collect(),b=S&&JSON.parse(base);
   for(const a of $('tabs').children){
     const t=a.hash.slice(1),keys=TAB_KEYS[t]||[];
-    a.classList.toggle('dirty',t==='event'?EV.dirty():!!c&&keys.some(k=>JSON.stringify(c[k])!==JSON.stringify(b[k])));
+    a.classList.toggle('dirty',t==='jetzt'&&EV.dirty()||!!c&&keys.some(k=>JSON.stringify(c[k])!==JSON.stringify(b[k])));
   }
+  document.querySelector('#mEvent .more').classList.toggle('dirty',EV.dirty());
 }
 for(const ev of ['input','change','click'])document.addEventListener(ev,updateSave);
 const content=s=>JSON.stringify({...s,rev:''});
@@ -1752,6 +1760,8 @@ return {
 })();
 
 // ---- tabs: the one in the address (#zeitplan), without one "Jetzt" ----
+// pages without a tab of their own and the tab they belong to
+const PARENT={event:'jetzt',karaoke:'jetzt'};
 let tab='';
 function showTab(){
   const want=location.hash.slice(1),t=want&&$('t-'+want)?want:'jetzt';
@@ -1760,7 +1770,7 @@ function showTab(){
   if(tab==='karaoke')KA.hide();
   tab=t;
   for(const d of document.querySelectorAll('.tab'))d.hidden=d.id!=='t-'+t;
-  for(const a of $('tabs').children)a.classList.toggle('on',a.hash==='#'+t);
+  for(const a of $('tabs').children)a.classList.toggle('on',a.hash==='#'+(PARENT[t]||t));
   $('setBar').hidden=t==='event';$('evBar').hidden=t!=='event';
   document.querySelector('footer').hidden=t==='karaoke';  // saves each change at once
   if(t==='event')EV.show();
