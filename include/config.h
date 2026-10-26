@@ -89,8 +89,8 @@
 #define PANEL_I2S_SPEED     HUB75_I2S_CFG::HZ_8M
 #define PANEL_DRIVER        HUB75_I2S_CFG::SHIFTREG
 // The library trades colour depth for refresh to reach this. It calculates
-// with 8 MHz although S3_LCD_DIV_NUM=24 really clocks 6.7 MHz, so the real
-// rate is ~17 % lower than requested.
+// with 8 MHz although S3_LCD_DIV_NUM=32 really clocks 5 MHz, so the real
+// rate is ~37 % lower than requested.
 #define PANEL_MIN_REFRESH_HZ 120
 
 // rnv DFI amber
