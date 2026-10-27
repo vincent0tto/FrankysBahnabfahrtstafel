@@ -98,8 +98,8 @@ static const uint32_t FLY_MS = 700;     // the ball's flight into the Raute
 static const float GRAV = 0.00012f;     // px/ms², falling debris
 
 // after the ball's flight: the logo breaks, then comes the text, per animation
-enum { BREAK_BOOM, BREAK_TEAR, BREAK_SHATTER, BREAK_MELT, BREAK_CANNON, BREAK_DRAIN, BREAK_PRESS, BREAK_LIGHTNING, BREAK_EATEN };
-static const uint32_t TEXT_MS[CONCEDED_ANIMS] = {500, 1200, 800, 1100, 1900, 1400, 1300, 1700, 1700};
+enum { BREAK_BOOM, BREAK_TEAR, BREAK_SHATTER, BREAK_MELT, BREAK_CANNON, BREAK_DRAIN, BREAK_PRESS, BREAK_LIGHTNING, BREAK_EATEN, BREAK_ROCKET, BREAK_WRECK };
+static const uint32_t TEXT_MS[CONCEDED_ANIMS] = {500, 1200, 800, 1100, 1900, 1400, 1300, 1700, 1700, 2100, 1100};
 static const uint32_t SCORE_AFTER_MS = 1300;  // the score after the text
 
 // a Raute (a square on its corner) with half-diagonal `r`
@@ -807,6 +807,151 @@ static void breakEaten(Adafruit_GFX& g, uint32_t tau, uint32_t seed) {
   }
 }
 
+// Abstieg: rocket nozzles under the logo fire up, it shakes, lifts off and
+// is gone out of the top; then it comes back down upside down and crashes
+// into the ground, where it stays stuck crooked, smoking.
+static void breakRocket(Adafruit_GFX& g, uint32_t tau, uint32_t seed) {
+  const uint32_t IGNITE_MS = 600, GONE_MS = 1400, CRASH_MS = 1850;
+  const int NOZ_H = 5, NOZ[2] = {12, LOGO_W - 20};  // the nozzles' left columns, 8 wide
+  const int BURY = 14;
+  bool flipped = tau >= GONE_MS;
+  int top, shear10 = 0, sx = 0;  // the logo's top row (flipped: the nozzles' row)
+  if (tau < IGNITE_MS) {
+    top = LOGO_Y0;
+    sx = hashRand(seed, tau / 40, 10, 3) - 1;
+  } else if (tau < GONE_MS) {
+    float a = (float)(tau - IGNITE_MS);
+    top = LOGO_Y0 - (int)(0.5f * 0.0003f * a * a);
+    sx = hashRand(seed, tau / 40, 10, 3) - 1;
+  } else if (tau < CRASH_MS) {
+    // falling back from above the board
+    float a = (float)(tau - GONE_MS), fallH = (float)(H - 1 + BURY - (LOGO_H + NOZ_H) + (LOGO_H + NOZ_H + 10));
+    top = -(LOGO_H + NOZ_H + 10) + (int)(fallH * a * a / ((CRASH_MS - GONE_MS) * (CRASH_MS - GONE_MS)));
+  } else {
+    top = H + BURY - (LOGO_H + NOZ_H);
+    shear10 = 3;  // stuck crooked
+    uint32_t s = tau - CRASH_MS;
+    if (s < 300) sx = hashRand(seed, tau / 30, 11, 5) - 2;
+  }
+
+  // the logo with its nozzles, upside down once it comes back
+  for (int ly = 0; ly < LOGO_H + NOZ_H; ly++) {
+    int Y = top + (flipped ? LOGO_H + NOZ_H - 1 - ly : ly);
+    if (Y < 0 || Y >= H) continue;
+    int shift = sx + (shear10 * (H - Y)) / 10;
+    for (int lx = 0; lx < LOGO_W; lx++) {
+      uint32_t c = 0;
+      if (ly < LOGO_H) {
+        c = logoRgb(lx, ly);
+        if (tau >= CRASH_MS) c = mixRgb(c ? c : 0x101010, 0x302010, 80);  // sooty
+      } else {
+        int n = ly - LOGO_H;  // a nozzle, wider at the bottom
+        for (int k = 0; k < 2; k++)
+          if (lx >= NOZ[k] + 1 - n / 2 && lx < NOZ[k] + 7 + n / 2) c = n == 0 ? 0xA0A0A0 : 0x707070;
+      }
+      if (c) g.drawPixel(LOGO_X0 + lx + shift, Y, rgb565(c));
+    }
+  }
+
+  // the flames out of the nozzles, longer and longer
+  if (tau >= 150 && tau < GONE_MS) {
+    int len = tau < IGNITE_MS ? 2 + (int)(tau - 150) * 10 / (IGNITE_MS - 150) : 12 + (int)(tau - IGNITE_MS) / 40;
+    int fy = top + LOGO_H + NOZ_H;
+    for (int k = 0; k < 2; k++)
+      for (int j = 0; j < len; j++) {
+        int w = 4 - j * 4 / len + hashRand(seed, tau / 50, k * 64 + j, 2);
+        uint32_t c = j < len / 3 ? 0xFFFFC0 : (j < 2 * len / 3 ? 0xFFA000 : 0xE02000);
+        g.drawFastHLine(LOGO_X0 + NOZ[k] + 4 - w + sx, fy + j, 2 * w, rgb565(c));
+      }
+  }
+
+  // smoke on the ground at the launch, and dust and smoke at the crash
+  for (int i = 0; i < 16; i++) {
+    uint32_t rng = seed ^ (i + 41) * 0x9E3779B9u;
+    raceRand(rng);
+    bool crash = i >= 8;
+    float born = crash ? (float)CRASH_MS : randF(rng, 300, 900), life = randF(rng, 700, 1300);
+    float s = (float)tau - born;
+    if (s < 0 || s >= life) continue;
+    float vx = randF(rng, -0.06f, 0.06f);
+    int x = LOGO_CX + (int)(vx * s), y = H - 3 - (int)(s * (crash ? 0.03f : 0.01f));
+    int r = 2 + (int)(5 * s / life);
+    g.fillCircle(x, y, r, rgb565(s < life / 2 ? 0x707070 : 0x383838));
+  }
+
+  // stuck: a little smoke puffing out of the nozzles now and then
+  if (tau >= CRASH_MS + 600)
+    for (int k = 0; k < 2; k++) {
+      uint32_t s = (tau - CRASH_MS + k * 500) % 1000;
+      if (s < 700) {
+        int nx = LOGO_X0 + NOZ[k] + 4 + (shear10 * (H - top)) / 10, ny = top - 1 - (int)s / 40;
+        g.fillCircle(nx + (int)(s / 200), ny, 1 + s / 300, rgb565(s < 350 ? 0x808080 : 0x404040));
+      }
+    }
+}
+
+// Abrissbirne: a wrecking ball on a chain swings in from the right and
+// smashes the logo to rubble, which piles up on the floor; the ball swings
+// out and hangs there over the rubble.
+static void breakWreck(Adafruit_GFX& g, uint32_t tau, uint32_t seed) {
+  const int PX = LOGO_CX + 10, PY = -30, L = 66, BALL_R = 8;
+  const float AMP = 1.15f, OMEGA = 6.2832f / 1700;  // the swing
+  auto angle = [&](float t) { return AMP * cosf(OMEGA * t) * expf(-t / 1800); };
+  float th = angle((float)tau);
+  int bx = PX + (int)(sinf(th) * L), by = PY + (int)(cosf(th) * L);
+
+  // the logo in 4×4 blocks, each knocked away when the ball's edge comes past
+  // on its first swing in
+  bool shake = false;
+  for (int qy = 0; qy < LOGO_H; qy += 4)
+    for (int qx = 0; qx < LOGO_W; qx += 4) {
+      int X = LOGO_X0 + qx, Y = LOGO_Y0 + qy;
+      // when the ball's front reached this column: sin(θ) = (X + 2 + BALL_R - PX) / L
+      float s = (float)(X + 2 + BALL_R - PX) / L;
+      float hit = s >= AMP ? 0 : acosf(asinf(s < -1 ? -1 : s) / AMP) / OMEGA;
+      int ox = 0, oy = 0;
+      if (tau >= hit) {
+        uint32_t rng = seed ^ (uint32_t)(qy * 64 + qx + 1) * 0x165667B1u;
+        raceRand(rng);
+        float a = (float)tau - hit;
+        float vx = -randF(rng, 0.01f, 0.07f), vy = randF(rng, -0.1f, 0.02f);
+        // it lands in a heap: lower ones first, a few rows up for the rest
+        int landY = H - 4 - (int)(raceRand(rng) % 3) * 3 - (qy < LOGO_H / 2 ? 0 : 2);
+        float fy = vy * a + 0.5f * GRAV * 2.5f * a * a;
+        float maxFy = (float)(landY - Y);
+        float tLand = a;
+        if (fy > maxFy) {
+          fy = maxFy;
+          float A = GRAV * 1.25f;
+          tLand = (-vy + sqrtf(vy * vy + 4 * A * maxFy)) / (2 * A);
+        }
+        ox = (int)(vx * tLand);
+        if (X + ox < 0) ox = -X + (int)(raceRand(rng) % 6);  // against the board's edge
+        oy = (int)fy;
+        if (a < 200) shake = true;
+      }
+      for (int j = 0; j < 4 && qy + j < LOGO_H; j++)
+        for (int i = 0; i < 4 && qx + i < LOGO_W; i++) {
+          uint32_t c = logoRgb(qx + i, qy + j);
+          if (c) g.drawPixel(X + ox + i, Y + oy + j, rgb565(c));
+        }
+    }
+
+  // dust where it hits
+  if (shake)
+    for (int i = 0; i < 6; i++)
+      g.fillCircle(bx - BALL_R - 2 + hashRand(seed, tau / 60, i, 7) - 3, by + hashRand(seed, tau / 60, i + 9, 15) - 7, 2,
+                   rgb565(0x605850));
+
+  // the chain and the ball
+  for (int k = 0; k < L - BALL_R; k += 3) {
+    int cx = PX + (int)(sinf(th) * k), cy = PY + (int)(cosf(th) * k);
+    g.fillRect(cx, cy, 2, 2, rgb565(0x909090));
+  }
+  g.fillCircle(bx, by, BALL_R, rgb565(0x606060));
+  g.fillCircle(bx - 2, by - 3, 2, rgb565(0xB0B0B0));  // a shine
+}
+
 void drawConceded(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, uint32_t t, uint32_t seed) {
   u8.setFontMode(1);
   int anim = (int)(seed % CONCEDED_ANIMS);
@@ -828,7 +973,9 @@ void drawConceded(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, ui
     case BREAK_DRAIN: breakDrain(g, tau, seed); break;
     case BREAK_PRESS: breakPress(g, tau, seed); break;
     case BREAK_LIGHTNING: breakLightning(g, tau, seed); break;
-    default: breakEaten(g, tau, seed); break;
+    case BREAK_EATEN: breakEaten(g, tau, seed); break;
+    case BREAK_ROCKET: breakRocket(g, tau, seed); break;
+    default: breakWreck(g, tau, seed); break;
   }
   if (tau < textMs) return;
 
