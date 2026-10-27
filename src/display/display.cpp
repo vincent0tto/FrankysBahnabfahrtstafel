@@ -62,7 +62,8 @@ static void updateBrightness(const Settings& s, const Event& ev, bool evOn, cons
 
 bool displayRender(const Board& b, const Settings& s, const Event& ev, const Karaoke& k, const Match& m,
                    const DisplayStatus& st, time_t now, uint32_t ms, uint32_t eventMs, const Race* race,
-                   uint32_t raceMs, uint32_t goalMs, const Match& goalM, bool conceded, const Promo* bouncer,
+                   uint32_t raceMs, uint32_t goalMs, const Match& goalM, bool conceded, uint32_t concededSeed,
+                   const Promo* bouncer,
                    uint32_t bouncerMs, const Promo* lastRound, uint32_t lastRoundMs) {
   if (!matrix) return false;
   bool evOn = ev.on && !bouncer;
@@ -93,7 +94,7 @@ bool displayRender(const Board& b, const Settings& s, const Event& ev, const Kar
   updateBrightness(s, ev, evOn, st, now);
   matrix->clearScreen();
   if (race) drawRace(*matrix, u8, amber, *race, raceMs, s.fiestaText1, s.fiestaText2);
-  else if (goal && conceded) drawConceded(*matrix, u8, goalM, goalMs);
+  else if (goal && conceded) drawConceded(*matrix, u8, goalM, goalMs, concededSeed);
   else if (goal) drawGoal(*matrix, u8, goalM, goalMs);
   else if (lastRound) renderMarquee(*matrix, u8, s.lastRoundColor, s.lastRoundColor2, s, *lastRound, lastRoundMs);
   else if (bouncerFull) renderCallout(*matrix, u8, s.bouncerColor, s, *bouncer, bouncerMs);

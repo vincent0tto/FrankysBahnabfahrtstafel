@@ -16,6 +16,9 @@ static const uint32_t NO_GOAL = UINT32_MAX;  // displayRender(): no goal animati
 void drawGoal(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, uint32_t t);
 
 // The HSV conceded a goal, `t` as above: a ball flies into its Raute, which
-// shakes, "DIE RAUTE KASSIERT!" in St. Pauli's colours, fireworks, and the
-// score of `m` (id 0: none, for "Gegentor testen").
-void drawConceded(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, uint32_t t);
+// then breaks in one of CONCEDED_ANIMS ways (`seed` % CONCEDED_ANIMS: blown
+// up, torn apart, shattered, melted, shot full of holes, down the drain;
+// the rest of `seed` varies the debris), "DIE RAUTE KASSIERT!" in St. Pauli's
+// colours, fireworks, and the score of `m` (id 0: none, for "Gegentor testen").
+static const int CONCEDED_ANIMS = 6;
+void drawConceded(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, uint32_t t, uint32_t seed);

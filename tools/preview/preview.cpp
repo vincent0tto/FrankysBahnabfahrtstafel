@@ -433,16 +433,20 @@ int main(int argc, char** argv) {
   strcpy(hsv.awayCode, "BMG");
   hsv.ourHome = true;
   hsv.goalsAway = 2;
-  auto concededFrame = [&](const Match& gm, uint32_t t) {
+  auto concededFrame = [&](const Match& gm, uint32_t t, uint32_t seed) {
     GFXcanvas16 canvas(W, H);
     canvas.fillScreen(0);
     U8G2_FOR_ADAFRUIT_GFX u8;
     u8.begin(canvas);
-    drawConceded(canvas, u8, gm, t);
+    drawConceded(canvas, u8, gm, t, seed);
     mFrames.push_back(Frame{std::vector<uint16_t>(canvas.getBuffer(), canvas.getBuffer() + W * H)});
   };
-  for (uint32_t t : {250u, 550u, 800u, 1500u, 3000u, 6000u}) concededFrame(hsv, t);
-  concededFrame(Match(), 4000);
+  // every way the Raute breaks, then the text and the score
+  for (uint32_t a = 0; a < CONCEDED_ANIMS; a++)
+    for (uint32_t t : {250u, 760u, 900u, 1200u, 1600u, 2100u, 2700u})
+      concededFrame(hsv, t, a + CONCEDED_ANIMS * 7);
+  concededFrame(hsv, 6000, 0);
+  concededFrame(Match(), 4000, 1);
   writePpm(argc > 6 ? argv[6] : "preview_match.ppm", mFrames);
 
   // Over the whole board first: the bouncer's default text, a short one, only an icon, one too long for 4 lines (scrolling)

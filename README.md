@@ -58,7 +58,9 @@ Schriesheim Bahnhof                     10:42
   Abfahrten bleiben darüber. Bei einem Tor für St. Pauli zeigt die ganze Tafel kurz
   „TOOOR!“ mit Feuerwerk, nach dem Abpfiff kommt der Endstand noch ein paar Stunden.
 - **HSV-Ticker:** Kein Spielstand, nur Schadenfreude: kassiert der HSV ein Tor, fliegt ein Ball
-  in die Raute, und die ganze Tafel zeigt „DIE RAUTE KASSIERT!“ mit Feuerwerk und Spielstand.
+  in die Raute, die dann kaputtgeht (jedes Mal anders: Explosion, Zerreißen, Zerspringen,
+  Schmelzen, Kanonade oder Abfluss), und die ganze Tafel zeigt „DIE RAUTE KASSIERT!“ mit
+  Feuerwerk und Spielstand.
 - **Leicht zu ändern:** Nachrichten, Symbole, Helligkeit und Zeiten lassen sich von jedem
   Handy, Tablet oder Laptop im Mitarbeiter-WLAN des Cafés ändern, ganz ohne Kabel.
 - **Kümmert sich um sich selbst:** nach WLAN-Problemen verbindet sie sich neu, und Updates
@@ -247,7 +249,9 @@ Im Einzelnen:
   nächste bzw. laufende Spiel, und **Tor testen** zeigt die Animation einmal (nicht im Event).
   Nur im Abfahrten-Modus; ein Bahnrennen geht vor.
 - **Fußball – HSV-Ticker**: an/aus (Standard aus). Kein Spielstand in der 4. Zeile; nur wenn
-  der HSV ein Tor kassiert, zeigt die ganze Tafel 8 s lang die Raute, in die ein Ball fliegt, und
+  der HSV ein Tor kassiert, zeigt die ganze Tafel 8 s lang die Raute, in die ein Ball fliegt und
+  die dann zufällig auf eine von sechs Arten kaputtgeht (nie zweimal hintereinander gleich:
+  Explosion, Zerreißen, Zerspringen, Schmelzen, Kanonade, Abfluss), und
   „DIE RAUTE KASSIERT!“ in Braun, Weiß und Rot mit Feuerwerk, darunter den Spielstand.
   **Gegentor testen** zeigt die Animation einmal. Fallen Tore beider Spiele kurz nacheinander
   (oder im Derby), kommen die Animationen nacheinander.

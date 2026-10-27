@@ -176,6 +176,7 @@ void loop() {
   static Match goalShown;
   static uint32_t goalStartMs = 0;
   static bool goal = false, conceded = false;
+  static uint32_t concededSeed = 0;
   static bool bouncer = false;
   static uint32_t bouncerVersion = 0;
   static uint32_t bouncerStartMs = 0;
@@ -227,6 +228,13 @@ void loop() {
     goalWaiting[i] = false;
     goal = true;
     conceded = i == TEAM_HSV;
+    // the Raute breaks another way than last time
+    if (conceded) {
+      uint32_t last = concededSeed % CONCEDED_ANIMS, s;
+      do s = esp_random();
+      while (s % CONCEDED_ANIMS == last);
+      concededSeed = s;
+    }
     goalShown = goalMatch[i];
     goalStartMs = millis();
   }
@@ -240,9 +248,9 @@ void loop() {
   uint32_t goalMs = goal ? ms - goalStartMs : NO_GOAL;
   // a scene tested from the event page shows even over the bouncer and the last round
   bool dark = testing ? displayRender(local, settings, test, karaoke, match, st, time(nullptr), ms, ms - testStartMs, r,
-                                      ms - raceStartMs, goalMs, goalShown, conceded, nullptr, 0, nullptr, 0)
+                                      ms - raceStartMs, goalMs, goalShown, conceded, concededSeed, nullptr, 0, nullptr, 0)
                       : displayRender(local, settings, event, karaoke, match, st, time(nullptr), ms, ms - eventStartMs, r,
-                                      ms - raceStartMs, goalMs, goalShown, conceded, bouncer ? &settings.bouncer : nullptr,
+                                      ms - raceStartMs, goalMs, goalShown, conceded, concededSeed, bouncer ? &settings.bouncer : nullptr,
                                       ms - bouncerStartMs, lastRound ? &settings.lastRound : nullptr,
                                       ms - lastRoundStartMs);
   // a fixed frame rate however long the frame took (off time: nothing to
