@@ -251,7 +251,8 @@ Im Einzelnen:
 - **Fußball – HSV-Ticker**: an/aus (Standard aus). Kein Spielstand in der 4. Zeile; nur wenn
   der HSV ein Tor kassiert, zeigt die ganze Tafel 8 s lang die Raute, in die ein Ball fliegt und
   die dann zufällig auf eine von sechs Arten kaputtgeht (nie zweimal hintereinander gleich:
-  Explosion, Zerreißen, Zerspringen, Schmelzen, Kanonade, Abfluss), und
+  Explosion, Zerreißen, Zerspringen, Schmelzen, Kanonade, Abfluss); ein Rest bleibt liegen
+  (verkohlter Rahmen, Hälften, Scherben, Pfütze, schief am Nagel, im Gully stecken), und
   „DIE RAUTE KASSIERT!“ in Braun, Weiß und Rot mit Feuerwerk, darunter den Spielstand.
   **Gegentor testen** zeigt die Animation einmal. Fallen Tore beider Spiele kurz nacheinander
   (oder im Derby), kommen die Animationen nacheinander.

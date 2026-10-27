@@ -195,12 +195,25 @@ static void breakBoom(Adafruit_GFX& g, uint32_t tau, uint32_t seed) {
     g.fillCircle(px, py, r, rgb565(FIRE[(int)(age * 5 / life)]));
   }
 
-  // the logo in 3×3 blocks, flying away from the ball, some glowing
+  // the logo in 3×3 blocks, flying away from the ball, some glowing; most
+  // of the rim stays, charred, with embers in it
   for (int by = 0; by < LOGO_H; by += 3)
     for (int bx = 0; bx < LOGO_W; bx += 3) {
       uint32_t rng = seed ^ ((uint32_t)(by * 64 + bx + 1) * 0x9E3779B9u);
       raceRand(rng);
       float dx = bx + 1.5f - LOGO_W / 2, dy = by + 1.5f - LOGO_H / 2;
+      float rim = dx * dx / (LOGO_W * LOGO_W / 4) + dy * dy / (LOGO_H * LOGO_H / 4);
+      if (rim > 0.5f && raceRand(rng) % 10 < 7) {
+        bool glows = raceRand(rng) % 4 == 0;
+        for (int j = 0; j < 3; j++)
+          for (int i = 0; i < 3; i++) {
+            if (bx + i >= LOGO_W || by + j >= LOGO_H) continue;
+            uint32_t c = mixRgb(logoRgb(bx + i, by + j), 0x201410, tau < 300 ? 0 : 140);
+            if (glows && hashRand(seed, tau / 150, bx * 64 + by + i * 3 + j, 3)) c = (i + j) % 2 ? 0xC03000 : 0xFF7000;
+            if (c) g.drawPixel(LOGO_X0 + bx + i + sx, LOGO_Y0 + by + j + sy, rgb565(c));
+          }
+        continue;
+      }
       float d = sqrtf(dx * dx + dy * dy) + 2;
       float sp = randF(rng, 0.05f, 0.25f);
       float vx = dx / d * sp * 1.4f + randF(rng, -0.03f, 0.03f);
@@ -218,6 +231,19 @@ static void breakBoom(Adafruit_GFX& g, uint32_t tau, uint32_t seed) {
           if (c) g.drawPixel(ox + i, oy + j, rgb565(c));
         }
     }
+
+  // smoke rising out of the crater
+  for (int i = 0; i < 18; i++) {
+    uint32_t rng = seed ^ (i + 5) * 0x2545F491u;
+    raceRand(rng);
+    float x0 = randF(rng, 6, LOGO_W - 6), life = randF(rng, 900, 1500);
+    float s = fmodf(ft - 1000 + randF(rng, 0, 1500), life);
+    if (ft < 1000 || s < 0) continue;
+    int x = LOGO_X0 + (int)(x0 + 3 * sinf(s / 150 + i)), y = LOGO_Y0 + LOGO_H - 8 - (int)(s * 0.04f);
+    uint16_t c = rgb565(s < life / 2 ? 0x707070 : 0x383838);
+    g.drawPixel(x, y, c);
+    g.drawPixel(x + 1, y, c);
+  }
 }
 
 // Zerreißen: torn from top to bottom along a ragged line, the halves fly
@@ -228,9 +254,14 @@ static void breakTear(Adafruit_GFX& g, uint32_t tau, uint32_t seed) {
   float ripRow = rip * (LOGO_H + 8);  // the tear has come down this far
   float gap = 1 + rip * 4;
   float a = tau > RIP_MS ? (float)(tau - RIP_MS) : 0;
-  float twist = a * 0.0012f;  // the halves turn away (as a shear)
   float fa = a > HANG_MS ? a - HANG_MS : 0;
   float fall = 0.5f * GRAV * fa * fa;
+  // until they lie on the floor
+  const float FLOOR_FALL = (float)(H - 1 - (LOGO_Y0 + LOGO_H));
+  float land = HANG_MS + sqrtf(2 * FLOOR_FALL / GRAV);
+  if (fall > FLOOR_FALL) fall = FLOOR_FALL;
+  if (a > land) a = land;
+  float twist = a * 0.0008f;  // the halves turn away (as a shear)
   int jig = tau < RIP_MS ? hashRand(seed, tau / 50, 3, 3) - 1 : 0;
 
   uint32_t rng = seed;
@@ -243,9 +274,10 @@ static void breakTear(Adafruit_GFX& g, uint32_t tau, uint32_t seed) {
     float open = ripRow - y;
     open = open < 0 ? 0 : (open > 8 ? 1 : open / 8);
     for (int side = 0; side < 2; side++) {
-      // the left half falls to the left, its top first, the right one the same way round
+      // the left half falls to the left, its top first, the right one the
+      // same way round; neither far (off the board, under the text)
       float lever = (float)(LOGO_H - y);
-      float dx = (side ? 1 : -1) * (gap * open + a * 0.03f + twist * lever);
+      float dx = (side ? 0.35f : -0.5f) * (gap * open + a * 0.015f + twist * lever);
       int oy = LOGO_Y0 + y + (int)(fall + (side ? 0.6f : 1.0f) * twist * lever * 0.3f) + (side ? -jig : jig);
       int x0 = side ? tear : 0, x1 = side ? LOGO_W : tear;
       for (int x = x0; x < x1; x++) {
@@ -385,11 +417,25 @@ static void breakMelt(Adafruit_GFX& g, uint32_t tau, uint32_t seed) {
     }
   }
   // the puddle spreads
-  int pw = puddle / 12;
-  if (pw > LOGO_W / 2 + 8) pw = LOGO_W / 2 + 8;
-  if (pw > 0) {
-    g.drawFastHLine(LOGO_CX - pw, H - 1, 2 * pw, rgb565(HSV_BLUE));
-    g.drawFastHLine(LOGO_CX - pw * 2 / 3, H - 2, pw * 4 / 3, rgb565(0x8090FF));
+  static int pw = 0;  // once it has spread it stays so
+  if (tau < HEAT_MS) pw = 0;
+  if (puddle / 12 > pw) pw = puddle / 12;
+  if (pw > LOGO_W / 2 + 6) pw = LOGO_W / 2 + 6;
+  int ph = pw / 5;
+  for (int j = 0; j <= ph && pw > 0; j++) {
+    int w = (int)(pw * sqrtf(1 - (float)(j * j) / ((ph + 1) * (ph + 1))));
+    for (int x = -w; x < w; x++) {
+      // white and black streaks of the Raute in the blue, slowly swirling
+      int k = hashRand(seed, (uint32_t)(x + 64 + (int)(tau / 200)) / 3, j, 9);
+      uint32_t c = k == 0 ? 0xFFFFFF : (k == 1 ? 0x101030 : HSV_BLUE);
+      g.drawPixel(LOGO_CX + x, H - 1 - j, rgb565(c));
+    }
+  }
+  // the little white Raute in the middle survived and floats on it
+  if (tau > 2600 && ph > 2) {
+    int bob = (tau / 400) % 2;
+    fillRaute(g, LOGO_CX, H - 2 - ph - 2 + bob, 4, rgb565(0xFFFFFF));
+    fillRaute(g, LOGO_CX, H - 2 - ph - 2 + bob, 2, 0);
   }
   // flames under it, while there is something to burn
   if (tau < 2500)
@@ -439,12 +485,19 @@ static void breakCannon(Adafruit_GFX& g, uint32_t tau, uint32_t seed) {
     ky = (hits % 2 ? 2 : -2) * (100 - (int)since) / 100;
   }
   kx -= hits / 3;  // pushed back further and further
+  // then it swings down on its last nail at the top left and hangs there crooked
+  const int NAIL_X = 4, NAIL_Y = 3;
   float a = tau > DROP_MS ? (float)(tau - DROP_MS) : 0;
-  int dropY = (int)(0.5f * GRAV * 2 * a * a), dropX = (int)(-a * 0.02f);
-  float tilt = a * 0.002f;
+  float ang = a > 0 ? 0.55f * (1 - expf(-a / 350) * cosf(a / 110)) : 0;
+  float ca = cosf(ang), sa = sinf(ang);
+  int px = LOGO_X0 + NAIL_X + kx, py = LOGO_Y0 + NAIL_Y + ky;
 
-  for (int y = 0; y < LOGO_H; y++)
-    for (int x = 0; x < LOGO_W; x++) {
+  for (int Y = LOGO_Y0 - 6; Y < H; Y++)
+    for (int X = LOGO_X0 - 8; X < LOGO_X0 + LOGO_W + 4; X++) {
+      // back from the board to the logo
+      float rx = (float)(X - px), ry = (float)(Y - py);
+      int x = (int)floorf(rx * ca + ry * sa + 0.5f) + NAIL_X, y = (int)floorf(-rx * sa + ry * ca + 0.5f) + NAIL_Y;
+      if (x < 0 || x >= LOGO_W || y < 0 || y >= LOGO_H) continue;
       bool hole = false, rim = false;
       for (int k = 0; k < hits && !hole; k++) {
         int dx = x - hx[k], dy = y - hy[k], d = dx * dx + dy * dy;
@@ -453,9 +506,9 @@ static void breakCannon(Adafruit_GFX& g, uint32_t tau, uint32_t seed) {
       }
       if (hole) continue;
       uint32_t c = rim ? 0x803010 : logoRgb(x, y);  // scorched rims
-      if (c) g.drawPixel(LOGO_X0 + x + kx + dropX + (int)(tilt * y), LOGO_Y0 + y + ky + dropY + (int)(tilt * x * 0.5f),
-                         rgb565(c));
+      if (c) g.drawPixel(X, Y, rgb565(c));
     }
+  g.fillRect(px, py, 2, 2, rgb565(0xA0A0A0));  // the nail
 
   for (int k = 1; k < N; k++) {
     int32_t s = (int32_t)tau - (int32_t)((k - 1) * EVERY_MS);
@@ -476,6 +529,27 @@ static void breakCannon(Adafruit_GFX& g, uint32_t tau, uint32_t seed) {
 static void breakDrain(Adafruit_GFX& g, uint32_t tau, uint32_t seed) {
   const uint32_t SWIRL_MS = 1300;
   const float R = 36;
+  const int GRATE_R = 13;
+  g.fillCircle(LOGO_CX, LOGO_CY, GRATE_R, rgb565(0x141414));
+  g.drawCircle(LOGO_CX, LOGO_CY, GRATE_R, rgb565(0xB0B0B0));
+  g.drawCircle(LOGO_CX, LOGO_CY, GRATE_R - 1, rgb565(0x707070));
+  for (int bx = -9; bx <= 9; bx += 3) {
+    int h = (int)sqrtf((float)((GRATE_R - 1) * (GRATE_R - 1) - bx * bx)) - 1;
+    int bent = bx >= 0 && bx <= 6 ? 6 : 0;  // bent where the Raute sticks
+    g.drawFastVLine(LOGO_CX + bx, LOGO_CY - h + bent, 2 * h + 1 - bent, rgb565(0x808080));
+  }
+  if (tau >= SWIRL_MS + 200) {
+    // the Raute got stuck in the grate
+    int rx = LOGO_CX + 3, ry = LOGO_CY - 10;
+    fillRaute(g, rx, ry, 10, rgb565(HSV_BLUE));
+    fillRaute(g, rx, ry, 8, rgb565(0xFFFFFF));
+    fillRaute(g, rx, ry, 6, 0);
+    fillRaute(g, rx, ry, 2, rgb565(0xFFFFFF));
+    // now and then a bubble
+    uint32_t b = (tau - SWIRL_MS) % 1100;
+    if (b < 500) g.drawPixel(LOGO_CX - 3 + hashRand(seed, (tau - SWIRL_MS) / 1100, 9, 6), LOGO_CY - (int)b / 40,
+                             rgb565(0x6080FF));
+  }
   if (tau < SWIRL_MS) {
     float f = (float)tau / SWIRL_MS;
     float scale = 1 - f * f * 0.97f;
@@ -493,8 +567,6 @@ static void breakDrain(Adafruit_GFX& g, uint32_t tau, uint32_t seed) {
         uint32_t c = logoRgb(lx, ly);
         if (c) g.drawPixel(LOGO_CX + x, LOGO_CY + y, rgb565(c));
       }
-    // the drain itself
-    g.fillCircle(LOGO_CX, LOGO_CY, 1, rgb565(0x404040));
   } else if (tau < SWIRL_MS + 400) {
     // plop: a ring and a few drops
     int s = (int)(tau - SWIRL_MS);

@@ -443,7 +443,7 @@ int main(int argc, char** argv) {
   };
   // every way the Raute breaks, then the text and the score
   for (uint32_t a = 0; a < CONCEDED_ANIMS; a++)
-    for (uint32_t t : {250u, 760u, 900u, 1200u, 1600u, 2100u, 2700u})
+    for (uint32_t t : {250u, 760u, 900u, 1200u, 1600u, 2100u, 2700u, 7500u})
       concededFrame(hsv, t, a + CONCEDED_ANIMS * 7);
   concededFrame(hsv, 6000, 0);
   concededFrame(Match(), 4000, 1);
