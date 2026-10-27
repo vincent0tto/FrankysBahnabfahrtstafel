@@ -98,8 +98,8 @@ static const uint32_t FLY_MS = 700;     // the ball's flight into the Raute
 static const float GRAV = 0.00012f;     // px/ms², falling debris
 
 // after the ball's flight: the logo breaks, then comes the text, per animation
-enum { BREAK_BOOM, BREAK_TEAR, BREAK_SHATTER, BREAK_MELT, BREAK_CANNON, BREAK_DRAIN };
-static const uint32_t TEXT_MS[CONCEDED_ANIMS] = {500, 1200, 800, 1100, 1900, 1400};
+enum { BREAK_BOOM, BREAK_TEAR, BREAK_SHATTER, BREAK_MELT, BREAK_CANNON, BREAK_DRAIN, BREAK_PRESS, BREAK_LIGHTNING, BREAK_EATEN };
+static const uint32_t TEXT_MS[CONCEDED_ANIMS] = {500, 1200, 800, 1100, 1900, 1400, 1300, 1700, 1700};
 static const uint32_t SCORE_AFTER_MS = 1300;  // the score after the text
 
 // a Raute (a square on its corner) with half-diagonal `r`
@@ -579,6 +579,234 @@ static void breakDrain(Adafruit_GFX& g, uint32_t tau, uint32_t seed) {
   }
 }
 
+// Plattgemacht: the logo drops to the floor, a hydraulic press comes down
+// and squashes it flat, sparks fly, the board shakes; the press goes back up
+// and leaves a pancake with stars going round above it.
+static void breakPress(Adafruit_GFX& g, uint32_t tau, uint32_t seed) {
+  const uint32_t DROP_MS = 250, DOWN_MS = 550, CRUSH_MS = 850, HOLD_MS = 1150, UP_MS = 1600;
+  const int FLOOR = H - 1, FLAT_H = 6, FLAT_W = 62;
+  const int DROP = FLOOR + 1 - (LOGO_Y0 + LOGO_H);
+
+  // the logo: dropped onto the floor, then squashed (lower and wider)
+  float f = tau < DOWN_MS ? 0 : (tau < CRUSH_MS ? (float)(tau - DOWN_MS) / (CRUSH_MS - DOWN_MS) : 1);
+  f = f * (2 - f);  // fast at first
+  int h = LOGO_H - (int)((LOGO_H - FLAT_H) * f), w = LOGO_W + (int)((FLAT_W - LOGO_W) * f);
+  int top = tau < DROP_MS ? LOGO_Y0 + (int)(DROP * (float)(tau * tau) / (DROP_MS * DROP_MS)) : FLOOR + 1 - h;
+  int sx = 0;
+  if (tau >= DOWN_MS && tau < HOLD_MS) sx = hashRand(seed, tau / 40, 5, 3) - 1;
+  for (int y = 0; y < h; y++) {
+    // bulging out in the middle rows
+    float bulge = sinf(3.1416f * (y + 0.5f) / h) * f * 4;
+    int rw = w + (int)(2 * bulge), x0 = LOGO_CX - rw / 2 + sx;
+    int ly = y * LOGO_H / h;
+    for (int x = 0; x < rw; x++) {
+      uint32_t c = logoRgb(x * LOGO_W / rw, ly);
+      if (c) g.drawPixel(x0 + x, top + y, rgb565(c));
+    }
+  }
+
+  // the press: a piston and a plate with yellow-black stripes underneath
+  int plate;  // the plate's lowest row
+  if (tau < DROP_MS) plate = -1;
+  else if (tau < DOWN_MS) plate = -1 + (int)((LOGO_Y0 + DROP) * (float)(tau - DROP_MS) / (DOWN_MS - DROP_MS));
+  else if (tau < HOLD_MS) plate = top - 1;
+  else if (tau < UP_MS) plate = top - 1 - (int)((top + 1) * (float)(tau - HOLD_MS) / (UP_MS - HOLD_MS));
+  else plate = -1;
+  if (plate >= 0) {
+    int px0 = LOGO_X0 - 1 + sx, pw = 2 + LOGO_W;
+    g.fillRect(LOGO_CX - 4 + sx, 0, 8, plate - 6, rgb565(0x909090));  // the piston
+    g.drawFastVLine(LOGO_CX - 2 + sx, 0, plate - 6, rgb565(0xD0D0D0));
+    g.fillRect(px0, plate - 7, pw, 5, rgb565(0x606060));
+    g.drawFastHLine(px0, plate - 7, pw, rgb565(0xA0A0A0));
+    for (int y = plate - 2; y <= plate; y++)
+      for (int x = 0; x < pw; x++)
+        g.drawPixel(px0 + x, y, rgb565(((x + y) / 3) % 2 ? 0xFFC000 : 0x101010));
+  }
+
+  // sparks squirting out at both sides while it squashes
+  if (tau >= DOWN_MS && tau < HOLD_MS + 300)
+    for (int i = 0; i < 24; i++) {
+      uint32_t rng = seed ^ (i + 11) * 0x9E3779B9u;
+      raceRand(rng);
+      float born = randF(rng, DOWN_MS, HOLD_MS), s = (float)tau - born;
+      if (s < 0 || s > 350) continue;
+      int side = i % 2 ? 1 : -1;
+      float vx = side * randF(rng, 0.04f, 0.12f), vy = randF(rng, -0.12f, -0.03f);
+      int x = LOGO_CX + side * (w / 2 + 2) + (int)(vx * s), y = FLOOR - 2 + (int)(vy * s + 0.5f * GRAV * 2 * s * s);
+      g.drawPixel(x, y, rgb565(s < 150 ? 0xFFFF80 : 0xFF8000));
+    }
+
+  // dizzy: three stars going round above the pancake
+  if (tau >= UP_MS - 100) {
+    float a0 = (float)(tau - UP_MS) / 250;
+    for (int i = 0; i < 3; i++) {
+      float a = a0 + i * 2.094f;
+      int x = LOGO_CX + (int)(cosf(a) * 14), y = FLOOR - FLAT_H - 6 + (int)(sinf(a) * 3);
+      uint16_t c = rgb565(0xFFE040);
+      g.drawPixel(x, y, c);
+      g.drawPixel(x - 1, y, c);
+      g.drawPixel(x + 1, y, c);
+      g.drawPixel(x, y - 1, c);
+      g.drawPixel(x, y + 1, c);
+    }
+  }
+}
+
+// Blitz: a storm cloud gathers above it, lightning strikes again and again,
+// the logo flickers like an X-ray, burns to ash and crumbles into a
+// smouldering heap.
+static void breakLightning(Adafruit_GFX& g, uint32_t tau, uint32_t seed) {
+  const int N = 5;
+  const uint32_t STRIKE_MS[N] = {350, 560, 700, 900, 1050};
+  const uint32_t BOLT_MS = 90, ASH_MS = 1150, CRUMBLE_MS = 1400;
+  int struck = -1;  // the bolt showing now
+  for (int k = 0; k < N; k++)
+    if (tau >= STRIKE_MS[k] && tau < STRIKE_MS[k] + BOLT_MS) struck = k;
+  if (struck >= 0 && tau < STRIKE_MS[struck] + 40) g.fillScreen(rgb565(0x303848));  // the flash
+
+  // the logo: X-ray flicker after the first strike, then ash, then it crumbles
+  bool xray = tau >= STRIKE_MS[0] && tau < ASH_MS && (struck >= 0 || (tau / 50) % 3 == 0);
+  int ash = tau < STRIKE_MS[N - 1] ? 0 : (tau < ASH_MS ? (int)(tau - STRIKE_MS[N - 1]) * 230 / (ASH_MS - STRIKE_MS[N - 1]) : 230);
+  int sx = struck >= 0 ? hashRand(seed, tau / 30, 6, 5) - 2 : 0;
+  for (int y = 0; y < LOGO_H; y++)
+    for (int x = 0; x < LOGO_W; x++) {
+      uint32_t c = logoRgb(x, y);
+      int X = LOGO_X0 + x + sx, Y = LOGO_Y0 + y;
+      if (xray) {
+        // only the edges, in electric blue
+        bool edge = x == 0 || y == 0 || x == LOGO_W - 1 || y == LOGO_H - 1 || logoRgb(x + 1, y) != c ||
+                    logoRgb(x, y + 1) != c;
+        c = edge ? 0x80F0FF : (c == 0xFFFFFF ? 0x103040 : 0);
+      } else if (ash) {
+        c = mixRgb(c ? c : 0x101010, 0x706860, ash);
+      }
+      if (tau >= CRUMBLE_MS) {
+        // falls, top rows last, onto a heap that is highest in the middle
+        uint32_t rng = seed ^ (uint32_t)(y * 64 + x + 1) * 0x85EBCA6Bu;
+        raceRand(rng);
+        float a = (float)(tau - CRUMBLE_MS) - (float)(LOGO_H - y) * 5 - randF(rng, 0, 150);
+        if (a > 0) {
+          float m = (float)(x - LOGO_W / 2) / (LOGO_W / 2);
+          int heap = (int)(13 * (1 - m * m));
+          int land = H - 1 - (LOGO_H - 1 - y) * heap / LOGO_H;
+          Y += (int)(0.5f * GRAV * 4 * a * a);
+          if (Y >= land) {
+            Y = land;
+            if (hashRand(seed, x * 64 + y, 7, 9) == 0 && hashRand(seed, tau / 200, x * 64 + y, 3) == 0) c = 0xFF5000;
+          }
+        }
+      }
+      if (c) g.drawPixel(X, Y, rgb565(c));
+    }
+
+  // the cloud, growing, dark grey with a lighter top
+  if (tau < CRUMBLE_MS + 800) {
+    int grow = tau < 300 ? (int)tau * 8 / 300 : 8;
+    if (tau > CRUMBLE_MS) grow = 8 - (int)(tau - CRUMBLE_MS) * 8 / 800;
+    for (int i = 0; i < 7; i++) {
+      int cx = LOGO_X0 + 4 + i * 8 + hashRand(seed, i, 8, 5), r = grow - (i % 2) * 2;
+      if (r <= 0) continue;
+      g.fillCircle(cx, 1, r, rgb565(struck >= 0 ? 0x9090A0 : 0x404048));
+      g.fillCircle(cx, 0, r - 2 > 0 ? r - 2 : 0, rgb565(struck >= 0 ? 0xC0C0D0 : 0x606068));
+    }
+  }
+
+  // the bolt: a jagged line from the cloud into the logo, two pixels wide
+  if (struck >= 0) {
+    uint32_t rng = seed ^ (uint32_t)(struck + 1) * 0x27D4EB2Fu;
+    raceRand(rng);
+    int tx = LOGO_X0 + 8 + (int)(raceRand(rng) % (LOGO_W - 16)), ty = LOGO_Y0 + 6 + (int)(raceRand(rng) % (LOGO_H - 12));
+    int x = tx + (int)(raceRand(rng) % 17) - 8, y = 4;
+    uint16_t c = rgb565((tau / 30) % 2 ? 0xFFFFFF : 0xFFFF80);
+    while (y < ty) {
+      int ny = y + 3 + (int)(raceRand(rng) % 4);
+      if (ny > ty) ny = ty;
+      int nx = x + ((tx - x) * (ny - y)) / (ty - y + 1) + (int)(raceRand(rng) % 7) - 3;
+      g.drawLine(x, y, nx, ny, c);
+      g.drawLine(x + 1, y, nx + 1, ny, c);
+      x = nx;
+      y = ny;
+    }
+    g.fillCircle(tx, ty, 3, rgb565(0xFFFFFF));
+  }
+
+  // smoke from the heap
+  if (tau > CRUMBLE_MS + 400)
+    for (int i = 0; i < 10; i++) {
+      uint32_t rng = seed ^ (i + 21) * 0x2545F491u;
+      raceRand(rng);
+      float x0 = randF(rng, 14, LOGO_W - 14), life = randF(rng, 900, 1500);
+      float s = fmodf((float)tau + randF(rng, 0, 1500), life);
+      int x = LOGO_X0 + (int)(x0 + 2 * sinf(s / 140 + i)), y = H - 8 - (int)(s * 0.035f);
+      g.drawPixel(x, y, rgb565(s < life / 2 ? 0x606060 : 0x303030));
+    }
+}
+
+// Aufgefressen: a big brown chomping mouth comes in from the right and eats
+// the logo up from right to left, crumbs falling to the floor; full, it
+// hops away and leaves a bitten-off stub and the crumbs.
+static void breakEaten(Adafruit_GFX& g, uint32_t tau, uint32_t seed) {
+  const int R = 21;
+  const int STOP_X = LOGO_X0 + 29;  // stops eating here, the stub stays
+  const uint32_t EAT_MS = 1350, BURP_MS = 400;
+  float startX = (float)(W + R);
+  float px = tau < EAT_MS ? startX + (STOP_X - startX) * (float)tau / EAT_MS : (float)STOP_X;
+  float py = LOGO_CY;
+  uint32_t gone = EAT_MS + BURP_MS;
+  if (tau > gone) {
+    // hops up and away off the board
+    float a = (float)(tau - gone);
+    py = LOGO_CY - a * 0.15f + 0.5f * GRAV * a * a;
+    px = STOP_X - a * 0.06f;
+  }
+
+  // the logo, without what has been eaten: a round bite in front of the mouth
+  int eatX = tau > gone ? STOP_X : (int)px;
+  for (int y = 0; y < LOGO_H; y++) {
+    int dy = LOGO_Y0 + y - LOGO_CY;
+    int edge = eatX - (int)(0.6f * sqrtf((float)(R * R - (dy * dy < R * R ? dy * dy : R * R))));
+    for (int x = 0; x < LOGO_W; x++) {
+      int X = LOGO_X0 + x, Y = LOGO_Y0 + y;
+      if (X >= edge) continue;
+      uint32_t c = logoRgb(x, y);
+      if (c) g.drawPixel(X, Y, rgb565(c));
+    }
+  }
+
+  // crumbs falling out of the mouth while it eats; they stay on the floor
+  for (int i = 0; i < 40; i++) {
+    uint32_t rng = seed ^ (i + 31) * 0x165667B1u;
+    raceRand(rng);
+    float born = randF(rng, 350, EAT_MS), s = (float)tau - born;
+    if (s < 0) continue;
+    float bx = startX + (STOP_X - startX) * born / EAT_MS - 6, vx = randF(rng, -0.03f, 0.03f);
+    float by = py + randF(rng, -4, 8);
+    int x = (int)(bx + vx * (s < 600 ? s : 600)), y = (int)(by + 0.5f * GRAV * 2 * s * s);
+    if (x > STOP_X + 34 || x < 0) continue;  // only under the logo
+    if (y > H - 1) y = H - 1 - (i % 3 == 0 ? 1 : 0);
+    g.drawPixel(x, y, rgb565(i % 3 == 0 ? 0xFFFFFF : HSV_BLUE));
+  }
+
+  // the mouth: St. Pauli brown, chomping, an eye; shut and a burp when done
+  float open = tau < EAT_MS ? fabsf(sinf((float)tau / 70)) * 0.8f : (tau < gone ? 0.05f : 0.6f);
+  int cx = (int)px, cy = (int)py;
+  if (cy < -R) return;
+  for (int y = -R; y <= R; y++)
+    for (int x = -R; x <= R; x++) {
+      if (x * x + y * y > R * R) continue;
+      // facing left: the mouth is the wedge around the -x direction
+      if (x < 0 && fabsf(atan2f((float)y, (float)-x)) < open) continue;
+      g.drawPixel(cx + x, cy + y, rgb565(x * x + y * y > (R - 2) * (R - 2) ? 0x803010 : GOAL_RGB[0]));
+    }
+  g.fillCircle(cx - 4, cy - 11, 3, rgb565(0xFFFFFF));
+  g.fillCircle(cx - 5, cy - 11, 1, 0);
+  if (tau >= EAT_MS && tau < gone && (tau / 100) % 2) {
+    // burp: little rings out of the mouth
+    int s = (int)(tau - EAT_MS);
+    g.drawCircle(cx - R - 2 - s / 40, cy - 2, 2 + s / 120, rgb565(0xFFFFFF));
+  }
+}
+
 void drawConceded(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, uint32_t t, uint32_t seed) {
   u8.setFontMode(1);
   int anim = (int)(seed % CONCEDED_ANIMS);
@@ -597,7 +825,10 @@ void drawConceded(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, ui
     case BREAK_SHATTER: breakShatter(g, tau, seed); break;
     case BREAK_MELT: breakMelt(g, tau, seed); break;
     case BREAK_CANNON: breakCannon(g, tau, seed); break;
-    default: breakDrain(g, tau, seed); break;
+    case BREAK_DRAIN: breakDrain(g, tau, seed); break;
+    case BREAK_PRESS: breakPress(g, tau, seed); break;
+    case BREAK_LIGHTNING: breakLightning(g, tau, seed); break;
+    default: breakEaten(g, tau, seed); break;
   }
   if (tau < textMs) return;
 
