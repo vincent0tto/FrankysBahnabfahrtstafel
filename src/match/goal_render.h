@@ -18,10 +18,9 @@ void drawGoal(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, uint32
 // The HSV conceded a goal, `t` as above: a ball flies into its Raute, which
 // then breaks in one of CONCEDED_ANIMS ways (`seed` % CONCEDED_ANIMS: blown
 // up, torn apart, shattered, melted, shot full of holes, down the drain,
-// squashed flat, struck by lightning, eaten up, launched and crashed,
-// knocked down by a wrecking ball; the rest of `seed` varies
-// the debris) and leaves its
+// squashed flat, struck by lightning, launched and crashed, knocked down
+// by a wrecking ball; the rest of `seed` varies the debris) and leaves its
 // remains, "DIE RAUTE KASSIERT!" in St. Pauli's colours, fireworks, and the
 // score of `m` (id 0: none, for "Gegentor testen").
-static const int CONCEDED_ANIMS = 11;
+static const int CONCEDED_ANIMS = 10;
 void drawConceded(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, uint32_t t, uint32_t seed);

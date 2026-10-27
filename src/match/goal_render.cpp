@@ -98,8 +98,8 @@ static const uint32_t FLY_MS = 700;     // the ball's flight into the Raute
 static const float GRAV = 0.00012f;     // px/ms², falling debris
 
 // after the ball's flight: the logo breaks, then comes the text, per animation
-enum { BREAK_BOOM, BREAK_TEAR, BREAK_SHATTER, BREAK_MELT, BREAK_CANNON, BREAK_DRAIN, BREAK_PRESS, BREAK_LIGHTNING, BREAK_EATEN, BREAK_ROCKET, BREAK_WRECK };
-static const uint32_t TEXT_MS[CONCEDED_ANIMS] = {500, 1200, 800, 1100, 1900, 1400, 1300, 1700, 1700, 2100, 1100};
+enum { BREAK_BOOM, BREAK_TEAR, BREAK_SHATTER, BREAK_MELT, BREAK_CANNON, BREAK_DRAIN, BREAK_PRESS, BREAK_LIGHTNING, BREAK_ROCKET, BREAK_WRECK };
+static const uint32_t TEXT_MS[CONCEDED_ANIMS] = {500, 1200, 800, 1100, 1900, 1400, 1300, 1700, 2100, 1100};
 static const uint32_t SCORE_AFTER_MS = 1300;  // the score after the text
 
 // a Raute (a square on its corner) with half-diagonal `r`
@@ -742,71 +742,6 @@ static void breakLightning(Adafruit_GFX& g, uint32_t tau, uint32_t seed) {
     }
 }
 
-// Aufgefressen: a big brown chomping mouth comes in from the right and eats
-// the logo up from right to left, crumbs falling to the floor; full, it
-// hops away and leaves a bitten-off stub and the crumbs.
-static void breakEaten(Adafruit_GFX& g, uint32_t tau, uint32_t seed) {
-  const int R = 21;
-  const int STOP_X = LOGO_X0 + 29;  // stops eating here, the stub stays
-  const uint32_t EAT_MS = 1350, BURP_MS = 400;
-  float startX = (float)(W + R);
-  float px = tau < EAT_MS ? startX + (STOP_X - startX) * (float)tau / EAT_MS : (float)STOP_X;
-  float py = LOGO_CY;
-  uint32_t gone = EAT_MS + BURP_MS;
-  if (tau > gone) {
-    // hops up and away off the board
-    float a = (float)(tau - gone);
-    py = LOGO_CY - a * 0.15f + 0.5f * GRAV * a * a;
-    px = STOP_X - a * 0.06f;
-  }
-
-  // the logo, without what has been eaten: a round bite in front of the mouth
-  int eatX = tau > gone ? STOP_X : (int)px;
-  for (int y = 0; y < LOGO_H; y++) {
-    int dy = LOGO_Y0 + y - LOGO_CY;
-    int edge = eatX - (int)(0.6f * sqrtf((float)(R * R - (dy * dy < R * R ? dy * dy : R * R))));
-    for (int x = 0; x < LOGO_W; x++) {
-      int X = LOGO_X0 + x, Y = LOGO_Y0 + y;
-      if (X >= edge) continue;
-      uint32_t c = logoRgb(x, y);
-      if (c) g.drawPixel(X, Y, rgb565(c));
-    }
-  }
-
-  // crumbs falling out of the mouth while it eats; they stay on the floor
-  for (int i = 0; i < 40; i++) {
-    uint32_t rng = seed ^ (i + 31) * 0x165667B1u;
-    raceRand(rng);
-    float born = randF(rng, 350, EAT_MS), s = (float)tau - born;
-    if (s < 0) continue;
-    float bx = startX + (STOP_X - startX) * born / EAT_MS - 6, vx = randF(rng, -0.03f, 0.03f);
-    float by = py + randF(rng, -4, 8);
-    int x = (int)(bx + vx * (s < 600 ? s : 600)), y = (int)(by + 0.5f * GRAV * 2 * s * s);
-    if (x > STOP_X + 34 || x < 0) continue;  // only under the logo
-    if (y > H - 1) y = H - 1 - (i % 3 == 0 ? 1 : 0);
-    g.drawPixel(x, y, rgb565(i % 3 == 0 ? 0xFFFFFF : HSV_BLUE));
-  }
-
-  // the mouth: St. Pauli brown, chomping, an eye; shut and a burp when done
-  float open = tau < EAT_MS ? fabsf(sinf((float)tau / 70)) * 0.8f : (tau < gone ? 0.05f : 0.6f);
-  int cx = (int)px, cy = (int)py;
-  if (cy < -R) return;
-  for (int y = -R; y <= R; y++)
-    for (int x = -R; x <= R; x++) {
-      if (x * x + y * y > R * R) continue;
-      // facing left: the mouth is the wedge around the -x direction
-      if (x < 0 && fabsf(atan2f((float)y, (float)-x)) < open) continue;
-      g.drawPixel(cx + x, cy + y, rgb565(x * x + y * y > (R - 2) * (R - 2) ? 0x803010 : GOAL_RGB[0]));
-    }
-  g.fillCircle(cx - 4, cy - 11, 3, rgb565(0xFFFFFF));
-  g.fillCircle(cx - 5, cy - 11, 1, 0);
-  if (tau >= EAT_MS && tau < gone && (tau / 100) % 2) {
-    // burp: little rings out of the mouth
-    int s = (int)(tau - EAT_MS);
-    g.drawCircle(cx - R - 2 - s / 40, cy - 2, 2 + s / 120, rgb565(0xFFFFFF));
-  }
-}
-
 // Abstieg: rocket nozzles under the logo fire up, it shakes, lifts off and
 // is gone out of the top; then it comes back down upside down and crashes
 // into the ground, where it stays stuck crooked, smoking.
@@ -973,7 +908,6 @@ void drawConceded(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, ui
     case BREAK_DRAIN: breakDrain(g, tau, seed); break;
     case BREAK_PRESS: breakPress(g, tau, seed); break;
     case BREAK_LIGHTNING: breakLightning(g, tau, seed); break;
-    case BREAK_EATEN: breakEaten(g, tau, seed); break;
     case BREAK_ROCKET: breakRocket(g, tau, seed); break;
     default: breakWreck(g, tau, seed); break;
   }
