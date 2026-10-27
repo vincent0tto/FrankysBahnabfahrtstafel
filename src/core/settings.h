@@ -65,6 +65,7 @@ struct Settings {
   uint8_t animChanceBus = 0;    // same for buses
   bool matchOn = false;         // St.-Pauli-Ticker (src/match/match.h)
   bool goalAnim = true;         // with it: the goal animation over the whole board
+  bool hsvOn = false;           // HSV-Ticker: an animation for each goal the HSV concedes
   uint8_t fiestaChance = 0;     // 1 in N races has the dancing Mexican (src/race/race.h), 0 = never
   char fiestaText1[32] = "";    // the race's dancing Mexican (src/race/race.h): over him first,
   char fiestaText2[32] = "";    // then this; "" shows nothing

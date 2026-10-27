@@ -423,6 +423,26 @@ int main(int argc, char** argv) {
   };
   for (uint32_t t : {100u, 800u, 1300u, 3000u, 5500u}) goalFrame(m, t);
   goalFrame(Match(), 4000);
+  // the HSV concedes: the ball flying in, the Raute shaking, the text, the
+  // score, and as "Gegentor testen"
+  Match hsv;
+  hsv.id = 2;
+  strcpy(hsv.home, "Hamburg");
+  strcpy(hsv.away, "Mönchengladbach");
+  strcpy(hsv.homeCode, "HSV");
+  strcpy(hsv.awayCode, "BMG");
+  hsv.ourHome = true;
+  hsv.goalsAway = 2;
+  auto concededFrame = [&](const Match& gm, uint32_t t) {
+    GFXcanvas16 canvas(W, H);
+    canvas.fillScreen(0);
+    U8G2_FOR_ADAFRUIT_GFX u8;
+    u8.begin(canvas);
+    drawConceded(canvas, u8, gm, t);
+    mFrames.push_back(Frame{std::vector<uint16_t>(canvas.getBuffer(), canvas.getBuffer() + W * H)});
+  };
+  for (uint32_t t : {250u, 550u, 800u, 1500u, 3000u, 6000u}) concededFrame(hsv, t);
+  concededFrame(Match(), 4000);
   writePpm(argc > 6 ? argv[6] : "preview_match.ppm", mFrames);
 
   // Over the whole board first: the bouncer's default text, a short one, only an icon, one too long for 4 lines (scrolling)

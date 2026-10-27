@@ -1,6 +1,5 @@
 #pragma once
-// The goal animation of the St.-Pauli-Ticker (src/match/match.h) over the whole
-// board, like the race (src/race/race_render.h): no state, the same on the panels
+// The Fußball tickers' animations (src/match/match.h) over the whole board, like the race (src/race/race_render.h): no state, the same on the panels
 // and in the host preview.
 #include <Adafruit_GFX.h>
 #include <U8g2_for_Adafruit_GFX.h>
@@ -15,3 +14,8 @@ static const uint32_t NO_GOAL = UINT32_MAX;  // displayRender(): no goal animati
 // "TOR!" growing to "TOOOOR!", blinking in brown, white and red, fireworks,
 // and the score of `m` (id 0: only the team's name, for "Tor testen").
 void drawGoal(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, uint32_t t);
+
+// The HSV conceded a goal, `t` as above: a ball flies into its Raute, which
+// shakes, "DIE RAUTE KASSIERT!" in St. Pauli's colours, fireworks, and the
+// score of `m` (id 0: "Hamburger SV").
+void drawConceded(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, uint32_t t);

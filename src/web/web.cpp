@@ -342,16 +342,17 @@ static void handleLastRoundStop() {
   server.send(200, "text/plain", "ok");
 }
 
-// ---- St.-Pauli-Ticker (src/match/match.h) -------------------------------------------
+// ---- Fußball: St.-Pauli- and HSV-Ticker (src/match/match.h) -----------------------
 
+// ?team=hsv: the HSV's animation, else St. Pauli's
 static void handleGoalTest() {
-  goalTest();
+  goalTest(server.arg("team") == "hsv" ? TEAM_HSV : TEAM_PAULI);
   server.send(200, "text/plain", "ok");
 }
 
-// The ticker's match for the page: phase "next", "live", "final" or "none".
-static void matchToJson(time_t now, JsonObject o) {
-  const Match& m = matchNet();
+// A ticker's match for the page: phase "next", "live", "final" or "none".
+static void matchToJson(MatchTeam team, time_t now, JsonObject o) {
+  const Match& m = matchNet(team);
   static const char* const PHASES[] = {"none", "next", "live", "final"};
   o["phase"] = timeValid() ? PHASES[(int)matchPhase(m, now)] : "none";
   if (!m.id) return;
@@ -492,7 +493,8 @@ static void handleStatus() {
   doc["race"] = raceRunning();
   doc["bouncer"] = bouncerRunning();
   doc["lastRound"] = lastRoundRunning();
-  if (settingsNet().matchOn) matchToJson(now, doc["match"].to<JsonObject>());
+  if (settingsNet().matchOn) matchToJson(TEAM_PAULI, now, doc["match"].to<JsonObject>());
+  if (settingsNet().hsvOn) matchToJson(TEAM_HSV, now, doc["hsv"].to<JsonObject>());
   doc["off"] = !eventNet().on && timeValid() && isOffTime(settingsNet(), minuteOfDay(now), localDay(now));
   doc["rssi"] = WiFi.RSSI();
   doc["ssid"] = WiFi.SSID();

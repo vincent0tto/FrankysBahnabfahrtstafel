@@ -262,12 +262,19 @@ footer button:disabled{background:var(--bg);border-color:var(--line);color:var(-
 </section>
 
 <section>
-<h2>St.-Pauli-Ticker</h2>
-<div class="hint">Während eines Spiels von St. Pauli zeigt die 4. Zeile den Spielstand, ab und zu läuft das letzte Tor durch. Promos und Störmeldungen pausieren so lange. Danach kommt der Endstand noch ein paar Stunden als Promo. Die Spiele findet die Tafel selbst (Daten: ESPN).</div>
+<h2>Fußball</h2>
+<div class="hint">Die Spiele findet die Tafel selbst (Daten: ESPN). Spielen beide gleichzeitig, teilen sie sich die Abfragen.</div>
+<h3>St.-Pauli-Ticker</h3>
+<div class="hint">Während eines Spiels von St. Pauli zeigt die 4. Zeile den Spielstand, ab und zu läuft das letzte Tor durch. Promos und Störmeldungen pausieren so lange. Danach kommt der Endstand noch ein paar Stunden als Promo.</div>
 <div class="row"><label><input type="checkbox" id="matchOn">Ticker an</label>
 <label><input type="checkbox" id="goalAnim">bei einem Tor „TOOOR!“ über die ganze Tafel</label></div>
 <div class="note" id="matchInfo" hidden></div>
 <div class="row"><button id="goalTest">⚽ Tor testen</button><span class="hint" style="margin:0">zeigt die Animation einmal auf der Tafel (nicht im Event)</span></div>
+<h3>HSV-Ticker</h3>
+<div class="hint">Kein Spielstand: nur wenn der HSV ein Tor kassiert, zeigt die ganze Tafel die Raute und „Die Raute kassiert!“ mit Feuerwerk.</div>
+<div class="row"><label><input type="checkbox" id="hsvOn">Ticker an</label></div>
+<div class="note" id="hsvInfo" hidden></div>
+<div class="row"><button id="hsvTest">🔷 Gegentor testen</button><span class="hint" style="margin:0">zeigt die Animation einmal auf der Tafel (nicht im Event)</span></div>
 </section>
 
 <section>
@@ -806,7 +813,7 @@ for(const k of ['animChance','animChanceBus'])$(k).oninput=e=>S[k]=+e.target.val
 
 function render(){
   $('animChance').value=S.animChance;$('animChanceBus').value=S.animChanceBus;
-  $('matchOn').checked=S.matchOn;$('goalAnim').checked=S.goalAnim;
+  $('matchOn').checked=S.matchOn;$('goalAnim').checked=S.goalAnim;$('hsvOn').checked=S.hsvOn;
   $('fiestaChance').value=S.fiestaChance;$('fiestaText1').value=S.fiestaText1;$('fiestaText2').value=S.fiestaText2;
   setBright(S.brightnessPct);
   renderRow();renderOff();renderDim();renderPromos();renderIcons();
@@ -823,7 +830,7 @@ function collect(){
     brightnessPct:S.brightnessPct,dim:S.dim.filter(d=>d.from&&d.to),
     promoShowS:S.promoShowS,promoIntervalS:S.mode==='off'?0:S.interval,promoFullRow:S.mode==='scroll',promoWhite:S.promoWhite,promoWhitePct:S.promoWhitePct,
     disruptOn:S.disruptOn,disruptPasses:S.disruptPasses,animChance:S.animChance,animChanceBus:S.animChanceBus,
-    matchOn:$('matchOn').checked,goalAnim:$('goalAnim').checked,
+    matchOn:$('matchOn').checked,goalAnim:$('goalAnim').checked,hsvOn:$('hsvOn').checked,
     fiestaChance:+$('fiestaChance').value,fiestaText1:$('fiestaText1').value,fiestaText2:$('fiestaText2').value,
     bouncer:{icon:S.bouncer.icon||'',text:S.bouncer.text},bouncerColor:S.bouncerColor,bouncerFullS:S.bouncerFullS,
     lastRound:{icon:S.lastRound.icon||'',text:S.lastRound.text},lastRoundColor:S.lastRoundColor,lastRoundColor2:S.lastRoundColor2,lastRoundS:S.lastRoundS,
@@ -842,7 +849,7 @@ function updateSave(){
 // (the event's and the PAGE_KEYS are on "Jetzt", their pages are below it; the card's link gets the dot too)
 const PAGE_KEYS={rausschmeisser:['bouncer','bouncerColor','bouncerFullS'],
   letzterunde:['lastRound','lastRoundColor','lastRoundColor2','lastRoundS'],mexikaner:['fiestaChance','fiestaText1','fiestaText2']};
-const TAB_KEYS={tafel:['promos','icons','promoShowS','promoIntervalS','promoFullRow','promoWhite','promoWhitePct','disruptOn','disruptPasses','matchOn','goalAnim','animChance','animChanceBus'],
+const TAB_KEYS={tafel:['promos','icons','promoShowS','promoIntervalS','promoFullRow','promoWhite','promoWhitePct','disruptOn','disruptPasses','matchOn','goalAnim','hsvOn','animChance','animChanceBus'],
   jetzt:Object.values(PAGE_KEYS).flat(),zeitplan:['off','brightnessPct','dim']};
 function markTabs(){
   const c=S&&collect(),b=S&&JSON.parse(base);
@@ -923,16 +930,16 @@ async function status(){
     $('ssidNow').textContent=s.ssid;
     $('status').textContent=`Firmware ${s.build} · läuft seit ${up} · ${age} · ${s.race?'Bahnrennen':s.lastRound?'Letzte Runde':s.bouncer?'Rausschmeißer':s.karaoke?'Karaoke läuft':s.event?'Event läuft':s.off?'Ruhezeit':'Panel an'} · WLAN ${s.rssi} dBm`;
     shown=s.karaoke?'karaoke':s.event?'event':'dep';raceOn=!!s.race;bouncerOn=!!s.bouncer;lastRoundOn=!!s.lastRound;renderModes();
-    renderMatch(s.match);
+    renderMatch('matchInfo',s.match);renderMatch('hsvInfo',s.hsv);
     if(S)renderTimeline();
     sync(s.rev);
     EV.sync(s.eventRev);
     KA.sync(s.karaokeRev);
   }catch(e){$('status').textContent='Tafel nicht erreichbar'}
 }
-// The St.-Pauli-Ticker's match as the board knows it (only while it is on)
-function renderMatch(m){
-  const box=$('matchInfo');
+// A ticker's match as the board knows it (only while that ticker is on)
+function renderMatch(id,m){
+  const box=$(id);
   box.hidden=!m;
   if(!m)return;
   const score=m.home+' '+m.goalsHome+':'+m.goalsAway+' '+m.away;
@@ -944,6 +951,7 @@ function renderMatch(m){
   box.textContent=text?text():'Gerade kein Spiel in Sicht.';
 }
 $('goalTest').onclick=()=>act(()=>post('/api/goal/test'));
+$('hsvTest').onclick=()=>act(()=>post('/api/goal/test?team=hsv'));
 
 // What the board shows: the departures, the event or the karaoke list
 // ('dep', 'event', 'karaoke'), switched at once (no saving). A race only

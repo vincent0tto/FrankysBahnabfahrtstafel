@@ -57,6 +57,8 @@ Schriesheim Bahnhof                     10:42
 - **St.-Pauli-Ticker:** Spielt St. Pauli, steht der Spielstand in der untersten Zeile, die
   Abfahrten bleiben darüber. Bei einem Tor für St. Pauli zeigt die ganze Tafel kurz
   „TOOOR!“ mit Feuerwerk, nach dem Abpfiff kommt der Endstand noch ein paar Stunden.
+- **HSV-Ticker:** Kein Spielstand, nur Schadenfreude: kassiert der HSV ein Tor, fliegt ein Ball
+  in die Raute, und die ganze Tafel zeigt „DIE RAUTE KASSIERT!“ mit Feuerwerk und Spielstand.
 - **Leicht zu ändern:** Nachrichten, Symbole, Helligkeit und Zeiten lassen sich von jedem
   Handy, Tablet oder Laptop im Mitarbeiter-WLAN des Cafés ändern, ganz ohne Kabel.
 - **Kümmert sich um sich selbst:** nach WLAN-Problemen verbindet sie sich neu, und Updates
@@ -80,7 +82,7 @@ Schriften und Layout stehen oben in `src/display/render.cpp`. Um ein Layout ohne
 `tools/preview/run.sh` ausführen; es schreibt `tools/preview/preview.png`, die Bilder der
 Abfahrtsanimation nach `tools/preview/preview_anim.png`, Beispiele des Event-Modus nach
 `tools/preview/preview_event.png`, ein Bahnrennen nach `tools/preview/preview_race.png` und die
-Karaoke-Liste nach `tools/preview/preview_karaoke.png`, den St.-Pauli-Ticker nach
+Karaoke-Liste nach `tools/preview/preview_karaoke.png`, St.-Pauli- und HSV-Ticker nach
 `tools/preview/preview_match.png` und Rausschmeißer und Letzte Runde nach `tools/preview/preview_bouncer.png`.
 
 ## Datenquelle
@@ -101,7 +103,7 @@ Es gelten die [Nutzungsbedingungen](https://opendata.vrn.de/nutzungsbedingungen)
 Eine Registrierung ist nicht nötig. Wer möchte, kann sich unter
 <https://opendata.vrn.de/user/register> kostenlos registrieren; einen API-Key gibt es dafür nicht.
 
-### St.-Pauli-Ticker: ESPN
+### Fußball (St. Pauli, HSV): ESPN
 
 Die Spiele kommen aus der Site-API von [ESPN](https://www.espn.com/soccer/club/_/id/270/st-pauli),
 kostenlos, ohne Key und Login (geprüft am 23.10.2026). Offiziell dokumentiert ist sie nicht,
@@ -118,11 +120,14 @@ Zertifikatskette endet wie beim VRN in ISRG Root X1.
 Ergebnisse und kommende Spiele holt die Tafel stündlich. Ab 5 Minuten vor dem Anstoß bis
 zum Abpfiff fragt sie alle 15 Sekunden den Spieltag der Liga ab (`MATCH_*` in
 `include/config.h`), nicht in der Ruhezeit, nicht im Event-Modus und nur, wenn der Ticker
-an ist. Es zählen nur die Wettbewerbe in `MATCH_LEAGUES` (`ger.1,ger.2,ger.dfb_pokal`, also
+an ist. Spielen St. Pauli und der HSV gleichzeitig, teilen sie sich die Abfragen: Stehen beide
+Spiele auf demselben Spieltag derselben Liga (oder ist Derby), reicht eine Abfrage für beide,
+sonst kommen sie abwechselnd dran (jedes alle 30 Sekunden). Es zählen nur die Wettbewerbe in `MATCH_LEAGUES` (`ger.1,ger.2,ger.dfb_pokal`, also
 auch nach einem Auf- oder Abstieg und im Pokal, aber keine Testspiele). Die Kürzel der
 Vereine (`STP`, `H96`) liefert ESPN mit. Den letzten Torschützen zeigt die Tafel nur, wenn
-die Tore schon alle eingetragen sind, sonst nur den Spielstand. Ein anderer Verein:
-`MATCH_TEAM_ID`, die Nummer steht in der URL seiner ESPN-Seite (`…/club/_/id/270/st-pauli`).
+die Tore schon alle eingetragen sind, sonst nur den Spielstand. Andere Vereine:
+`MATCH_TEAM_ID` und `HSV_TEAM_ID` (127), die Nummer steht in der URL der ESPN-Seite
+(`…/club/_/id/270/st-pauli`).
 
 ### Eine andere Haltestelle?
 
@@ -213,7 +218,7 @@ Leiste mit jedem neuen Event nicht länger wird:
   - **Event bearbeiten**: Szenen, Bilder und Helligkeit des Events (siehe *Event-Modus*).
   - **Liste bearbeiten**: die Karaoke-Liste (siehe *Karaoke*).
   - **Text bearbeiten** (`/#rausschmeisser`, `/#letzterunde`), **Mexikaner einstellen** (`/#mexikaner`).
-- **Tafel**: Promos, 4. Zeile, Abfahrts-Animation, St.-Pauli-Ticker und Icons.
+- **Tafel**: Promos, 4. Zeile, Abfahrts-Animation, Fußball und Icons.
 - **Zeitplan**: Ruhezeit und Helligkeit.
 - **Technik**: WLAN, Log, Neustart.
 
@@ -231,7 +236,7 @@ Im Einzelnen:
 - **4. Zeile**: *Ab und zu Promo* (die Abfahrt, ab und zu eine Promo; mit Anzeigedauer und
   Pause), *Nur Promos* (die Promos laufen der Reihe nach als Laufschrift durch, wahlweise in Weiß mit eigener Helligkeit) oder *Keine
   Promos*. Dazu die VRN-Störmeldungen: an/aus und wie oft sie am Stück durchlaufen.
-- **St.-Pauli-Ticker**: an/aus (Standard aus) und ob ein Tor die Animation über die ganze
+- **Fußball – St.-Pauli-Ticker**: an/aus (Standard aus) und ob ein Tor die Animation über die ganze
   Tafel zeigt. Läuft ein Spiel, gehört die 4. Zeile dem Spielstand (Heimteam links, Stand in
   der Mitte, Gastteam rechts, zu lange Namen als Kürzel wie `D98  0:1  STP`, in Weiß mit der
   Helligkeit der weißen Promos). Alle 10 s steht statt des Stands 3 s lang die Spielminute da
@@ -241,6 +246,11 @@ Im Einzelnen:
   (`MATCH_FINAL_H`) eine zusätzliche Promo, auch wenn die Promos aus sind. Darunter steht das
   nächste bzw. laufende Spiel, und **Tor testen** zeigt die Animation einmal (nicht im Event).
   Nur im Abfahrten-Modus; ein Bahnrennen geht vor.
+- **Fußball – HSV-Ticker**: an/aus (Standard aus). Kein Spielstand in der 4. Zeile; nur wenn
+  der HSV ein Tor kassiert, zeigt die ganze Tafel 8 s lang die Raute, in die ein Ball fliegt, und
+  „DIE RAUTE KASSIERT!“ in Braun, Weiß und Rot mit Feuerwerk, darunter den Spielstand.
+  **Gegentor testen** zeigt die Animation einmal. Fallen Tore beider Spiele kurz nacheinander
+  (oder im Derby), kommen die Animationen nacheinander.
 - **Icons**: die eingebauten Symbole (Instagram, Grilled Cheese, Flat White, Kuchen, Bier) und
   bis zu 8 eigene, gezeichnet in einem 12×9-Pixel-Editor. Ein neues Icon lässt sich auch direkt
   aus der Icon-Auswahl einer Promo heraus anlegen.
@@ -471,9 +481,9 @@ vorher einmal `sudo xcodebuild -license` aus.
 | `src/departures/parse.cpp` | JSON → Abfahrten, Umlaute (CP437), Countdown-Text (auf dem Host getestet) |
 | `src/core/https_json.cpp` | HTTPS-Anfrage, Streaming-JSON-Parser mit Filter (VRN und ESPN) |
 | `src/departures/vrn_client.cpp` | Abfahrten abrufen (Haupt- und Ausweich-Host), PSRAM |
-| `src/match/match.cpp` | St.-Pauli-Ticker: Spiel aus ESPN-JSON, Phasen, Tore (auf dem Host getestet) |
-| `src/match/match_client.cpp` | St.-Pauli-Ticker: Abruf im Netzwerk-Task, Übergabe an die Render-Schleife |
-| `src/match/goal_render.cpp` | Tor-Animation |
+| `src/match/match.cpp` | Fußball: Spiel aus ESPN-JSON, Phasen, Tore (auf dem Host getestet) |
+| `src/match/match_client.cpp` | Fußball: Abruf für St. Pauli und den HSV im Netzwerk-Task, Übergabe an die Render-Schleife |
+| `src/match/goal_render.cpp` | Tor-Animation und „Die Raute kassiert“ |
 | `src/core/net.cpp` | WLAN-Watchdog, NTP, OTA |
 | `src/core/settings.cpp` | Einstellungen zur Laufzeit: Standardwerte, Zeitfenster, JSON (auf dem Host getestet) |
 | `src/core/settings_store.cpp` | Einstellungen im Flash (LittleFS), Übergabe an die Render-Schleife |

@@ -3,7 +3,7 @@
 // Data: Verkehrsverbund Rhein-Neckar (VRN), Datenlizenz Deutschland – Namensnennung.
 //
 // Core 0: netTask   – WiFi, NTP, OTA, settings web page, firmware update
-//                     check after start, API polling, the St.-Pauli-Ticker
+//                     check after start, API polling, the football tickers
 // Core 1: loop()    – renders ~30 fps from the last good data, the event,
 //                     the tram race, a goal, the bouncer or the last round
 
@@ -117,7 +117,9 @@ static void netTask(void*) {
       nextFetchMs = millis() + (r == FetchResult::Ok ? POLL_INTERVAL_S : POLL_RETRY_S) * 1000UL;
     }
     esp_task_wdt_reset();
-    matchMaintain(online && timeValid() && !sleeping && departures && s.matchOn);
+    bool football = online && timeValid() && !sleeping && departures;
+    const bool tickers[N_TEAMS] = {football && s.matchOn, football && s.hsvOn};
+    matchMaintain(tickers);
 
     rebootChecks();
     vTaskDelay(pdMS_TO_TICKS(100));
@@ -166,11 +168,14 @@ void loop() {
   static uint32_t raceVersion = 0;
   static uint32_t raceStartMs = 0;
   static bool racing = false;
-  static Match match;  // St.-Pauli-Ticker
+  static Match match;  // St. Pauli's, for the 4th row
   static uint32_t matchVersion = 0;
-  static uint32_t goalVersion = 0;
+  static uint32_t goalVersion[N_TEAMS] = {};
+  static bool goalWaiting[N_TEAMS] = {};
+  static Match goalMatch[N_TEAMS];
+  static Match goalShown;
   static uint32_t goalStartMs = 0;
-  static bool goal = false;
+  static bool goal = false, conceded = false;
   static bool bouncer = false;
   static uint32_t bouncerVersion = 0;
   static uint32_t bouncerStartMs = 0;
@@ -211,13 +216,20 @@ void loop() {
   if (lastRoundFetch(lastRound, lastRoundDurMs, lastRoundVersion) && lastRound) lastRoundStartMs = millis();
   if (lastRound && millis() - lastRoundStartMs >= lastRoundDurMs) lastRound = false;
 
-  // a goal interrupts the departures only, not the event
+  // a goal interrupts the departures only, not the event; one of the other
+  // team meanwhile (the derby: the HSV's after St. Pauli's) waits its turn
   matchFetch(match, matchVersion);
-  if (goalFetch(goalVersion) && (!event.on || bouncer)) {
+  for (int i = 0; i < N_TEAMS; i++)
+    if (goalFetch((MatchTeam)i, goalVersion[i], goalMatch[i]) && (!event.on || bouncer)) goalWaiting[i] = true;
+  if (goal && millis() - goalStartMs >= GOAL_ANIM_MS) goal = false;
+  for (int i = 0; i < N_TEAMS && !goal; i++) {
+    if (!goalWaiting[i]) continue;
+    goalWaiting[i] = false;
     goal = true;
+    conceded = i == TEAM_HSV;
+    goalShown = goalMatch[i];
     goalStartMs = millis();
   }
-  if (goal && millis() - goalStartMs >= GOAL_ANIM_MS) goal = false;
 
   DisplayStatus st;
   st.wifi = WiFi.status() == WL_CONNECTED;
@@ -228,9 +240,9 @@ void loop() {
   uint32_t goalMs = goal ? ms - goalStartMs : NO_GOAL;
   // a scene tested from the event page shows even over the bouncer and the last round
   bool dark = testing ? displayRender(local, settings, test, karaoke, match, st, time(nullptr), ms, ms - testStartMs, r,
-                                      ms - raceStartMs, goalMs, nullptr, 0, nullptr, 0)
+                                      ms - raceStartMs, goalMs, goalShown, conceded, nullptr, 0, nullptr, 0)
                       : displayRender(local, settings, event, karaoke, match, st, time(nullptr), ms, ms - eventStartMs, r,
-                                      ms - raceStartMs, goalMs, bouncer ? &settings.bouncer : nullptr,
+                                      ms - raceStartMs, goalMs, goalShown, conceded, bouncer ? &settings.bouncer : nullptr,
                                       ms - bouncerStartMs, lastRound ? &settings.lastRound : nullptr,
                                       ms - lastRoundStartMs);
   // a fixed frame rate however long the frame took (off time: nothing to

@@ -140,11 +140,21 @@ bool matchPollLive(const Match& m, time_t now) {
 }
 
 int ourGoals(const Match& m) { return m.ourHome ? m.goalsHome : m.goalsAway; }
+int theirGoals(const Match& m) { return m.ourHome ? m.goalsAway : m.goalsHome; }
 
-int newGoals(const Match& before, const Match& after) {
+int newGoals(const Match& before, const Match& after, bool against) {
   if (!before.id || before.id != after.id) return 0;
-  int d = ourGoals(after) - ourGoals(before);
+  int d = against ? theirGoals(after) - theirGoals(before) : ourGoals(after) - ourGoals(before);
   return d > 0 ? d : 0;
+}
+
+// the scoreboard's day is the kick-off's in UTC (see fetchOne() in match_client.cpp)
+bool sameScoreboard(const Match& a, const Match& b) {
+  if (!a.id || !b.id || strcmp(a.league, b.league) != 0) return false;
+  struct tm ta, tb;
+  gmtime_r(&a.kickoff, &ta);
+  gmtime_r(&b.kickoff, &tb);
+  return ta.tm_year == tb.tm_year && ta.tm_yday == tb.tm_yday;
 }
 
 const char* matchHomeName(const Match& m, bool codes) { return codes && m.homeCode[0] ? m.homeCode : m.home; }

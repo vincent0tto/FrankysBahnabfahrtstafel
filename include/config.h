@@ -146,15 +146,16 @@
 #define DISRUPTION_MIN_MINUTES  5   // only if the 4th row's departure is this far away
 #define DISRUPTION_PASSES       2   // scroll through all messages this often (default; web page)
 
-// ---- St.-Pauli-Ticker (switched on on the web page) ------------------------
+// ---- Fußball: St.-Pauli- and HSV-Ticker (switched on on the web page) -----
 // Matches from ESPN's site API (free, no key, not documented officially; the
-// certificate chain ends in ISRG Root X1 like the VRN's). The team's id is in
+// certificate chain ends in ISRG Root X1 like the VRN's). A team's id is in
 // the URL of its ESPN page, espn.com/soccer/club/_/id/270/st-pauli.
 #define MATCH_API_URL     "https://site.api.espn.com/apis/site/v2/sports/soccer"
 #define MATCH_TEAM_ID     "270"             // FC St. Pauli
-#define MATCH_LEAGUES     "ger.1,ger.2,ger.dfb_pokal"  // ESPN league slugs; not the friendlies ("club.friendly")
+#define HSV_TEAM_ID       "127"             // Hamburger SV: only the goals it concedes
+#define MATCH_LEAGUES     "ger.1,ger.2,ger.dfb_pokal"  // ESPN league slugs (both teams); not the friendlies ("club.friendly")
 #define MATCH_POLL_IDLE_S  3600   // the team's results and fixtures
-#define MATCH_POLL_LIVE_S    15   // the score while it runs (ESPN has no limit, ~25 kB a time)
+#define MATCH_POLL_LIVE_S    15   // a score while one runs, both teams in turn (ESPN has no limit, ~25 kB a time)
 #define MATCH_RETRY_S       300   // the list after a failed fetch
 #define MATCH_LIVE_LEAD_S   300   // start asking this long before kick-off
 #define MATCH_LIVE_MAX_S  (3 * 3600)  // live at most this long after kick-off (cup: extra time, penalties)

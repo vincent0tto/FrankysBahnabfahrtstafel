@@ -21,8 +21,9 @@ bool displayBegin();
 // started, with its own brightness and no off time; with ev.karaoke the
 // list `k` instead of the scenes. A `race` (nullptr: none)
 // goes over both, `raceMs` after it started, also in the off time; next
-// comes the goal animation, `goalMs` after the goal (NO_GOAL: none). `m`:
-// the St.-Pauli-Ticker's match for the 4th row (id 0: none). `bouncer`
+// comes the goal animation, `goalMs` after the goal (NO_GOAL: none), of
+// the match `goalM`; `conceded`: the HSV's instead of St. Pauli's. `m`:
+// St. Pauli's match for the 4th row (id 0: none). `bouncer`
 // (nullptr: none): `bouncerMs` after it started, first over the whole board
 // for Settings::bouncerFullS, then the departures with it in the 4th row,
 // also instead of the event (then with its brightness and off time).
@@ -30,5 +31,5 @@ bool displayBegin();
 // started, over everything but a race and a goal; also in the off time.
 bool displayRender(const Board& b, const Settings& s, const Event& ev, const Karaoke& k, const Match& m,
                    const DisplayStatus& st, time_t now, uint32_t ms, uint32_t eventMs, const Race* race,
-                   uint32_t raceMs, uint32_t goalMs, const Promo* bouncer, uint32_t bouncerMs,
-                   const Promo* lastRound, uint32_t lastRoundMs);
+                   uint32_t raceMs, uint32_t goalMs, const Match& goalM, bool conceded, const Promo* bouncer,
+                   uint32_t bouncerMs, const Promo* lastRound, uint32_t lastRoundMs);

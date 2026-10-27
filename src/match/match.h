@@ -1,7 +1,8 @@
 #pragma once
-// St.-Pauli-Ticker: the team's (MATCH_TEAM_ID) match from ESPN
-// (src/match/match_client.cpp), its score in the 4th row while it runs and as a
-// promo for a while after (src/display/render.cpp), and a goal animation
+// Fußball: a team's match from ESPN (src/match/match_client.cpp). St. Pauli
+// (MATCH_TEAM_ID): its score in the 4th row while it runs and as a promo for
+// a while after (src/display/render.cpp), and a goal animation; the HSV
+// (HSV_TEAM_ID): only an animation for each goal it concedes
 // (src/match/goal_render.cpp). No Arduino dependency, unit-tested on the host.
 #include <ArduinoJson.h>
 #include <stddef.h>
@@ -16,7 +17,7 @@ struct Match {
   char away[24] = "";
   char homeCode[8] = "";  // ESPN abbreviations, "STP"
   char awayCode[8] = "";
-  bool ourHome = false;   // MATCH_TEAM_ID is the home side
+  bool ourHome = false;   // the team asked for is the home side
   uint8_t goalsHome = 0, goalsAway = 0;
   bool finished = false;
   char clock[8] = "";     // while it runs: "67'", "90+4'", "HZ" at half-time
@@ -54,10 +55,16 @@ MatchPhase matchPhase(const Match& m, time_t now);
 bool matchPollLive(const Match& m, time_t now);
 
 int ourGoals(const Match& m);
+int theirGoals(const Match& m);
 
-// Goals MATCH_TEAM_ID scored from `before` to `after`: only for the same
-// match, never on the first look at it, 0 if the score went down (VAR).
-int newGoals(const Match& before, const Match& after);
+// Goals the team scored (`against`: conceded) from `before` to `after`: only
+// for the same match, never on the first look at it, 0 if the score went
+// down (VAR).
+int newGoals(const Match& before, const Match& after, bool against = false);
+
+// Whether both matches are on the same league scoreboard of the same day,
+// so one fetch has both.
+bool sameScoreboard(const Match& a, const Match& b);
 
 // "Hannover", "St. Pauli"; with `codes` "H96", "STP" (a name without a
 // code stays).

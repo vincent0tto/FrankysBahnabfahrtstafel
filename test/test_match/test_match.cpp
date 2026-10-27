@@ -224,6 +224,32 @@ void test_new_goals() {
   TEST_ASSERT_EQUAL(0, newGoals(before, m));  // another match
 }
 
+void test_goals_conceded() {
+  TEST_ASSERT_TRUE(matchFromJson(results["events"][0], MATCH_TEAM_ID, nullptr, m));  // St. Pauli away, 1:1
+  before = m;
+  before.goalsHome = 0;
+  TEST_ASSERT_EQUAL(1, newGoals(before, m, true));   // Hannover scored
+  TEST_ASSERT_EQUAL(0, newGoals(before, m));
+  before = m;
+  m.goalsAway = 2;                                   // St. Pauli scored: none conceded
+  TEST_ASSERT_EQUAL(0, newGoals(before, m, true));
+  TEST_ASSERT_EQUAL(0, newGoals(Match(), m, true));  // first look
+}
+
+void test_same_scoreboard() {
+  TEST_ASSERT_TRUE(matchFromScoreboard(scoreboard.as<JsonVariantConst>(), 401885091, MATCH_TEAM_ID, m));
+  before = m;
+  before.id = 1;
+  before.kickoff += 2 * 3600;                 // the same day, later
+  TEST_ASSERT_TRUE(sameScoreboard(m, before));
+  before.kickoff += 24 * 3600;                // the next day
+  TEST_ASSERT_FALSE(sameScoreboard(m, before));
+  before.kickoff = m.kickoff;
+  strcpy(before.league, "ger.1");             // another league
+  TEST_ASSERT_FALSE(sameScoreboard(m, before));
+  TEST_ASSERT_FALSE(sameScoreboard(m, Match()));
+}
+
 int main(int, char**) {
   UNITY_BEGIN();
   RUN_TEST(test_finished_match);
@@ -239,5 +265,7 @@ int main(int, char**) {
   RUN_TEST(test_list_keeps_what_it_has);
   RUN_TEST(test_list_leagues);
   RUN_TEST(test_new_goals);
+  RUN_TEST(test_goals_conceded);
+  RUN_TEST(test_same_scoreboard);
   return UNITY_END();
 }

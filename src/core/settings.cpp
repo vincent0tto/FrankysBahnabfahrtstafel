@@ -296,6 +296,7 @@ void settingsToJson(const Settings& s, JsonObject out, bool forWeb) {
   out["animChanceBus"] = s.animChanceBus;
   out["matchOn"] = s.matchOn;
   out["goalAnim"] = s.goalAnim;
+  out["hsvOn"] = s.hsvOn;
   out["fiestaChance"] = s.fiestaChance;
   out["fiestaText1"] = (const char*)s.fiestaText1;
   out["fiestaText2"] = (const char*)s.fiestaText2;
@@ -379,6 +380,7 @@ bool settingsFromJson(JsonVariantConst in, Settings& s) {
   s.animChanceBus = (uint8_t)clampU(in["animChanceBus"], 0, 100, s.animChanceBus);
   s.matchOn = in["matchOn"] | s.matchOn;
   s.goalAnim = in["goalAnim"] | s.goalAnim;
+  s.hsvOn = in["hsvOn"] | s.hsvOn;
   s.fiestaChance = (uint8_t)clampU(in["fiestaChance"], 0, 100, s.fiestaChance);
   if (in["fiestaText1"].is<const char*>()) copyText(s.fiestaText1, sizeof(s.fiestaText1), in["fiestaText1"]);
   if (in["fiestaText2"].is<const char*>()) copyText(s.fiestaText2, sizeof(s.fiestaText2), in["fiestaText2"]);
