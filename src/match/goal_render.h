@@ -17,5 +17,5 @@ void drawGoal(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, uint32
 
 // The HSV conceded a goal, `t` as above: a ball flies into its Raute, which
 // shakes, "DIE RAUTE KASSIERT!" in St. Pauli's colours, fireworks, and the
-// score of `m` (id 0: "Hamburger SV").
+// score of `m` (id 0: none, for "Gegentor testen").
 void drawConceded(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, uint32_t t);

@@ -141,7 +141,7 @@ void drawConceded(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, ui
   }
 
   int textCx = (TEXT_X0 + W) / 2;
-  bool score = t >= SCORE_MS;
+  bool score = t >= SCORE_MS && m.id;  // a test keeps the text in the middle
   u8.setFont(FONT_RAUTE);
   int rAsc = u8.getFontAscent();
   u8.setFont(FONT_KASSIERT);
@@ -162,5 +162,5 @@ void drawConceded(Adafruit_GFX& g, U8G2_FOR_ADAFRUIT_GFX& u8, const Match& m, ui
   u8.setForegroundColor(rgb565(GOAL_RGB[((t - FLY_MS) / BLINK_MS) % 3]));
   u8.drawUTF8(textCx - kw / 2, kBase, "KASSIERT!");
 
-  if (score) drawScore(g, u8, m, "Hamburger SV", textCx, W - TEXT_X0 - 4);
+  if (score) drawScore(g, u8, m, "", textCx, W - TEXT_X0 - 4);
 }
